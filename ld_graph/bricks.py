@@ -2,8 +2,10 @@
 Create a "bricked" tree sequence
 """
 import numpy as np
-import tskit
 from tqdm import tqdm
+
+import pandas as pd
+import networkx as nx
 
 
 class Bricks:
@@ -72,13 +74,12 @@ class Bricks:
 
     def brick_ts(self):
         """
-        Create bricks given a tree sequence. Bricks are an "augmented edge table" such that each
-        edge is bifurcated when any of its descendants recombine.
+        Create bricks given a tree sequence. Bricks are an "augmented edge table"
+        such that each edge is bifurcated when any of its descendants recombine.
         """
         tables = self.ts.dump_tables()
         tables.edges.clear()
         tree1 = None
-        loop_sizes = []
         for index, (tree2, (interval, edges_out, edges_in)) in tqdm(
             enumerate(zip(self.ts.trees(), self.ts.edge_diffs())),
             total=self.ts.num_trees,
@@ -88,7 +89,7 @@ class Bricks:
             if index == 0:
                 for edge in edges_in:
                     tables.edges.add_row(edge.left, edge.right, edge.parent, edge.child)
-            # If not the first tree, check for nodes which are both coming in and going out as children
+            # If not first tree, check child nodes which are both coming in and going out
             else:
                 children_in = [edge.child for edge in edges_in]
                 children_out = [edge.child for edge in edges_out]
@@ -107,7 +108,6 @@ class Bricks:
                     j_child = u.child
                     i = tree1.parent(i_child)
                     j = tree2.parent(j_child)
-                    loop_size = 0
                     while i != j:
 
                         ti = tree1.get_time(i)
@@ -123,7 +123,7 @@ class Bricks:
                             # if edge from j_child to j straddles both trees, bifurcate
                             self.bifurcate_edge(tables, tree2, j, j_child)
                         else:
-                            # When we've reached the MRCA, no longer need to resolve edges
+                            # At MRCA, no longer need to resolve edges
                             break
             tree1 = tree2.copy()
         tables.sort()
@@ -140,6 +140,7 @@ class Bricks:
         """
         from_to_set = set()
         node_edge_dict = {}
+        tree1 = None
 
         for index, (tree2, (interval, edges_out, edges_in)) in tqdm(
             enumerate(zip(ts.trees(), ts.edge_diffs())), total=ts.num_trees
