@@ -1,2 +1,2 @@
-# LD_graph
-Code for converting tree sequences to graphical models of LD.
+# ld_graph
+Code for converting tree sequences to graphical models encoding conditional independence of SNPs
