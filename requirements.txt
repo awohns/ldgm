@@ -1,0 +1,5 @@
+tskit>=0.3.0
+flake8
+pre-commit
+numpy
+networkx
