@@ -1,10 +1,7 @@
 """
 Create a "bricked" tree sequence
 """
-import numpy as np
-
-import pandas as pd
-import networkx as nx
+import tskit
 
 
 class Bricks:

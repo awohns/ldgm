@@ -1,7 +1,6 @@
 """
 Create a brick graph
 """
-import numpy as np
 
 import pandas as pd
 import networkx as nx
@@ -59,14 +58,12 @@ class BrickGraph:
                                 from_to_set.add(
                                     (node_edge_dict[child], node_edge_dict[child_1])
                                 )
-                # Rule 3: Connect bricks that share a child haplotype across a recombination
+                # Rule 3: Connect bricks sharing a child haplotype across a recombination
                 if index != 0:
                     if edge.child in prev_edge_dict:
                         from_to_set.add(
                             (node_edge_dict[edge.child], prev_edge_dict[edge.child])
                         )
-
-            tree1 = tree2.copy()
 
         # Create networkx graph
         df = pd.Datamuts_to_merge_dict = {

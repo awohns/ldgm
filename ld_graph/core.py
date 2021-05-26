@@ -17,7 +17,7 @@ def brick_ts(ts):
 
 def brick_graph(brick_ts):
     """
-    Make a brick graph 
+    Make a brick graph
     """
     brick_grapher = bricks_graph.BrickGraph(brick_ts)
     bricked_graph = brick_grapher.make_brick_graph()

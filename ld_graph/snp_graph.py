@@ -4,7 +4,6 @@ Create a reduced SNP graph
 import numpy as np
 
 import collections
-import pandas as pd
 import networkx as nx
 
 
@@ -15,8 +14,8 @@ class SNP_Graph:
 
         # Tree sequence must contain mutations
         if brick_ts.num_mutations == 0:
-            raise ValueError("Tree sequence must contain mutations") 
- 
+            raise ValueError("Tree sequence must contain mutations")
+
         muts_to_brick = {}
         node_edge_dict = {}
         brick_mut_list = collections.defaultdict(list)
@@ -50,8 +49,6 @@ class SNP_Graph:
             for i in b:
                 for j in b:
                     if i != j:
-                        RG.add_edge(i, j)
-        reduced_graph = nx.relabel_nodes(
-            reduced_graph, self.brick_to_muts, copy=True
-        )
+                        reduced_graph.add_edge(i, j)
+        reduced_graph = nx.relabel_nodes(reduced_graph, self.brick_to_muts, copy=True)
         return reduced_graph
