@@ -42,8 +42,8 @@ class SNP_Graph:
         self.brick_to_muts = brick_to_muts
 
     def create_reduced_graph(self):
-        H = self.brick_graph.subgraph(self.labelled_nodes)
-        reduced_graph = nx.Graph(self.brick_graph.subgraph(self.unlabelled_nodes))
+        H = self.brick_graph.subgraph(self.unlabelled_nodes)
+        reduced_graph = nx.Graph(self.brick_graph.subgraph(self.labelled_nodes))
         for c in nx.connected_components(H):
             b = nx.node_boundary(self.brick_graph, c, self.labelled_nodes)
             for i in b:
