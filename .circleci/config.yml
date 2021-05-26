@@ -39,7 +39,7 @@ jobs:
           name: Compile Python
           command: |
               python setup.py build_ext --inplace      
-          command: |
+      - run:
           name: Lint Python
           command: |
               flake8 --max-line-length 89 ld_graph
