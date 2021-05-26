@@ -57,13 +57,12 @@ def ld_graph_cli_parser():
         help="The path and name of output file where the \
                         SNP graphical model will be stored.",
     )
-    # TODO
     # parser.add_argument(
     #    "-p", "--progress", action="store_true", help="Show progress bar."
     # )
-    # parser.add_argument(
-    #    "-v", "--verbosity", type=int, default=0, help="How much verbosity to output."
-    # )
+    parser.add_argument(
+        "-v", "--verbosity", type=int, default=0, help="How much verbosity to output."
+    )
     parser.set_defaults(runner=run_reduce)
 
     return top_parser
