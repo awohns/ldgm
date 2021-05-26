@@ -4,3 +4,4 @@ pre-commit
 numpy
 networkx
 pytest
+pandas
