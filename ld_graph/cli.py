@@ -2,6 +2,7 @@
 Command line interface for ld_graph.
 """
 import argparse
+import csv
 import sys
 import networkx as nx
 import logging
@@ -54,8 +55,8 @@ def ld_graph_cli_parser():
     )
     parser.add_argument(
         "output",
-        help="The path and name of output file where the \
-                        SNP graphical model will be stored.",
+        help="The path and name of output file, without an extension, which will store the \
+                SNP graphical model and dictionary mapping graph nodes to mutation ids.",
     )
     # parser.add_argument(
     #    "-p", "--progress", action="store_true", help="Show progress bar."
@@ -73,10 +74,14 @@ def run_reduce(args):
         ts = tskit.load(args.tree_sequence)
     except tskit.FileFormatError as ffe:
         error_exit(f"Error loading '{args.tree_sequence}: {ffe}")
-    snp_graph = ld_graph.reduce(
+    snp_graph, id_to_muts = ld_graph.reduce(
         ts,
     )
-    nx.readwrite.edgelist.write_edgelist(snp_graph, args.output)
+    nx.readwrite.edgelist.write_edgelist(snp_graph, args.output + ".txt")
+    with open(args.output + ".csv", "w") as csv_file:
+        writer = csv.writer(csv_file)
+        for key, value in id_to_muts.items():
+            writer.writerow([key, value])
 
 
 def ld_graph_main(arg_list=None):
