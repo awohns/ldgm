@@ -18,7 +18,6 @@ class SNP_Graph:
 
         muts_to_brick = {}
         node_edge_dict = {}
-        brick_mut_list = collections.defaultdict(list)
         for tree, (interval, edges_out, edges_in) in zip(
             brick_ts.trees(), brick_ts.edge_diffs()
         ):
@@ -30,16 +29,27 @@ class SNP_Graph:
                 for mut in site.mutations:
                     node = mut.node
                     muts_to_brick[mut.id] = node_edge_dict[node]
-        brick_to_muts = {brick: mut for mut, brick in muts_to_brick.items()}
+
+        bricks_to_muts = collections.defaultdict(list)
+        id_to_muts = {}
+        bricks_to_id = {}
+
         for mut, brick in muts_to_brick.items():
-            brick_mut_list[brick].append(mut)
-        self.labelled_nodes = list(brick_to_muts.keys())
+            bricks_to_muts[brick].append(mut)
+
+        for index, (brick, muts) in enumerate(bricks_to_muts.items()):
+            id_to_muts[index] = muts
+            bricks_to_id[brick] = index
+
+        self.labelled_nodes = list(bricks_to_muts.keys())
         self.unlabelled_nodes = list(
             np.arange(0, brick_ts.num_edges)[
-                ~np.isin(np.arange(0, brick_ts.num_edges), list(brick_to_muts.keys()))
+                ~np.isin(np.arange(0, brick_ts.num_edges), self.labelled_nodes)
             ],
         )
-        self.brick_to_muts = brick_to_muts
+        self.bricks_to_muts = bricks_to_muts
+        self.bricks_to_id = bricks_to_id
+        self.id_to_muts = id_to_muts
 
     def create_reduced_graph(self):
         H = self.brick_graph.subgraph(self.unlabelled_nodes)
@@ -50,5 +60,5 @@ class SNP_Graph:
                 for j in b:
                     if i != j:
                         reduced_graph.add_edge(i, j)
-        reduced_graph = nx.relabel_nodes(reduced_graph, self.brick_to_muts, copy=True)
-        return reduced_graph
+        reduced_graph = nx.relabel_nodes(reduced_graph, self.bricks_to_id, copy=True)
+        return reduced_graph, self.id_to_muts

@@ -29,12 +29,12 @@ def reduce_graph(brick_graph, brick_ts):
     Make a reduced graph from a brick graph and bricked tree sequence
     """
     snp_grapher = snp_graph.SNP_Graph(brick_graph, brick_ts)
-    reduced_graph = snp_grapher.create_reduced_graph()
-    return reduced_graph
+    reduced_graph, id_to_muts = snp_grapher.create_reduced_graph()
+    return reduced_graph, id_to_muts
 
 
 def reduce(ts):
     bricked = brick_ts(ts)
     bricked_graph = brick_graph(bricked)
-    reduced_graph = reduce_graph(bricked_graph, bricked)
-    return reduced_graph
+    reduced_graph, id_to_muts = reduce_graph(bricked_graph, bricked)
+    return reduced_graph, id_to_muts
