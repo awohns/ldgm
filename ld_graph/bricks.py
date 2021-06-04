@@ -87,6 +87,11 @@ class Bricks:
                                 left, interval, tables, current_edges
                             )
                             left = prev_tree.parent(left)
+                        else:
+                            tables, current_edges = self.bifurcate_edge(
+                                right, interval, tables, current_edges
+                            )
+                            right = tree.parent(right)
                 elif mode == "node":
                     parent = edge.parent
                     while parent != tree.root:
