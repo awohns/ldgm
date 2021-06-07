@@ -4,6 +4,8 @@ Create a brick graph
 
 import pandas as pd
 import networkx as nx
+import numpy as np
+from tqdm import tqdm
 
 
 class BrickGraph:
@@ -24,10 +26,16 @@ class BrickGraph:
         from_to_set = set()
         node_edge_dict = {}
 
-        for index, (tree2, (interval, edges_out, edges_in)) in enumerate(
-            zip(bricked_ts.trees(), bricked_ts.edge_diffs())
+        times = bricked_ts.tables.nodes.time
+
+        for index, (tree2, (interval, edges_out, edges_in)) in tqdm(
+            enumerate(zip(bricked_ts.trees(), bricked_ts.edge_diffs())),
+            desc="Brick graph: iterate over edges",
+            total=bricked_ts.num_trees,
         ):
             prev_edge_dict = node_edge_dict.copy()
+            roots = tree2.roots
+            max_root = roots[np.argmax(times[roots])]
 
             for edge in edges_out:
                 node_edge_dict.pop(edge.child)
@@ -41,7 +49,7 @@ class BrickGraph:
                         from_to_set.add(
                             (node_edge_dict[child], node_edge_dict[edge.child])
                         )
-                if edge.parent != tree2.root and edge.child != tree2.root:
+                if edge.parent != max_root and edge.child != max_root:
                     if node_edge_dict[edge.child] != node_edge_dict[edge.parent]:
                         from_to_set.add(
                             (

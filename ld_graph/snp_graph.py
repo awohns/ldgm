@@ -6,6 +6,8 @@ import numpy as np
 import collections
 import networkx as nx
 
+from tqdm import tqdm
+
 
 class SNP_Graph:
     def __init__(self, brick_graph, brick_ts):
@@ -18,8 +20,10 @@ class SNP_Graph:
 
         muts_to_brick = {}
         node_edge_dict = {}
-        for tree, (interval, edges_out, edges_in) in zip(
-            brick_ts.trees(), brick_ts.edge_diffs()
+        for tree, (interval, edges_out, edges_in) in tqdm(
+            zip(brick_ts.trees(), brick_ts.edge_diffs()),
+            desc="Reduce graph: assign mutations to bricks",
+            total=brick_ts.num_trees,
         ):
             for edge in edges_out:
                 node_edge_dict.pop(edge.child)
@@ -54,7 +58,11 @@ class SNP_Graph:
     def create_reduced_graph(self):
         H = self.brick_graph.subgraph(self.unlabelled_nodes)
         reduced_graph = nx.Graph(self.brick_graph.subgraph(self.labelled_nodes))
-        for c in nx.connected_components(H):
+        for c in tqdm(
+            nx.connected_components(H),
+            desc="Reduce graph: iterate over connected components",
+            total=nx.number_connected_components(H),
+        ):
             b = nx.node_boundary(self.brick_graph, c, self.labelled_nodes)
             for i in b:
                 for j in b:

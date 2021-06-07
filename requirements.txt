@@ -5,3 +5,4 @@ numpy
 networkx
 pytest
 pandas
+tqdm
