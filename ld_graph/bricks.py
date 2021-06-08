@@ -1,6 +1,7 @@
 """
 Create a "bricked" tree sequence
 """
+from tqdm import tqdm
 import tskit
 
 
@@ -56,8 +57,12 @@ class Bricks:
 
         prev_tree = tree.copy()
 
-        # Look at edeges in and out for subsequent trees
-        for tree, (interval, edges_out, edges_in) in zip(trees, edge_diffs):
+        # Look at edges in and out for subsequent trees
+        for tree, (interval, edges_out, edges_in) in tqdm(
+            zip(trees, edge_diffs),
+            desc="Brick tree sequence: iterate over edges",
+            total=ts.num_trees,
+        ):
             # Add edges coming out to new edge table
             for edge in edges_out:
                 modified_edge = current_edges[edge.child]
