@@ -2,6 +2,7 @@
 Functions to produce reduced graph and intermediate steps
 """
 from . import bricks
+from . import regularization
 from . import bricks_graph
 from . import snp_graph
 
@@ -13,6 +14,13 @@ def brick_ts(ts):
     brick = bricks.Bricks(ts)
     bricked = brick.naive_split_edges()
     return bricked
+
+
+def time_regularize(ts, time):
+    """
+    Regularize a tree sequence by time
+    """
+    return regularization.Regularize(ts).time_regularize(time)
 
 
 def brick_graph(brick_ts):
