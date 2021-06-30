@@ -1,12 +1,11 @@
 """
 Create a brick graph
 """
-
-import collections
 import itertools
-import pandas as pd
+
 import networkx as nx
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 from . import utility
@@ -114,11 +113,10 @@ class BrickGraph:
                         )
                     )
 
-        # Rule 3: Connect parent *bricks* sharing a child *haplotype* across a recombination
+        # Rule 3: Connect parent bricks sharing child haplotype across a recombination
         if index != 0:
             if edge.child in prev_edge_dict:
                 # r,d of left parent to r of right parent
-                # Try: r of left parent to d of right parent; left parent left to right parent down
                 from_to_set.add(
                     (
                         self.right_vertex(prev_edge_dict[edge.child], "in"),
@@ -172,7 +170,7 @@ class BrickGraph:
             from_to_set.add((6 * brick + 2, 6 * brick))
             from_to_set.add((6 * brick + 3, 6 * brick))
 
-        for index, (tree2, (interval, edges_out, edges_in)) in tqdm(
+        for index, (tree2, (_, edges_out, edges_in)) in tqdm(
             enumerate(zip(self.bricked_ts.trees(), self.bricked_ts.edge_diffs())),
             desc="Brick graph: iterate over edges",
             total=self.bricked_ts.num_trees,

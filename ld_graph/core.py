@@ -2,8 +2,8 @@
 Functions to produce reduced graph and intermediate steps
 """
 from . import bricks
-from . import regularization
 from . import bricks_graph
+from . import regularization
 from . import snp_graph
 
 

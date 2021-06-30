@@ -1,8 +1,8 @@
 """
 Create a "bricked" tree sequence
 """
-from tqdm import tqdm
 import tskit
+from tqdm import tqdm
 
 
 class Bricks:

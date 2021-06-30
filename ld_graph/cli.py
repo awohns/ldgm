@@ -3,13 +3,12 @@ Command line interface for ld_graph.
 """
 import argparse
 import csv
-import sys
-import networkx as nx
 import logging
-
-import tskit
+import sys
 
 import ld_graph
+import networkx as nx
+import tskit
 
 logger = logging.getLogger(__name__)
 log_format = "%(asctime)s %(levelname)s %(message)s"

@@ -2,6 +2,7 @@
 Create a reduced SNP graph
 """
 import collections
+
 import networkx as nx
 import numpy as np
 from tqdm import tqdm
@@ -61,7 +62,7 @@ class SNP_Graph:
 
         def node_data(list_of_lists):
             node_data = {}
-            for index, i in enumerate(list_of_lists):
+            for _, i in enumerate(list_of_lists):
                 node_data[frozenset({i[0], i[1]})] = int(i[0] / 6)
             return node_data
 

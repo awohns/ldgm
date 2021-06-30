@@ -7,7 +7,7 @@ import collections
 def get_mut_edges(ts):
     muts_to_brick = {}
     node_edge_dict = {}
-    for tree, (interval, edges_out, edges_in) in zip(ts.trees(), ts.edge_diffs()):
+    for tree, (_, edges_out, edges_in) in zip(ts.trees(), ts.edge_diffs()):
         for edge in edges_out:
             node_edge_dict.pop(edge.child)
         for edge in edges_in:

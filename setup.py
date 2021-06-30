@@ -24,7 +24,7 @@ setup(
         "numpy",
         "networkx",
         "pytest",
-        "pandas"
+        "pandas",
     ],
     project_urls={
         "Source": "https://github.com/awohns/ld_graph",
@@ -35,5 +35,5 @@ setup(
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX",
     ],
-    use_scm_version={"write_to": "ld_graph/_version.py"}
+    use_scm_version={"write_to": "ld_graph/_version.py"},
 )
