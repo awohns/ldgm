@@ -1,12 +1,12 @@
 """
 Create a reduced SNP graph
 """
-import numpy as np
-
 import collections
 import networkx as nx
-
+import numpy as np
 from tqdm import tqdm
+
+from . import utility
 
 
 class SNP_Graph:
@@ -18,28 +18,10 @@ class SNP_Graph:
         if brick_ts.num_mutations == 0:
             raise ValueError("Tree sequence must contain mutations")
 
-        muts_to_brick = {}
-        node_edge_dict = {}
-        for tree, (interval, edges_out, edges_in) in tqdm(
-            zip(brick_ts.trees(), brick_ts.edge_diffs()),
-            desc="Reduce graph: assign mutations to bricks",
-            total=brick_ts.num_trees,
-        ):
-            for edge in edges_out:
-                node_edge_dict.pop(edge.child)
-            for edge in edges_in:
-                node_edge_dict[edge.child] = edge.id
-            for site in tree.sites():
-                for mut in site.mutations:
-                    node = mut.node
-                    muts_to_brick[mut.id] = node_edge_dict[node]
+        bricks_to_muts = utility.get_mut_edges(brick_ts)
 
-        bricks_to_muts = collections.defaultdict(list)
         id_to_muts = {}
         bricks_to_id = {}
-
-        for mut, brick in muts_to_brick.items():
-            bricks_to_muts[brick].append(mut)
 
         for index, (brick, muts) in enumerate(bricks_to_muts.items()):
             id_to_muts[index] = muts
@@ -55,18 +37,35 @@ class SNP_Graph:
         self.bricks_to_id = bricks_to_id
         self.id_to_muts = id_to_muts
 
+        nodes = np.array(list(brick_graph.nodes()))
+        self.l_out = nodes[nodes % 6 == 4]
+        self.l_in = nodes[nodes % 6 == 5]
+
     def create_reduced_graph(self):
-        H = self.brick_graph.subgraph(self.unlabelled_nodes)
-        reduced_graph = nx.Graph(self.brick_graph.subgraph(self.labelled_nodes))
-        for c in tqdm(
-            nx.connected_components(H),
-            desc="Reduce graph: iterate over connected components",
-            total=nx.number_connected_components(H),
-        ):
-            b = nx.node_boundary(self.brick_graph, c, self.labelled_nodes)
-            for i in b:
-                for j in b:
-                    if i != j:
-                        reduced_graph.add_edge(i, j)
-        reduced_graph = nx.relabel_nodes(reduced_graph, self.bricks_to_id, copy=True)
-        return reduced_graph, self.id_to_muts
+        desc = collections.defaultdict()
+        R_desc = nx.Graph()
+        R_desc.add_nodes_from(self.l_out)
+        R_desc.add_nodes_from(self.l_in)
+        for u in tqdm(self.l_out, total=len(self.l_out), desc="Graph reduction"):
+            desc[u] = nx.descendants(self.brick_graph, u)
+            for v in desc[u]:
+                if v in self.l_in:
+                    R_desc.add_edge(u, v)
+        nodes = list(R_desc.nodes())
+        equivalent_nodes = []
+        vals = np.stack([self.l_out, self.l_out + 1]).transpose()
+        for index, i in tqdm(enumerate(vals)):
+            if i[0] in nodes and i[1] in nodes:
+                equivalent_nodes.append(vals[index])
+        R_identified = nx.quotient_graph(R_desc, equivalent_nodes)
+
+        def node_data(list_of_lists):
+            node_data = {}
+            for index, i in enumerate(list_of_lists):
+                node_data[frozenset({i[0], i[1]})] = int(i[0] / 6)
+            return node_data
+
+        R_identified_relabelled = nx.relabel_nodes(
+            R_identified, node_data(equivalent_nodes), copy=True
+        )
+        return R_identified_relabelled, self.id_to_muts
