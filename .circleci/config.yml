@@ -43,7 +43,7 @@ jobs:
           name: Lint Python
           command: |
               flake8 --max-line-length 89 ld_graph
-      #- run:
-      #    name: Run tests
-      #    # This assumes pytest is installed via the install-package step above
-      #    command: pytest
+      - run:
+          name: Run tests
+          # This assumes pytest is installed via the install-package step above
+          command: pytest

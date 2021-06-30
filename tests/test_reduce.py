@@ -17,14 +17,14 @@ class TestNumNodes(unittest.TestCase):
         The reduced graph should have the same number of nodes as labeled bricks
         """
         ts = msprime.simulate(
-            1000,
+            100,
             mutation_rate=1e-8,
             random_seed=13,
             recombination_rate=1e-8,
             record_full_arg=False,
-            length=1e6,
+            length=1e4,
             Ne=10000,
         )
-        ld_graph.reduce(ts).number_of_nodes() == len(
+        ld_graph.reduce(ts)[0].number_of_nodes() == len(
             ld_graph.utility.get_mut_edges(ts).keys()
         )
