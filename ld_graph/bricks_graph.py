@@ -64,7 +64,7 @@ class BrickGraph:
             return 6 * edge_id + 3
 
     def make_connections(
-        self, edge, tree2, max_root, node_edge_dict, from_to_set, index, prev_edge_dict
+        self, edge, tree2, node_edge_dict, from_to_set, index, prev_edge_dict
     ):
         # Rule 1: connect parent brick to its child bricks
         for child in tree2.children(edge.child):
@@ -81,7 +81,8 @@ class BrickGraph:
                         self.down_vertex(node_edge_dict[child], "out"),
                     )
                 )
-        if edge.parent != max_root and edge.child != max_root:
+        roots = tree2.roots
+        if edge.parent not in roots and edge.child not in roots:
             if node_edge_dict[edge.child] != node_edge_dict[edge.parent]:
                 from_to_set.add(
                     (
@@ -152,7 +153,7 @@ class BrickGraph:
         3. Connect bricks which have two different adjacent parents
         """
         bricks_to_muts = utility.get_mut_edges(self.bricked_ts)
-        self.labeled_bricks = list(bricks_to_muts.keys())
+        self.labeled_bricks = set(list(bricks_to_muts.keys()))
         bricks = np.arange(0, self.bricked_ts.num_nodes)
         self.unlabeled_bricks = bricks[~np.isin(bricks, self.labeled_bricks)]
         self.labeled_nodes = []
@@ -163,7 +164,6 @@ class BrickGraph:
         from_to_set = set()
         node_edge_dict = {}
 
-        times = self.bricked_ts.tables.nodes.time
         # Rule Zero
         # For unlabeled nodes: connect left to up, right to up (within a brick)
         for brick in self.unlabeled_bricks:
@@ -176,8 +176,6 @@ class BrickGraph:
             total=self.bricked_ts.num_trees,
         ):
             prev_edge_dict = node_edge_dict.copy()
-            roots = tree2.roots
-            max_root = roots[np.argmax(times[roots])]
 
             for edge in edges_out:
                 node_edge_dict.pop(edge.child)
@@ -188,7 +186,6 @@ class BrickGraph:
                 from_to_set = self.make_connections(
                     edge,
                     tree2,
-                    max_root,
                     node_edge_dict,
                     from_to_set,
                     index,

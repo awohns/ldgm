@@ -15,7 +15,8 @@ def get_mut_edges(ts):
         for site in tree.sites():
             for mut in site.mutations:
                 node = mut.node
-                muts_to_brick[mut.id] = node_edge_dict[node]
+                if node in node_edge_dict:
+                    muts_to_brick[mut.id] = node_edge_dict[node]
 
     bricks_to_muts = collections.defaultdict(list)
 
