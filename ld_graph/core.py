@@ -23,11 +23,18 @@ def time_regularize(ts, time):
     return regularization.Regularize(ts).time_regularize(time)
 
 
-def brick_graph(brick_ts):
+def frequency_regularize(ts, freq):
+    """
+    Regularize a tree sequence by frequency
+    """
+    return regularization.Regularize(ts).frequency_regularize(freq)
+
+
+def brick_graph(brick_ts, use_rule_two=True):
     """
     Make a brick graph
     """
-    brick_grapher = bricks_graph.BrickGraph(brick_ts)
+    brick_grapher = bricks_graph.BrickGraph(brick_ts, use_rule_two=use_rule_two)
     bricked_graph = brick_grapher.make_brick_graph()
     return bricked_graph
 
