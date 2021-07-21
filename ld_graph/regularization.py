@@ -1,6 +1,8 @@
 """
 Regularize a tree sequence
 """
+import networkx as nx
+import numpy as np
 import tskit
 
 
@@ -41,3 +43,42 @@ class Regularize:
         tables.sort()
         tables.simplify(samples)
         return tables.tree_sequence()
+
+    def frequency_regularize(self, frequency):
+        edges = np.array(
+            [
+                (parent, child)
+                for child, parent in zip(
+                    self.ts.tables.edges.child, self.ts.tables.edges.parent
+                )
+            ]
+        )
+        G = nx.DiGraph()
+        G.add_edges_from(edges)
+        G_rev = G.reverse()
+        paths = np.zeros(G_rev.number_of_nodes())
+        for node in nx.topological_sort(G_rev):
+            if G.out_degree(node) == 0:
+                paths[node] = 1
+            else:
+                for edge in G.out_edges(node):
+                    paths[node] += paths[edge[1]]
+        keep_nodes = np.where(
+            np.isin(
+                np.arange(0, self.ts.num_nodes),
+                np.where(paths > (self.ts.num_samples * frequency))[0],
+            )
+        )[0]
+        # Now we make a new tree sequence with only the keep_nodes
+        # to use ts.simplify(), we need to make all nodes samples
+        tables = self.ts.dump_tables()
+        tables.nodes.set_columns(
+            flags=np.ones(self.ts.num_nodes).astype("uint32"),
+            time=self.ts.tables.nodes.time,
+        )
+        all_samples_ts = tables.tree_sequence()
+        pruned_ts = all_samples_ts.simplify(samples=keep_nodes)
+        assert pruned_ts.num_nodes == len(
+            keep_nodes
+        )  # make sure we have right number of nodes
+        return pruned_ts
