@@ -54,26 +54,26 @@ class SNP_Graph:
             cc_l_out.append(mapping[out_node])
         for out_node in l_in:
             cc_l_in.append(mapping[out_node])
-        
+
         # Get reverse mapping: keys are condensed graph nodes
         # values are brick graph nodes
         reverse_mapping = {value: key for key, value in mapping.items()}
-        
+
         # Reverse map condensed graph node id to *first* mutation on associated brick
         cc_to_mut = {}
         for in_node, out_node in zip(cc_l_in, cc_l_out):
             cc_to_mut[in_node] = self.bricks_to_muts[reverse_mapping[in_node] // 6][0]
             cc_to_mut[out_node] = self.bricks_to_muts[reverse_mapping[out_node] // 6][0]
-        
+
         # Find descendants of out nodes
-        R=nx.Graph()
+        R = nx.Graph()
         R.add_nodes_from([cc_to_mut[node] for node in cc_l_out])
         cc_l_in = set(cc_l_in)
         assert len(cc_l_in) == len(cc_l_out)
-        
+
         for u in cc_l_out:
             for v in nx.descendants(C, u):
                 if v in cc_l_in:
-                    R.add_edge(cc_to_mut[u],cc_to_mut[v])
+                    R.add_edge(cc_to_mut[u], cc_to_mut[v])
 
         return R
