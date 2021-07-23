@@ -46,8 +46,8 @@ def reduce_graph(brick_graph, brick_ts, identify_in_out=False):
     snp_grapher = snp_graph.SNP_Graph(
         brick_graph, brick_ts, identify_in_out=identify_in_out
     )
-    reduced_graph, id_to_muts = snp_grapher.create_reduced_graph()
-    return reduced_graph, id_to_muts
+    reduced_graph = snp_grapher.create_reduced_graph()
+    return reduced_graph
 
 
 def reduce(ts, use_rule_two=True, identify_in_out=False):

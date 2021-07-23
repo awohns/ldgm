@@ -36,10 +36,8 @@ class SNP_Graph:
         self.id_to_muts = id_to_muts
 
     def create_reduced_graph(self):
-        print("Condensing graph...")
         C = nx.condensation(self.brick_graph)
-        print("Finding transitive closure...")
-        H = nx.transitive_closure_dag(C, topo_order=None)
+        # H = nx.transitive_closure_dag(C, topo_order=None)
 
         nodes = np.array(list(self.brick_graph.nodes()))
         l_out = nodes[nodes % 6 == 4]
@@ -54,32 +52,27 @@ class SNP_Graph:
             cc_l_out.append(mapping[out_node])
         for out_node in l_in:
             cc_l_in.append(mapping[out_node])
-        cc_l_out = np.array(cc_l_out)
-        cc_l_in = np.array(cc_l_in)
 
-        # Also correct the id_to_muts with mapping
-        mapped_id_to_muts = {}
-        for node_id in self.id_to_muts:
-            mapped_id_to_muts[node_id] = mapping[node_id * 6]
+        # Get reverse mapping: keys are condensed graph nodes
+        # values are brick graph nodes
+        reverse_mapping = {value: key for key, value in mapping.items()}
 
-        R = H.subgraph(np.concatenate([cc_l_in, cc_l_out]))
-        if self.identify_in_out:
-            nodes = list(R.nodes())
-            equivalent_nodes = []
-            for i in l_out:
-                equivalent_nodes.append((mapping[i], mapping[i + 1]))
-            print("Finding quotient graph...")
-            R_identified = nx.quotient_graph(R, equivalent_nodes)
+        # Reverse map condensed graph node id to *first* mutation on associated brick
+        cc_to_mut = {}
+        for in_node, out_node in zip(cc_l_in, cc_l_out):
+            cc_to_mut[in_node] = self.bricks_to_muts[reverse_mapping[in_node] // 6][0]
+            cc_to_mut[out_node] = self.bricks_to_muts[reverse_mapping[out_node] // 6][0]
 
-            def node_data(list_of_lists):
-                node_data = {}
-                for _, i in enumerate(list_of_lists):
-                    node_data[frozenset({i[0], i[1]})] = int(i[0] / 6)
-                return node_data
+        # Find descendants of out nodes
+        R = nx.Graph()
+        R.add_nodes_from([cc_to_mut[node] for node in cc_l_out])
+        cc_l_in = set(cc_l_in)
+        assert len(cc_l_in) == len(cc_l_out)
 
-            R_identified_relabelled = nx.relabel_nodes(
-                R_identified, node_data(equivalent_nodes), copy=True
-            )
-            return R_identified_relabelled, mapped_id_to_muts
-        else:
-            return R, mapped_id_to_muts
+        print("Finding descendents of each node..")
+        for u in cc_l_out:
+            for v in nx.descendants(C, u):
+                if v in cc_l_in:
+                    R.add_edge(cc_to_mut[u], cc_to_mut[v])
+
+        return R
