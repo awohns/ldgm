@@ -36,9 +36,7 @@ class SNP_Graph:
         self.id_to_muts = id_to_muts
 
     def create_reduced_graph(self):
-        print("Condensing graph...")
         C = nx.condensation(self.brick_graph)
-        print("Finding transitive closure...")
         # H = nx.transitive_closure_dag(C, topo_order=None)
 
         nodes = np.array(list(self.brick_graph.nodes()))
@@ -71,6 +69,7 @@ class SNP_Graph:
         cc_l_in = set(cc_l_in)
         assert len(cc_l_in) == len(cc_l_out)
 
+        print("Finding descendents of each node..")
         for u in cc_l_out:
             for v in nx.descendants(C, u):
                 if v in cc_l_in:
