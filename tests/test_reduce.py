@@ -25,14 +25,9 @@ class TestNumNodes(unittest.TestCase):
             length=1e4,
             Ne=10000,
         )
-        number_of_labeled_bricks = len(ld_graph.utility.get_mut_edges(ts).keys())
-        assert (
-            ld_graph.reduce(ts, identify_in_out=True)[0].number_of_nodes()
-            == number_of_labeled_bricks
-        )
         bricked = ld_graph.brick_ts(ts)
+        number_of_labeled_bricks = len(ld_graph.utility.get_mut_edges(bricked).keys())
+        assert ld_graph.reduce(bricked).number_of_nodes() == number_of_labeled_bricks
         bricked_graph = ld_graph.brick_graph(bricked)
-        reduced_graph, _ = ld_graph.reduce_graph(
-            bricked_graph, bricked, identify_in_out=True
-        )
+        reduced_graph = ld_graph.reduce_graph(bricked_graph, bricked)
         assert reduced_graph.number_of_nodes() == number_of_labeled_bricks

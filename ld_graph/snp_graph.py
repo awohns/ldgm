@@ -8,9 +8,8 @@ from . import utility
 
 
 class SNP_Graph:
-    def __init__(self, brick_graph, brick_ts, identify_in_out=False):
+    def __init__(self, brick_graph, brick_ts):
         self.brick_graph = brick_graph
-        self.identify_in_out = identify_in_out
 
         # Tree sequence must contain mutations
         if brick_ts.num_mutations == 0:

@@ -39,21 +39,17 @@ def brick_graph(brick_ts, use_rule_two=True):
     return bricked_graph
 
 
-def reduce_graph(brick_graph, brick_ts, identify_in_out=False):
+def reduce_graph(brick_graph, brick_ts):
     """
     Make a reduced graph from a brick graph and bricked tree sequence
     """
-    snp_grapher = snp_graph.SNP_Graph(
-        brick_graph, brick_ts, identify_in_out=identify_in_out
-    )
+    snp_grapher = snp_graph.SNP_Graph(brick_graph, brick_ts)
     reduced_graph = snp_grapher.create_reduced_graph()
     return reduced_graph
 
 
-def reduce(ts, use_rule_two=True, identify_in_out=False):
+def reduce(ts, use_rule_two=True):
     bricked = brick_ts(ts)
     bricked_graph = brick_graph(bricked, use_rule_two=use_rule_two)
-    reduced_graph, id_to_muts = reduce_graph(
-        bricked_graph, bricked, identify_in_out=identify_in_out
-    )
-    return reduced_graph, id_to_muts
+    reduced_graph = reduce_graph(bricked_graph, bricked)
+    return reduced_graph
