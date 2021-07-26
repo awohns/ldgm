@@ -78,20 +78,19 @@ class BrickGraph:
                         self.down_vertex(node_edge_dict[child], "out"),
                     )
                 )
-        if edge.parent not in roots and edge.child not in roots:
-            if node_edge_dict[edge.child] != node_edge_dict[edge.parent]:
-                self.from_to_set.add(
-                    (
-                        self.up_vertex(node_edge_dict[edge.child], "in"),
-                        self.up_vertex(node_edge_dict[edge.parent], "out"),
-                    )
+        if node_edge_dict[edge.child] != node_edge_dict[edge.parent]:
+            self.from_to_set.add(
+                (
+                    self.up_vertex(node_edge_dict[edge.child], "in"),
+                    self.up_vertex(node_edge_dict[edge.parent], "out"),
                 )
-                self.from_to_set.add(
-                    (
-                        self.down_vertex(node_edge_dict[edge.parent], "in"),
-                        self.down_vertex(node_edge_dict[edge.child], "out"),
-                    )
+            )
+            self.from_to_set.add(
+                (
+                    self.down_vertex(node_edge_dict[edge.parent], "in"),
+                    self.down_vertex(node_edge_dict[edge.child], "out"),
                 )
+            )
 
     def rule_two(self, edge, children, node_edge_dict):
         # Rule 2: Connect sibling bricks to one another
