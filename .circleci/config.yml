@@ -46,4 +46,7 @@ jobs:
       - run:
           name: Run tests
           # This assumes pytest is installed via the install-package step above
-          command: pytest
+          command: |
+              python -m pytest --cov=tsdate  --cov-report=xml --cov-branch tests
+              python3 -m codecov 
+

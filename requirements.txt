@@ -7,3 +7,4 @@ networkx
 pytest
 pandas
 tqdm
+codecov
