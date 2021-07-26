@@ -4,7 +4,8 @@ Test cases for building the brick graph
 import unittest
 
 import ld_graph
-import utility_functions
+
+from . import utility_functions
 
 
 class TestExampleTrees(unittest.TestCase):
