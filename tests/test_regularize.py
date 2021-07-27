@@ -29,6 +29,42 @@ class TestTimeRegularize(unittest.TestCase):
 
 
 class TestFrequencyRegularize(unittest.TestCase):
+    def test_samples(self):
+        """
+        Test that we can't pass samples to frequency_regularize()
+        """
+        ts = msprime.simulate(
+            100,
+            mutation_rate=1e-8,
+            random_seed=13,
+            recombination_rate=1e-8,
+            record_full_arg=False,
+            length=1e4,
+            Ne=10000,
+        )
+        freq = 0.2
+        with pytest.raises(ValueError):
+            ld_graph.frequency_regularize(ts, freq, **{"samples": [0, 1]})
+
+    def test_frequency_kwargs(self):
+        """
+        Test we can pass kwargs to frequency regularise
+        """
+        ts = msprime.simulate(
+            100,
+            mutation_rate=1e-8,
+            random_seed=13,
+            recombination_rate=1e-8,
+            record_full_arg=False,
+            length=1e4,
+            Ne=10000,
+        )
+        freq = 0.2
+        regularized = ld_graph.frequency_regularize(ts, freq, **{"filter_sites": False})
+        assert ts.num_sites == regularized.num_sites
+        regularized = ld_graph.frequency_regularize(ts, freq, **{"filter_sites": True})
+        assert ts.num_sites != regularized.num_sites
+
     @pytest.mark.skip(
         "Need to figure out how to get mapping to original node"
         "id/frequency to test this"

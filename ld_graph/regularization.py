@@ -44,7 +44,22 @@ class Regularize:
         tables.simplify(samples)
         return tables.tree_sequence()
 
-    def frequency_regularize(self, frequency):
+    def frequency_regularize(self, frequency, **kwargs):
+        """
+        Takes a tree sequence and removes nodes which are less than the given frequency.
+
+        :param TreeSequence tree_sequence: The input :class:`tskit.TreeSequence` to be
+            regularized.
+        :param float frequency: The maximum frequency of nodes to be retained in the tree
+            sequence. All nodes with frequency less than or equal to `frequency` will
+            be removed from the tree sequence.
+        :param \\**kwargs: All further keyword arguments are passed to
+            ``tskit.simplify``. The keyword argument `samples` cannot be passed.
+        :return: A tree sequence regularized by removing nodes based on their frequency.
+        :rtype: tskit.TreeSequence
+        """
+        if "samples" in kwargs:
+            raise ValueError("Cannot pass 'samples' to simplify()")
         edges = np.array(
             [
                 (parent, child)
@@ -77,7 +92,7 @@ class Regularize:
             time=self.ts.tables.nodes.time,
         )
         all_samples_ts = tables.tree_sequence()
-        pruned_ts = all_samples_ts.simplify(samples=keep_nodes)
+        pruned_ts = all_samples_ts.simplify(samples=keep_nodes, **kwargs)
         assert pruned_ts.num_nodes == len(
             keep_nodes
         )  # make sure we have right number of nodes
