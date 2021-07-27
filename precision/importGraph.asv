@@ -27,7 +27,9 @@ weights = [weights; weights];
 incl = ii < jj;
 
 A = sparse(ii(incl),jj(incl),weights(incl),nn,nn);
-A = A + A';
-
+A = A + A' + speye(nn) .* diag(A);
+if ~issymmetric(A)
+    warning('Adjacency matrix not symmetric')
+end
 end
 

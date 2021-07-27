@@ -1,4 +1,4 @@
-function [P, pval] = LDPrecision(R,G,nn,maxReps,P0,printstuff)
+function [P, pval] = LDPrecisionDTraceLoss(R,G,nn,maxReps,P0,printstuff)
 % Calculates maximum likelihood precision matrix from genotype matrix X and graphical model
 % G. X should be an N x M matrix and G a (possibly sparse) M x M
 % symmetric logical-valued matrix. P is an M x M precision
@@ -19,8 +19,6 @@ end
 % convergence tolerance
 convergenceTol=1e-6;
 
-% initial guess for gradient descent: take full sample precision matrix and
-% zero out non-edges
 [ii,jj] = find(G);
 if nargin < 5
     P = speye(mm);
@@ -53,9 +51,10 @@ for step = 1:maxReps
         fprintf('%d ', step)
     end
     % gradient of objective function
-    Pinv = sparseinv(P);
-    gradient = sparse(ii,jj,2 * (R(G) - Pinv(G)),mm,mm);
-    
+%     Pinv = sparseinv(P);
+%     gradient = sparse(ii,jj,2 * (R(G) - Pinv(G)),mm,mm);
+    gradient = ((R * P + P * R)/2 - speye(mm)) .* G;
+
     % line search to determine step size
     oldObj = currentObj;
     [P, stepsize, currentObj] = linesearch(P, currentObj, gradient, obj, stepsize);
@@ -80,12 +79,8 @@ end
 
 
     function val = objFn(omega)
-        [L, p] = chol(omega);
-        if p == 0 % omega is positive definite
-            val =  -0.5 * nn * (sum(2*log(diag(L))) - dot(nonzeros(omega), R(omega~=0)));
-        else
-            val = inf;
-        end
+        val = omega^2 .* R;
+        val = sum(nonzeros(val)) - trace(omega);
     end
 end
 
