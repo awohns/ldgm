@@ -1,55 +1,47 @@
-function [P, pval] = LDPrecision(R,G,nn,convergenceTol,P0,printstuff)
-% Calculates maximum likelihood precision matrix from genotype matrix X and graphical model
-% G. X should be an N x M matrix and G a (possibly sparse) M x M
-% symmetric logical-valued matrix. P is an M x M precision
-% matrix with the same entries as G. pval tests whether G fits the data.
-% reps is the number of gradient descend steps.
-% P0 is initial guess for gradient descent.
+function [P, objective_function_value, p_value] = LDPrecision(R,varargin)
+% Calculates maximum likelihood precision matrix from correlation
+% matrix R. R is a SNPs x SNPs matrix, possibly sparse, where edge (i,j)
+% is the correlation between SNPs i and j. By default, LDPrecision
+% estimates a precision matrix P whose edges correspond to the nonzero
+% entries of R.  
+% Optionally input arguments:
+% P0: starting point for gradient descent
+% graphical_model: specify a set of edges that are different from the
+% nonzero entries of R. If p-value is desired, then this must be specified
+% and R must be the full correlation matrix.
+% convergence_tol: gradient descent convergence criterion
+% max_steps: maximum no. gradient descent steps
+% sample_size: affects objective_function_value and p_value but not P
+% printstuff.
 
-[mm] = length(G);
-if ~issymmetric(G) || ~islogical(G)
-    error('G should be an undirected adjacency matrix with logical entries')
+% Input data handling
+p=inputParser;
+addRequired(p, 'R', @(M)issymmetric(M) & isnumeric(M));
+mm = length(R);
+addParameter(p, 'convergence_tol', 1e-5, @isscalar);
+addParameter(p, 'max_steps', 1e3, @isscalar);
+addParameter(p, 'P0', speye(mm), @issymmetric);
+addParameter(p, 'graphical_model', R~=0, @issymmetric);
+addParameter(p, 'printstuff', false, @islogical);
+addParameter(p, 'sample_size', 1, @isscalar);
+
+parse(p,R,varargin{:});
+P = p.Results.P0; % Precision matrix
+G = p.Results.graphical_model;% Graphical model
+if ~all(G(P~=0))
+    error('Initial precision matrix conflicts with graphical model')
 end
-
-if any(size(R)~=size(G))
-    error('R and G should agree in size')
-end
-
-% max number of steps for gradient descent
-maxReps = 100;
-
-% convergence tolerance
-
-% initial guess for gradient descent: take full sample precision matrix and
-% zero out non-edges
 [ii,jj] = find(G);
-if nargin < 5
-    P = speye(mm);
-else
-    P = P0;
-end
-if nargin < 4
-    convergenceTol = 1e-6;
-end
-if nargin < 3
-    if nargout > 1
-        error('To calculate p-values, sample size must be specified')
-    else
-        nn = 1;
-    end
-end
-if nargin < 6
-    printstuff = 1;%mm >=1000;
-end
 
 % objective function
-obj = @objFn;
-currentObj = obj(P);
-tic;
+obj = @(precision)objFn(R, precision, p.Results.sample_size);
+objective_function_value = obj(P);
 
+% gradient descent
+tic;
 stepsize = 1;
-for step = 1:maxReps
-    if printstuff
+for step = 1:p.Results.max_steps
+    if p.Results.printstuff
         fprintf('%d ', step)
     end
     % gradient of objective function
@@ -57,31 +49,38 @@ for step = 1:maxReps
     gradient = sparse(ii,jj,2 * (R(G) - Pinv(G)),mm,mm);
     
     % line search to determine step size
-    oldObj = currentObj;
-    [P, stepsize, currentObj] = linesearch(P, currentObj, gradient, obj, stepsize);
+    oldObj = objective_function_value;
+    [P, stepsize, objective_function_value] = linesearch(P, objective_function_value, gradient, obj, stepsize);
     
     % convergence
-    if currentObj > (1 - convergenceTol) * oldObj
+    if abs(objective_function_value - oldObj) / abs(objective_function_value) < p.Results.convergence_tol
         break;
     end
 end
-if printstuff
+
+if p.Results.printstuff
     fprintf('\n time = %f\n', toc)
 end
-if currentObj <= (1 - convergenceTol) * oldObj
-    warning('Gradient descent failed to converge in %d steps', maxReps);
+
+if objective_function_value <= (1 - p.Results.convergence_tol) * oldObj
+    warning('Gradient descent failed to converge in %d steps', p.Results.max_steps);
 end
 
 % p-value for whether graph fits data
-if nargout > 1
-    pval = chi2cdf(2 * (obj(inv(R)) - obj(P)), mm*(mm+1)/2 - (nnz(G) + mm)/2, 'upper');
+if nargout > 2
+    if ~issparse(R) && p.Results.sample_size ~= 1
+        pval = chi2cdf(2 * (obj(inv(R)) - obj(P)), mm*(mm+1)/2 - (nnz(G) + mm)/2, 'upper');
+    else
+        warning('p_value output requested, but inputs might not be correct. Please specify a full covariance matrix R and the sample size that was used to compute it.')
+        pval = [];
+    end
 end
 
 
-
-    function val = objFn(omega)
-        [L, p] = chol(omega);
-        if p == 0 % omega is positive definite
+    % objective function
+    function val = objFn(R, omega, nn)
+        [L, pp] = chol(omega);
+        if pp == 0 % omega is positive definite
             val =  -0.5 * nn * (sum(2*log(diag(L))) - dot(nonzeros(omega), R(omega~=0)));
         else
             val = inf;

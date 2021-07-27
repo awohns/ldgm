@@ -30,6 +30,46 @@ def single_tree_ts_n2():
     return tskit.load_text(nodes=nodes, edges=edges, strict=False)
 
 
+def single_tree_ts_n2_2_mutations():
+    r"""
+    Simple case where we have n = 2, one tree, and two mutations.
+         2
+        x x
+      [0] [1]
+    """
+    nodes = io.StringIO(
+        """\
+    id      is_sample   time
+    0       1           0
+    1       1           0
+    2       0           1
+    """
+    )
+    edges = io.StringIO(
+        """\
+    left    right   parent  child
+    0       1       2       0,1
+    """
+    )
+    sites = io.StringIO(
+        """\
+    position    ancestral_state
+    0.5         0
+    0.6         0
+    """
+    )
+    mutations = io.StringIO(
+        """\
+    site    node    derived_state
+    0       0       1
+    0       1       1
+    """
+    )
+    return tskit.load_text(
+        nodes=nodes, edges=edges, sites=sites, mutations=mutations, strict=False
+    )
+
+
 def single_tree_ts_n3():
     r"""
     Simple case where we have n = 3 and one tree.
@@ -691,14 +731,14 @@ def single_tree_ts_n2_dangling():
            / \
           3   \
          / \   \
-        0  [1] [2]
+       [0] [1]  2
     """
     nodes = io.StringIO(
         """\
     id      is_sample   time
-    0       0           0
+    0       1           0
     1       1           0
-    2       1           0
+    2       0           0
     3       0           1
     4       0           2
     """
@@ -720,16 +760,16 @@ def two_tree_ts_n2_part_dangling():
            / \               / \
           3   \             3   \
          / \   \             \   \
-        0   \   \             0   \
+      [0]   \   \            [0]  \
              \   \             \   \
-             [1] [2]           [1] [2]
+             [1]  2           [1]   2
     """
     nodes = io.StringIO(
         """\
     id      is_sample   time
-    0       0           0.5
+    0       1           0.5
     1       1           0
-    2       1           0
+    2       0           0
     3       0           1
     4       0           2
     """
