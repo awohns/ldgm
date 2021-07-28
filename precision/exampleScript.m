@@ -1,52 +1,25 @@
-% rng('default')
+% example script to infer LD precision matrix from simulated data
+numNodes = 1e3; 
+density = 2e-2;
+numHaplotypes = 2*numNodes; 
 
-numNodes = 1e2; % very slow when this is more than a few hundred
-density = 1e-1;
+% For compatibility with plotting script
+allele_freq = ones(numNodes,1);
 
-% seems this needs to be >= numNodes^2 in order for p-values to be 
-% well-calibrated, but out-of-sample log-likelihoods should still be OK
-numHaplotypes = 1e3; 
-
-% threshold to throw out some edges as positive control
-wrongGThreshold = .1;
-
+% True precision matrix
 omega = makeSparsePrecision(numNodes,density,numNodes*10);
-% disp(omega)
+A = omega~=0;
 
-% Draw samples with precision matrix omega
-A=chol(inv(omega));
-X=A'*randn(numNodes, numHaplotypes);
-X = X - mean(X,2);
+% Draw MVN samples with precision matrix omega
+X = randn( numHaplotypes, numNodes) * chol(inv(omega));
+X = (X - mean(X,1));
+R = corr(X);
 
-% estimated precision matrix
-gradsteps=1e1;
-[omegaEst, pval] = LDPrecision(X', omega~=0, gradsteps);
+% Estimate precision matrix
+tol = 1e-4;
+[omegaEst, pval] = LDPrecision(R,A,numHaplotypes,tol);
 
-% pval for wrong graphical model
-[omegaWrongG, pvalWrongG] = LDPrecision(X', abs(omega)>wrongGThreshold, gradsteps);
+mse = mean((omega(A) - omegaEst(A)).^2) / mean(omega(A).^2);
+fprintf('P-value for model fit: %f\n Precision matrix percent mean squared error: %f\n',pval,mse);
 
-% pval for true LD precision matrix
-ObjFn = @(Om) 0.5 * numHaplotypes * log(det(Om)) - 0.5 * sum(sum((Om*X) .* X));
-omegaFull = inv(X*X'/numHaplotypes);
-pvalTrueOmega = chi2cdf(2*(ObjFn(omegaFull)-ObjFn(omega)), (numNodes*(numNodes+1)/2), 'upper');
-
-% Expected is null, non-null, null
-disp('P-values for G, wrong G, true omega:')
-disp([(pval) (pvalWrongG) (pvalTrueOmega)])
-
-% out-of-sample evaluation
-numOutOfSampleHaplotypes = 1000;
-Xtesting=A'*randn(numNodes, numOutOfSampleHaplotypes);
-ObjFnIndv = @(Om) 0.5 * log(det(Om)) - 0.5 * sum((Om*Xtesting) .* Xtesting)';
-
-logLikelihood = ObjFnIndv(omegaEst);
-logLikelihoodWrongG = ObjFnIndv(omegaWrongG);
-logLikelihoodFullG = ObjFnIndv(omegaFull);
-logLikelihoodTrueG = ObjFnIndv(omega);
-
-% Expected is positive, positive, negative
-disp('Out-of-sample relative log likelihood ratio for wrong G, full graphical model, true omega:')
-disp(mean(logLikelihood - [logLikelihoodWrongG logLikelihoodFullG logLikelihoodTrueG]))
-disp('Standard errors:')
-disp(std(logLikelihood - [logLikelihoodWrongG logLikelihoodFullG logLikelihoodTrueG])/sqrt(numOutOfSampleHaplotypes))
-
+precisionplotscript
