@@ -28,22 +28,21 @@ else
     allele_freq = mean(X);
 end
 
+[ii,jj] = find(A);
 
-if numNodes > 1e3
-    % LD matrix for edges of A
-    [ii,jj] = find(A);
-    X = (X - mean(X,1))./std(X);
-    R = arrayfun(@(i,j)dot(X(:,i),X(:,j)),ii,jj)/numHaplotypes;
-    R = sparse(ii,jj,R);
-else
-    R = corr(X);
-end
+% LD matrix for edges of A
+X = (X - mean(X,1))./std(X);
+
+R = arrayfun(@(i,j)dot(X(:,i),X(:,j)),ii,jj)/numHaplotypes;
+R = sparse(ii,jj,R);
 
 % estimated precision matrix
 tol = 1e-4;
 % [omegaEst, pval] = LDPrecision(R, omega~=0, numHaplotypes, reps, speye(size(omega)));
-tic;[omegaEst, pval] = LDPrecision(R,A,numHaplotypes,tol, speye(numNodes));toc
+tic;[omegaEst, ~] = LDPrecision(R,A,numHaplotypes,tol, speye(numNodes));toc
 
-% Plot stuff for SNPs with frequency above threshold
-AF_threshold = 0.01;
+% Expected is null, non-null, null
+% disp('P-values for G, wrong G, true omega:')
+% disp([(pval)])
+
 precisionplotscript

@@ -4,8 +4,7 @@ Rr=inv(omegaEst);
 Rrc=Rr(common,common);
 Rc=corr(X(:,common));
 
-MSE = mean((Rrc(:)-Rc(:)).^2) / mean((Rc(:)).^2);
-fprintf('Percent mean squared difference: %f\n', MSE)
+MSE = mean((Rrc(:)-Rc(:)).^2) 
 
 ind=triu(ones(sum(common)))==0;
 f=figure;
