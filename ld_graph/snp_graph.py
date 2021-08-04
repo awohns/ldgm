@@ -39,8 +39,8 @@ class SNP_Graph:
         # H = nx.transitive_closure_dag(C, topo_order=None)
 
         nodes = np.array(list(self.brick_graph.nodes()))
-        l_out = nodes[nodes % 6 == 4]
-        l_in = nodes[nodes % 6 == 5]
+        l_in = nodes[nodes % 4 == 2]
+        l_out = nodes[nodes % 4 == 3]
 
         # Condensation creates graph with connected components (cc)
         # we want mapping of cc to original nodes
@@ -59,8 +59,8 @@ class SNP_Graph:
         # Reverse map condensed graph node id to *first* mutation on associated brick
         cc_to_mut = {}
         for in_node, out_node in zip(cc_l_in, cc_l_out):
-            cc_to_mut[in_node] = self.bricks_to_muts[reverse_mapping[in_node] // 6][0]
-            cc_to_mut[out_node] = self.bricks_to_muts[reverse_mapping[out_node] // 6][0]
+            cc_to_mut[in_node] = self.bricks_to_muts[reverse_mapping[in_node] // 4][0]
+            cc_to_mut[out_node] = self.bricks_to_muts[reverse_mapping[out_node] // 4][0]
 
         # Find descendants of out nodes
         R = nx.Graph()
@@ -72,6 +72,7 @@ class SNP_Graph:
         for u in cc_l_out:
             for v in nx.descendants(C, u):
                 if v in cc_l_in:
-                    R.add_edge(cc_to_mut[u], cc_to_mut[v])
+                    if cc_to_mut[u] != cc_to_mut[v]:
+                        R.add_edge(cc_to_mut[u], cc_to_mut[v])
 
         return R

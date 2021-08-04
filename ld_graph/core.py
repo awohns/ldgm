@@ -30,11 +30,11 @@ def frequency_regularize(ts, freq, **kwargs):
     return regularization.Regularize(ts).frequency_regularize(freq, **kwargs)
 
 
-def brick_graph(brick_ts, use_rule_two=True):
+def brick_graph(brick_ts):
     """
     Make a brick graph
     """
-    brick_grapher = bricks_graph.BrickGraph(brick_ts, use_rule_two=use_rule_two)
+    brick_grapher = bricks_graph.BrickGraph(brick_ts)
     bricked_graph = brick_grapher.make_brick_graph()
     return bricked_graph
 
@@ -48,8 +48,8 @@ def reduce_graph(brick_graph, brick_ts):
     return reduced_graph
 
 
-def reduce(ts, use_rule_two=True):
+def reduce(ts):
     bricked = brick_ts(ts)
-    bricked_graph = brick_graph(bricked, use_rule_two=use_rule_two)
+    bricked_graph = brick_graph(bricked)
     reduced_graph = reduce_graph(bricked_graph, bricked)
     return reduced_graph
