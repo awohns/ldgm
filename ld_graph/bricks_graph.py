@@ -48,18 +48,16 @@ class BrickGraph:
         focal_node = edge.child
         for child in children:
             assert node_edge_dict[child] != node_edge_dict[focal_node]
-            child_brick, child_odds = self.up_vertex(node_edge_dict[child], "in")
-            parent_brick, parent_odds = self.up_vertex(
-                node_edge_dict[focal_node], "out"
-            )
+            child_brick, child_odds = self.up_vertex(node_edge_dict[child], "out")
+            parent_brick, parent_odds = self.up_vertex(node_edge_dict[focal_node], "in")
             self.brick_graph.add_edge(
                 child_brick, parent_brick, weight=child_odds / parent_odds
             )
 
             parent_brick, parent_odds = self.down_vertex(
-                node_edge_dict[focal_node], "in"
+                node_edge_dict[focal_node], "out"
             )
-            child_brick, child_odds, self.down_vertex(node_edge_dict[child], "out")
+            child_brick, child_odds, self.down_vertex(node_edge_dict[child], "in")
             self.brick_graph.add_edge(
                 parent_brick, child_brick, weight=child_odds / parent_odds
             )
@@ -67,18 +65,18 @@ class BrickGraph:
         # Connect focal brick to its parent brick
         if edge.parent not in roots and focal_node not in roots:
             assert node_edge_dict[focal_node] != node_edge_dict[edge.parent]
-            child_brick, child_odds = self.up_vertex(node_edge_dict[focal_node], "in")
+            child_brick, child_odds = self.up_vertex(node_edge_dict[focal_node], "out")
             parent_brick, parent_odds = self.up_vertex(
-                node_edge_dict[edge.parent], "out"
+                node_edge_dict[edge.parent], "in"
             )
             self.brick_graph.add_edge(
                 child_brick, parent_brick, weight=child_odds / parent_odds
             )
 
             parent_brick, parent_odds = self.down_vertex(
-                node_edge_dict[edge.parent], "in"
+                node_edge_dict[edge.parent], "out"
             )
-            child_brick, child_odds, self.down_vertex(node_edge_dict[focal_node], "out")
+            child_brick, child_odds, self.down_vertex(node_edge_dict[focal_node], "in")
             self.brick_graph.add_edge(
                 parent_brick, child_brick, weight=child_odds / parent_odds
             )
@@ -87,19 +85,21 @@ class BrickGraph:
         # Rule 2: Connect focal brick to its siblings
         if len(siblings) > 1:
             for pair in itertools.combinations(siblings, 2):
-                left_brick_up, left_odds = self.up_vertex(node_edge_dict[pair[0]], "in")
+                left_brick_up, left_odds = self.up_vertex(
+                    node_edge_dict[pair[0]], "out"
+                )
                 right_brick_down, right_odds = self.down_vertex(
-                    node_edge_dict[pair[1]], "out"
+                    node_edge_dict[pair[1]], "in"
                 )
                 self.brick_graph.add_edge(
                     left_brick_up, right_brick_down, weight=left_odds * right_odds
                 )
 
                 right_brick_up, left_odds = self.up_vertex(
-                    node_edge_dict[pair[1]], "in"
+                    node_edge_dict[pair[1]], "out"
                 )
                 left_brick_down, right_odds = self.down_vertex(
-                    node_edge_dict[pair[0]], "out"
+                    node_edge_dict[pair[0]], "in"
                 )
                 self.brick_graph.add_edge(
                     right_brick_up, left_brick_down, weight=left_odds * right_odds
