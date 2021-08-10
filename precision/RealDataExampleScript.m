@@ -1,5 +1,6 @@
 % rng('default')
-addpath(genpath('.'))
+path_to_precision_directory = '.';
+addpath(genpath(path_to_precision_directory))
 path_prefix='~/Dropbox/Pouria/data/';
 
 % Adjacency matrix
