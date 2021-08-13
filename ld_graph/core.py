@@ -39,17 +39,17 @@ def brick_graph(brick_ts, threshold):
     return bricked_graph
 
 
-def reduce_graph(brick_graph, brick_ts):
+def reduce_graph(brick_graph, brick_ts, threshold):
     """
     Make a reduced graph from a brick graph and bricked tree sequence
     """
-    snp_grapher = snp_graph.SNP_Graph(brick_graph, brick_ts)
+    snp_grapher = snp_graph.SNP_Graph(brick_graph, brick_ts, threshold)
     reduced_graph = snp_grapher.create_reduced_graph()
     return reduced_graph
 
 
-def reduce(ts):
+def reduce(ts, threshold):
     bricked = brick_ts(ts)
-    bricked_graph = brick_graph(bricked)
-    reduced_graph = reduce_graph(bricked_graph, bricked)
+    bricked_graph = brick_graph(bricked, threshold)
+    reduced_graph = reduce_graph(bricked_graph, bricked, threshold)
     return reduced_graph
