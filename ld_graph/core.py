@@ -30,11 +30,11 @@ def frequency_regularize(ts, freq, **kwargs):
     return regularization.Regularize(ts).frequency_regularize(freq, **kwargs)
 
 
-def brick_graph(brick_ts):
+def brick_graph(brick_ts, threshold):
     """
     Make a brick graph
     """
-    brick_grapher = bricks_graph.BrickGraph(brick_ts)
+    brick_grapher = bricks_graph.BrickGraph(brick_ts, threshold)
     bricked_graph = brick_grapher.make_brick_graph()
     return bricked_graph
 

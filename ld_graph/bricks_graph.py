@@ -11,13 +11,17 @@ from . import utility
 
 
 class BrickGraph:
-    def __init__(self, bricked_ts):
+    def __init__(self, bricked_ts, threshold):
         self.bricked_ts = bricked_ts
+        self.threshold = threshold
         self.brick_graph = nx.DiGraph()
         self.freqs = utility.get_brick_frequencies(self.bricked_ts)
 
     def find_odds(self, brick):
         return self.freqs[brick] / (1 - self.freqs[brick])
+
+    def log_odds(self, odds):
+        return np.log(odds) * -1
 
     # make an argument for in and out here, so we know how to split if it's labeled
     def up_vertex(self, edge_id, in_out):
@@ -48,38 +52,40 @@ class BrickGraph:
         focal_node = edge.child
         for child in children:
             assert node_edge_dict[child] != node_edge_dict[focal_node]
-            child_brick, child_odds = self.up_vertex(node_edge_dict[child], "out")
-            parent_brick, parent_odds = self.up_vertex(node_edge_dict[focal_node], "in")
-            self.brick_graph.add_edge(
-                child_brick, parent_brick, weight=child_odds / parent_odds
-            )
+            # Up of child to up of parent
+            child_label, child_odds = self.up_vertex(node_edge_dict[child], "out")
+            parent_label, parent_odds = self.up_vertex(node_edge_dict[focal_node], "in")
+            weight = self.log_odds(child_odds / parent_odds)
+            if weight < self.threshold:
+                self.brick_graph.add_edge(child_label, parent_label, weight=weight)
 
-            parent_brick, parent_odds = self.down_vertex(
+            # Down of parent to down of child
+            parent_label, parent_odds = self.down_vertex(
                 node_edge_dict[focal_node], "out"
             )
-            child_brick, child_odds, self.down_vertex(node_edge_dict[child], "in")
-            self.brick_graph.add_edge(
-                parent_brick, child_brick, weight=child_odds / parent_odds
-            )
+            child_label, child_odds = self.down_vertex(node_edge_dict[child], "in")
+            weight = self.log_odds(child_odds / parent_odds)
+            if weight < self.threshold:
+                self.brick_graph.add_edge(parent_label, child_label, weight=weight)
 
         # Connect focal brick to its parent brick
         if edge.parent not in roots and focal_node not in roots:
             assert node_edge_dict[focal_node] != node_edge_dict[edge.parent]
-            child_brick, child_odds = self.up_vertex(node_edge_dict[focal_node], "out")
-            parent_brick, parent_odds = self.up_vertex(
+            child_label, child_odds = self.up_vertex(node_edge_dict[focal_node], "out")
+            parent_label, parent_odds = self.up_vertex(
                 node_edge_dict[edge.parent], "in"
             )
-            self.brick_graph.add_edge(
-                child_brick, parent_brick, weight=child_odds / parent_odds
-            )
+            weight = self.log_odds(child_odds / parent_odds)
+            if weight < self.threshold:
+                self.brick_graph.add_edge(child_label, parent_label, weight=weight)
 
-            parent_brick, parent_odds = self.down_vertex(
+            parent_label, parent_odds = self.down_vertex(
                 node_edge_dict[edge.parent], "out"
             )
-            child_brick, child_odds, self.down_vertex(node_edge_dict[focal_node], "in")
-            self.brick_graph.add_edge(
-                parent_brick, child_brick, weight=child_odds / parent_odds
-            )
+            child_label, child_odds = self.down_vertex(node_edge_dict[focal_node], "in")
+            weight = self.log_odds(child_odds / parent_odds)
+            if weight < self.threshold:
+                self.brick_graph.add_edge(parent_label, child_label, weight=weight)
 
     def rule_two(self, edge, siblings, node_edge_dict):
         # Rule 2: Connect focal brick to its siblings
@@ -91,9 +97,11 @@ class BrickGraph:
                 right_brick_down, right_odds = self.down_vertex(
                     node_edge_dict[pair[1]], "in"
                 )
-                self.brick_graph.add_edge(
-                    left_brick_up, right_brick_down, weight=left_odds * right_odds
-                )
+                weight = self.log_odds(left_odds * right_odds)
+                if weight < self.threshold:
+                    self.brick_graph.add_edge(
+                        left_brick_up, right_brick_down, weight=weight
+                    )
 
                 right_brick_up, left_odds = self.up_vertex(
                     node_edge_dict[pair[1]], "out"
@@ -101,9 +109,11 @@ class BrickGraph:
                 left_brick_down, right_odds = self.down_vertex(
                     node_edge_dict[pair[0]], "in"
                 )
-                self.brick_graph.add_edge(
-                    right_brick_up, left_brick_down, weight=left_odds * right_odds
-                )
+                weight = self.log_odds(left_odds * right_odds)
+                if weight < self.threshold:
+                    self.brick_graph.add_edge(
+                        right_brick_up, left_brick_down, weight=weight
+                    )
 
     def make_connections(self, edge, tree2, node_edge_dict, index, prev_edge_dict):
         roots = tree2.roots
@@ -145,7 +155,7 @@ class BrickGraph:
         # Rule Zero
         # For unlabeled nodes: connect down to up (within a brick)
         for brick in self.unlabeled_bricks:
-            self.brick_graph.add_edge(4 * brick + 1, 4 * brick, weight=1)
+            self.brick_graph.add_edge(4 * brick + 1, 4 * brick, weight=self.log_odds(1))
 
         for index, (tree2, (_, edges_out, edges_in)) in tqdm(
             enumerate(zip(self.bricked_ts.trees(), self.bricked_ts.edge_diffs())),
