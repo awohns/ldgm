@@ -21,7 +21,10 @@ class BrickGraph:
         return self.freqs[brick] / (1 - self.freqs[brick])
 
     def log_odds(self, odds):
-        return np.log(odds) * -1
+        if odds != 0:
+            return np.log(odds) * -1
+        else:
+            return np.log(odds)
 
     # make an argument for in and out here, so we know how to split if it's labeled
     def up_vertex(self, edge_id, in_out):
