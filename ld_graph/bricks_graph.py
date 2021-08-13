@@ -70,6 +70,9 @@ class BrickGraph:
             )
             child_label, child_odds = self.down_vertex(node_edge_dict[child], "in")
             weight = self.log_odds(child_odds / parent_odds)
+            if weight <= 0:
+                weight = 0
+
             if weight < self.threshold:
                 self.brick_graph.add_edge(parent_label, child_label, weight=weight)
 
@@ -81,6 +84,9 @@ class BrickGraph:
                 node_edge_dict[edge.parent], "in"
             )
             weight = self.log_odds(child_odds / parent_odds)
+            if weight <= 0:
+                weight = 0
+
             if weight < self.threshold:
                 self.brick_graph.add_edge(child_label, parent_label, weight=weight)
 
@@ -89,6 +95,9 @@ class BrickGraph:
             )
             child_label, child_odds = self.down_vertex(node_edge_dict[focal_node], "in")
             weight = self.log_odds(child_odds / parent_odds)
+            if weight <= 0:
+                weight = 0
+
             if weight < self.threshold:
                 self.brick_graph.add_edge(parent_label, child_label, weight=weight)
 
@@ -103,6 +112,9 @@ class BrickGraph:
                     node_edge_dict[pair[1]], "in"
                 )
                 weight = self.log_odds(left_odds * right_odds)
+                if weight <= 0:
+                    weight = 0
+
                 if weight < self.threshold:
                     self.brick_graph.add_edge(
                         left_brick_up, right_brick_down, weight=weight
@@ -115,6 +127,9 @@ class BrickGraph:
                     node_edge_dict[pair[0]], "in"
                 )
                 weight = self.log_odds(left_odds * right_odds)
+                if weight <= 0:
+                    weight = 0
+
                 if weight < self.threshold:
                     self.brick_graph.add_edge(
                         right_brick_up, left_brick_down, weight=weight
