@@ -4,6 +4,7 @@ Test cases for building the brick graph
 import unittest
 
 import ld_graph
+import numpy as np
 
 from . import utility_functions
 
@@ -14,6 +15,7 @@ class TestExampleTrees(unittest.TestCase):
         g = ld_graph.brick_graph(bts)
         self.check_rule_0(bts, g)
         self.check_rule_1(bts, g)
+        self.check_in_out_nodes(g)
 
     def check_rule_0(self, brick_ts, brick_graph):
         """
@@ -133,13 +135,20 @@ class TestExampleTrees(unittest.TestCase):
                     else:
                         raise ValueError
 
+    def check_in_out_nodes(self, brick_graph):
+        nodes = np.array(list(brick_graph.nodes()))
+        l_in = nodes[nodes % 6 == 4]
+        l_out = nodes[nodes % 6 == 5]
+        for edge in brick_graph.edges():
+            assert edge[0] not in l_out
+            assert edge[1] not in l_in
+
     def test_examples(self):
         for (
-            name,
+            _,
             val,
         ) in (
             utility_functions.__dict__.items()
         ):  # iterate through every module's attributes
             if callable(val):  # check if callable (normally functions)
-                print(name)
                 self.verify(val())
