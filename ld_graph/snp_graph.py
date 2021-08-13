@@ -39,18 +39,18 @@ class SNP_Graph:
         # H = nx.transitive_closure_dag(C, topo_order=None)
 
         nodes = np.array(list(self.brick_graph.nodes()))
-        l_out = nodes[nodes % 6 == 4]
-        l_in = nodes[nodes % 6 == 5]
+        l_in = nodes[nodes % 6 == 4]
+        l_out = nodes[nodes % 6 == 5]
 
         # Condensation creates graph with connected components (cc)
         # we want mapping of cc to original nodes
-        cc_l_out = []
         cc_l_in = []
+        cc_l_out = []
         mapping = C.graph["mapping"]
-        for out_node in l_out:
-            cc_l_out.append(mapping[out_node])
         for out_node in l_in:
             cc_l_in.append(mapping[out_node])
+        for out_node in l_out:
+            cc_l_out.append(mapping[out_node])
 
         # Get reverse mapping: keys are condensed graph nodes
         # values are brick graph nodes
