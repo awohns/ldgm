@@ -58,3 +58,4 @@ class SNP_Graph:
                 R.add_edge(
                     self.bricks_to_muts[u // 4][0], self.bricks_to_muts[v // 4][0]
                 )
+        return R
