@@ -21,7 +21,7 @@ class BrickGraph:
         return self.freqs[brick] / (1 - self.freqs[brick])
 
     def log_odds(self, odds):
-        if odds != 0:
+        if odds != 1:
             return np.log(odds) * -1
         else:
             return np.log(odds)
