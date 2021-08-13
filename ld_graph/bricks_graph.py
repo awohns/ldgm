@@ -59,8 +59,7 @@ class BrickGraph:
             child_label, child_odds = self.up_vertex(node_edge_dict[child], "out")
             parent_label, parent_odds = self.up_vertex(node_edge_dict[focal_node], "in")
             weight = self.log_odds(child_odds / parent_odds)
-            print(weight)
-            if weight == -0:
+            if weight <= -0:
                 weight = 0
             if weight < self.threshold:
                 self.brick_graph.add_edge(child_label, parent_label, weight=weight)
