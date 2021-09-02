@@ -51,7 +51,7 @@ end
 maxReps = 1e3;
 omegaEst = speye(size(A));
 tic;[omegaEst, pval] = LDPrecision(R,A,numHaplotypes,maxReps, omegaEst, 0);toc
-tic;[omegaEst] = LDPrecisionDTraceLoss(R + .1 * speye(numSNPs),A,numHaplotypes,maxReps, omegaEst, 0);toc
+% tic;[omegaEst] = LDPrecisionDTraceLoss(R + .1 * speye(numSNPs),A,numHaplotypes,maxReps, omegaEst, 0);toc
 
 % Plot stuff for SNPs with frequency above threshold
 AF_threshold = .05;
