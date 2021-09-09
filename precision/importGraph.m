@@ -1,16 +1,21 @@
-function A = importGraph(filename)
+function A = importGraph(filename, weighted)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
+
+if nargin < 2
+    weighted = 0;
+end
+if weighted
+    strformat = "%d %d {'weight': %f}";
+else
+    strformat = '%d %d {}';
+end
 file=fopen(filename);
-data=textscan(file,'%d %d {}');
+data=textscan(file,strformat);
 if ~feof(file)
     error('failed to import file')
 end
 nn=max([data{1}; data{2}])+1;
-<<<<<<< Updated upstream
-A = sparse(data{1}+1,data{2}+1,true(length(data{1}),1),nn,nn);
-A = A + A' ~= 0;
-=======
 if weighted
     weights = 1./(1+data{3});
 else
@@ -23,7 +28,6 @@ incl = ii < jj;
 
 A = sparse(ii(incl),jj(incl),weights(incl),nn,nn);
 A = A + A';
->>>>>>> Stashed changes
 
 end
 

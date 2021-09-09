@@ -11,7 +11,7 @@ from . import utility_functions
 
 class TestExampleTrees(unittest.TestCase):
     def verify(self, ts):
-        bts = ld_graph.brick_ts(ts)
+        bts = ld_graph.brick_ts(ts, add_dummy_bricks=True)
         g = ld_graph.brick_graph(bts)
         self.check_rule_0(bts, g)
         self.check_rule_1(bts, g)
@@ -19,8 +19,9 @@ class TestExampleTrees(unittest.TestCase):
 
     def check_rule_0(self, brick_ts, brick_graph):
         """
-        Check left and right are connected to up node at unlabeled bricks
-        Also checks that labeled bricks do not have an up, down, left or right node
+        Check down nodes are connected to up nodes at unlabeled bricks
+        With a weight equal to log(1).
+        Also checks that labeled bricks do not have an up or down node
         in the graphical model
         """
         graphical_model_edges = brick_graph.edges()
@@ -35,15 +36,18 @@ class TestExampleTrees(unittest.TestCase):
                 unlabeled_bricks.append(edge.id)
 
         for unlabeled_brick in unlabeled_bricks:
-            reindexed_brick = unlabeled_brick * 6
-            assert (reindexed_brick + 2, reindexed_brick + 0) in graphical_model_edges
-            assert (reindexed_brick + 3, reindexed_brick + 0) in graphical_model_edges
+            reindexed_brick = unlabeled_brick * 4
+            assert (reindexed_brick + 1, reindexed_brick + 0) in graphical_model_edges
 
-        # Check that up down left right do not exist for labeled bricks
+        # Check that up down nodes do not exist for labeled bricks
         for labeled_brick in labeled_bricks:
-            reindexed_brick = labeled_brick * 6
+            reindexed_brick = labeled_brick * 4
             assert reindexed_brick not in graphical_model_nodes
             assert reindexed_brick + 1 not in graphical_model_nodes
+
+        # Check that in out nodes do not exist for unlabeled bricks
+        for unlabeled_brick in unlabeled_bricks:
+            reindexed_brick = unlabeled_brick * 4
             assert reindexed_brick + 2 not in graphical_model_nodes
             assert reindexed_brick + 3 not in graphical_model_nodes
 
@@ -73,8 +77,8 @@ class TestExampleTrees(unittest.TestCase):
                 node_edge_dict[edge.child] = edge.id
             for node in tree.nodes():
                 if tree.parent(node) != -1 and tree.parent(node) != tree.root:
-                    reindex_brick = 6 * node_edge_dict[node]
-                    reindex_brick_parent = 6 * node_edge_dict[tree.parent(node)]
+                    reindex_brick = 4 * node_edge_dict[node]
+                    reindex_brick_parent = 4 * node_edge_dict[tree.parent(node)]
                     print(reindex_brick, reindex_brick_parent, graphical_model_edges)
                     if (
                         node_edge_dict[node] in unlabeled_bricks
@@ -97,11 +101,11 @@ class TestExampleTrees(unittest.TestCase):
                         # Up of child to out of parent
                         assert (
                             reindex_brick + 0,
-                            reindex_brick_parent + 5,
+                            reindex_brick_parent + 2,
                         ) in graphical_model_edges
                         # In of parent to down of child
                         assert (
-                            reindex_brick_parent + 4,
+                            reindex_brick_parent + 3,
                             reindex_brick + 1,
                         ) in graphical_model_edges
                     elif (
@@ -110,13 +114,13 @@ class TestExampleTrees(unittest.TestCase):
                     ):
                         # In of child to up of parent
                         assert (
-                            reindex_brick + 4,
+                            reindex_brick + 3,
                             reindex_brick_parent + 0,
                         ) in graphical_model_edges
                         # Down of parent to out of child
                         assert (
                             reindex_brick_parent + 1,
-                            reindex_brick + 5,
+                            reindex_brick + 2,
                         ) in graphical_model_edges
                     elif (
                         node_edge_dict[node] in labeled_bricks
@@ -124,24 +128,24 @@ class TestExampleTrees(unittest.TestCase):
                     ):
                         # In of child to out of parent
                         assert (
-                            reindex_brick + 4,
-                            reindex_brick_parent + 5,
+                            reindex_brick + 3,
+                            reindex_brick_parent + 2,
                         ) in graphical_model_edges
                         # In of parent to out of child
                         assert (
-                            reindex_brick_parent + 4,
-                            reindex_brick + 5,
+                            reindex_brick_parent + 3,
+                            reindex_brick + 2,
                         ) in graphical_model_edges
                     else:
                         raise ValueError
 
     def check_in_out_nodes(self, brick_graph):
         nodes = np.array(list(brick_graph.nodes()))
-        l_in = nodes[nodes % 6 == 4]
-        l_out = nodes[nodes % 6 == 5]
+        l_in = nodes[nodes % 4 == 2]
+        l_out = nodes[nodes % 4 == 3]
         for edge in brick_graph.edges():
-            assert edge[0] not in l_out
-            assert edge[1] not in l_in
+            assert edge[0] not in l_in
+            assert edge[1] not in l_out
 
     def test_examples(self):
         for (

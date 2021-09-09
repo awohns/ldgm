@@ -1,3 +1,4 @@
 ld_graph/_version.py
 *.asv
-*.asv
+.DS_Store
+ld_graph/__pycache__

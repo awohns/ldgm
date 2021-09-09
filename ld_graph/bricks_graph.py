@@ -5,54 +5,56 @@ import itertools
 
 import networkx as nx
 import numpy as np
-import pandas as pd
 from tqdm import tqdm
 
 from . import utility
 
 
 class BrickGraph:
-    def __init__(self, bricked_ts, use_rule_two=True):
+    def __init__(self, bricked_ts, threshold):
         self.bricked_ts = bricked_ts
-        self.from_to_set = set()
-        self.use_rule_two = use_rule_two
+        self.threshold = threshold
+        self.brick_graph = nx.DiGraph()
+        self.freqs = utility.get_brick_frequencies(self.bricked_ts)
+
+    def find_odds(self, brick):
+        return self.freqs[brick] / (1 - self.freqs[brick])
+
+    def log_odds(self, odds):
+        if odds != 1:
+            return np.log(odds) * -1
+        else:
+            return np.log(odds)
+
+    def add_edge_threshold(self, from_node, to_node, weight):
+        if weight <= 0:
+            weight = 0
+        if self.threshold is not None:
+            if weight < self.threshold:
+                self.brick_graph.add_edge(from_node, to_node, weight=weight)
+        else:
+            self.brick_graph.add_edge(from_node, to_node, weight=weight)
 
     # make an argument for in and out here, so we know how to split if it's labeled
     def up_vertex(self, edge_id, in_out):
+        odds = self.find_odds(edge_id)
         if edge_id in self.labeled_bricks:
             if in_out == "in":
-                return 6 * edge_id + 4
+                return 4 * edge_id + 2, odds
             else:
-                return 6 * edge_id + 5
+                return 4 * edge_id + 3, odds
         else:
-            return 6 * edge_id
+            return 4 * edge_id, odds
 
     def down_vertex(self, edge_id, in_out):
+        odds = self.find_odds(edge_id)
         if edge_id in self.labeled_bricks:
             if in_out == "in":
-                return 6 * edge_id + 4
+                return 4 * edge_id + 2, odds
             else:
-                return 6 * edge_id + 5
+                return 4 * edge_id + 3, odds
         else:
-            return 6 * edge_id + 1
-
-    def left_vertex(self, edge_id, in_out):
-        if edge_id in self.labeled_bricks:
-            if in_out == "in":
-                return 6 * edge_id + 4
-            else:
-                return 6 * edge_id + 5
-        else:
-            return 6 * edge_id + 2
-
-    def right_vertex(self, edge_id, in_out):
-        if edge_id in self.labeled_bricks:
-            if in_out == "in":
-                return 6 * edge_id + 4
-            else:
-                return 6 * edge_id + 5
-        else:
-            return 6 * edge_id + 3
+            return 4 * edge_id + 1, odds
 
     def rule_one(self, edge, children, node_edge_dict, roots):
         """
@@ -62,94 +64,65 @@ class BrickGraph:
         focal_node = edge.child
         for child in children:
             assert node_edge_dict[child] != node_edge_dict[focal_node]
-            self.from_to_set.add(
-                (
-                    self.up_vertex(node_edge_dict[child], "in"),
-                    self.up_vertex(node_edge_dict[focal_node], "out"),
-                )
+            # Up of child to up of parent
+            child_label, child_odds = self.up_vertex(node_edge_dict[child], "out")
+            parent_label, parent_odds = self.up_vertex(node_edge_dict[focal_node], "in")
+            weight = self.log_odds(child_odds / parent_odds)
+            self.add_edge_threshold(child_label, parent_label, weight)
+
+            # Down of parent to down of child
+            parent_label, parent_odds = self.down_vertex(
+                node_edge_dict[focal_node], "out"
             )
-            self.from_to_set.add(
-                (
-                    self.down_vertex(node_edge_dict[focal_node], "in"),
-                    self.down_vertex(node_edge_dict[child], "out"),
-                )
-            )
+            child_label, child_odds = self.down_vertex(node_edge_dict[child], "in")
+            weight = self.log_odds(child_odds / parent_odds)
+            self.add_edge_threshold(parent_label, child_label, weight)
+
         # Connect focal brick to its parent brick
         if edge.parent not in roots and focal_node not in roots:
             assert node_edge_dict[focal_node] != node_edge_dict[edge.parent]
-            self.from_to_set.add(
-                (
-                    self.up_vertex(node_edge_dict[focal_node], "in"),
-                    self.up_vertex(node_edge_dict[edge.parent], "out"),
-                )
+            child_label, child_odds = self.up_vertex(node_edge_dict[focal_node], "out")
+            parent_label, parent_odds = self.up_vertex(
+                node_edge_dict[edge.parent], "in"
             )
-            self.from_to_set.add(
-                (
-                    self.down_vertex(node_edge_dict[edge.parent], "in"),
-                    self.down_vertex(node_edge_dict[focal_node], "out"),
-                )
+            weight = self.log_odds(child_odds / parent_odds)
+            self.add_edge_threshold(child_label, parent_label, weight)
+
+            parent_label, parent_odds = self.down_vertex(
+                node_edge_dict[edge.parent], "out"
             )
+            child_label, child_odds = self.down_vertex(node_edge_dict[focal_node], "in")
+            weight = self.log_odds(child_odds / parent_odds)
+            self.add_edge_threshold(parent_label, child_label, weight)
 
     def rule_two(self, edge, siblings, node_edge_dict):
         # Rule 2: Connect focal brick to its siblings
         if len(siblings) > 1:
-            if len(siblings) > 1:
-                for item in itertools.combinations(siblings, 2):
-                    self.from_to_set.add(
-                        (
-                            self.up_vertex(node_edge_dict[item[0]], "in"),
-                            self.down_vertex(node_edge_dict[item[1]], "out"),
-                        )
-                    )
-                    self.from_to_set.add(
-                        (
-                            self.up_vertex(node_edge_dict[item[1]], "in"),
-                            self.down_vertex(node_edge_dict[item[0]], "out"),
-                        )
-                    )
+            for pair in itertools.combinations(siblings, 2):
+                left_brick_up, left_odds = self.up_vertex(
+                    node_edge_dict[pair[0]], "out"
+                )
+                right_brick_down, right_odds = self.down_vertex(
+                    node_edge_dict[pair[1]], "in"
+                )
+                weight = self.log_odds(left_odds * right_odds)
+                self.add_edge_threshold(left_brick_up, right_brick_down, weight)
 
-    def rule_three(self, edge, children, node_edge_dict, prev_edge_dict):
-        """
-        Rule 3: Connect focal brick to other bricks which share a child haplotype
-        across a recombination
-        """
-        if edge.child in prev_edge_dict:
-            # r,d of left parent to r of right parent
-            self.from_to_set.add(
-                (
-                    self.right_vertex(prev_edge_dict[edge.child], "in"),
-                    self.right_vertex(node_edge_dict[edge.child], "out"),
+                right_brick_up, left_odds = self.up_vertex(
+                    node_edge_dict[pair[1]], "out"
                 )
-            )
-            self.from_to_set.add(
-                (
-                    self.down_vertex(prev_edge_dict[edge.child], "in"),
-                    self.right_vertex(node_edge_dict[edge.child], "out"),
+                left_brick_down, right_odds = self.down_vertex(
+                    node_edge_dict[pair[0]], "in"
                 )
-            )
-            # l,d of right parent to l of left parent
-            self.from_to_set.add(
-                (
-                    self.left_vertex(node_edge_dict[edge.child], "in"),
-                    self.left_vertex(prev_edge_dict[edge.child], "out"),
-                )
-            )
-            self.from_to_set.add(
-                (
-                    self.down_vertex(node_edge_dict[edge.child], "in"),
-                    self.left_vertex(prev_edge_dict[edge.child], "out"),
-                )
-            )
+                weight = self.log_odds(left_odds * right_odds)
+                self.add_edge_threshold(right_brick_up, left_brick_down, weight)
 
     def make_connections(self, edge, tree2, node_edge_dict, index, prev_edge_dict):
         roots = tree2.roots
         children = tree2.children(edge.child)
         siblings = tree2.children(edge.parent)
         self.rule_one(edge, children, node_edge_dict, roots)
-        if self.use_rule_two:
-            self.rule_two(edge, siblings, node_edge_dict)
-        if index != 0:
-            self.rule_three(edge, siblings, node_edge_dict, prev_edge_dict)
+        self.rule_two(edge, siblings, node_edge_dict)
 
     def make_brick_graph(self):
         """
@@ -174,17 +147,13 @@ class BrickGraph:
         assert len(self.unlabeled_bricks) >= (
             self.bricked_ts.num_edges - self.bricked_ts.num_mutations
         ), (len(bricks), self.bricked_ts.num_mutations, len(self.unlabeled_bricks))
-        self.G = None
-        self.l_in = []
-        self.l_out = []
 
         node_edge_dict = {}
 
         # Rule Zero
-        # For unlabeled nodes: connect left to up, right to up (within a brick)
+        # For unlabeled nodes: connect down to up (within a brick)
         for brick in self.unlabeled_bricks:
-            self.from_to_set.add((6 * brick + 2, 6 * brick))
-            self.from_to_set.add((6 * brick + 3, 6 * brick))
+            self.brick_graph.add_edge(4 * brick + 1, 4 * brick, weight=self.log_odds(1))
 
         for index, (tree2, (_, edges_out, edges_in)) in tqdm(
             enumerate(zip(self.bricked_ts.trees(), self.bricked_ts.edge_diffs())),
@@ -207,20 +176,4 @@ class BrickGraph:
                     prev_edge_dict,
                 )
 
-        # Create networkx graph
-        df = pd.Datamuts_to_merge_dict = {
-            "from": [cur_set[0] for cur_set in self.from_to_set],
-            "to": [cur_set[1] for cur_set in self.from_to_set],
-        }
-        self.G = nx.from_pandas_edgelist(df, "from", "to", create_using=nx.DiGraph())
-        # Total number of nodes should be less than (2 * number of labeled nodes) +
-        # (4 * number of unlabeled nodes)
-        # TODO: check why this isn't equal
-        assert self.G.number_of_nodes() <= (2 * len(self.labeled_bricks)) + 4 * len(
-            self.unlabeled_bricks
-        ), (
-            self.G.number_of_nodes(),
-            (2 * len(self.labeled_bricks)),
-            4 * len(self.unlabeled_bricks),
-        )
-        return self.G
+        return self.brick_graph

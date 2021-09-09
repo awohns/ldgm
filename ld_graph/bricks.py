@@ -4,13 +4,13 @@ Create a "bricked" tree sequence
 import tskit
 from tqdm import tqdm
 
+from . import utility
+
 
 class Bricks:
-    def __init__(
-        self,
-        ts,
-    ):
+    def __init__(self, ts, add_dummy_bricks=True):
         self.ts = ts
+        self.add_dummy_bricks = add_dummy_bricks
 
     def bifurcate_edge(self, edge_child, interval, tables, current_edges):
         """
@@ -61,7 +61,7 @@ class Bricks:
         for tree, (interval, edges_out, edges_in) in tqdm(
             zip(trees, edge_diffs),
             desc="Brick tree sequence: iterate over edges",
-            total=ts.num_trees,
+            total=ts.num_trees - 1,
         ):
             # Add edges coming out to new edge table
             for edge in edges_out:
@@ -122,4 +122,6 @@ class Bricks:
         tables.sort()
 
         new_ts = tables.tree_sequence()
+        if self.add_dummy_bricks:
+            new_ts = utility.add_dummy_bricks(new_ts)
         return new_ts
