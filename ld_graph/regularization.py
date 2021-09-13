@@ -134,25 +134,25 @@ class Regularize:
         assert pruned_ts.num_nodes == len(
             keep_nodes
         )  # make sure we have right number of nodes
-        tables = pruned_ts.dump_tables()
-        tables.nodes.clear()
-        # Make leaves samples
-        targets = set()
-        for tree in pruned_ts.trees():
-            for leaf in tree.leaves():
-                if tree.parent(leaf) != -1:
-                    targets.add(leaf)
-        for target in targets:
-            tables.nodes.add_row(flags=1, time=pruned_ts.node(target).time)
+        # tables = pruned_ts.dump_tables()
+        # tables.nodes.clear()
+        # # Make leaves samples
+        # targets = set()
+        # for tree in pruned_ts.trees():
+        #    for leaf in tree.leaves():
+        #        if tree.parent(leaf) != -1:
+        #            targets.add(leaf)
+        # for target in targets:
+        #    tables.nodes.add_row(flags=1, time=pruned_ts.node(target).time)
 
-        # Add all the nodes in
-        for node in pruned_ts.nodes():
-            if node.id not in targets:
-                tables.nodes.add_row(flags=0, time=node.time)
-        tables.sort()
-        pruned_ts = tables.tree_sequence()
+        # # Add all the nodes in
+        # for node in pruned_ts.nodes():
+        #    if node.id not in targets:
+        #        tables.nodes.add_row(flags=0, time=node.time)
+        # tables.sort()
+        # pruned_ts = tables.tree_sequence()
         if add_dummy_bricks:
-            new_ts = utility.add_dummy_bricks(pruned_ts, mode="samples")
+            pruned_ts = utility.add_dummy_bricks(pruned_ts, mode="leaves")
             # Adjust node mapping when dummy bricks are added
             node_map[node_map != -1] = node_map[node_map != -1] + pruned_ts.num_samples
-        return new_ts, node_map, site_map
+        return pruned_ts, node_map, site_map
