@@ -52,7 +52,7 @@ def get_brick_descendants(ts):
     return X
 
 
-def add_dummy_bricks(bts, epsilon=1e-6):
+def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
     # Check that the first (num_samples) nodes are all samples
     for i in range(bts.num_samples):
         assert i in bts.samples()
@@ -61,22 +61,29 @@ def add_dummy_bricks(bts, epsilon=1e-6):
     tables = bts.dump_tables()
 
     tables.nodes.clear()
-    for sample in bts.samples():
-        tables.nodes.add_row(flags=1, time=bts.node(sample).time)
+    if mode == "samples":
+        targets = bts.samples()
+    elif mode == "leaves":
+        targets = set()
+        for tree in bts.trees():
+            for leaf in tree.leaves():
+                targets.add(leaf)
+    for target in targets:
+        tables.nodes.add_row(flags=1, time=bts.node(target).time)
 
     # Add all the nodes in
     for node in bts.nodes():
-        if node.id not in bts.samples():
+        if node.id not in targets:
             node_mapping[node.id] = tables.nodes.add_row(flags=0, time=node.time)
         else:
-            # Add a dummy for samples
+            # Add a dummy for targets
             node_mapping[node.id] = tables.nodes.add_row(
                 flags=0, time=node.time + epsilon
             )
     tables.edges.clear()
     sequence_length = bts.get_sequence_length()
     # Then we add bricks in
-    for dummy in bts.samples():
+    for dummy in targets:
         tables.edges.add_row(
             left=0, right=sequence_length, parent=node_mapping[dummy], child=dummy
         )
@@ -99,3 +106,11 @@ def add_dummy_bricks(bts, epsilon=1e-6):
     # Then make a new brick tree sequence
     tables.sort()
     return tables.tree_sequence()
+
+
+def check_bricked(ts):
+    """
+    Checks that the input tree sequence is "bricked" by tree, node, or leaf.
+    Returns True if bricked by the given mode, False if not.
+    """
+    return "TODO"

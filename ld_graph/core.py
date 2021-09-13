@@ -23,11 +23,15 @@ def time_regularize(ts, time):
     return regularization.Regularize(ts).time_regularize(time)
 
 
-def frequency_regularize(ts, freq, **kwargs):
+def frequency_regularize(
+    ts, site_freq, path_threshold, add_dummy_bricks=True, **kwargs
+):
     """
     Regularize a tree sequence by frequency
     """
-    return regularization.Regularize(ts).frequency_regularize(freq, **kwargs)
+    return regularization.Regularize(ts).frequency_regularize(
+        site_freq, path_threshold, add_dummy_bricks, **kwargs
+    )
 
 
 def brick_graph(brick_ts, threshold=None):
