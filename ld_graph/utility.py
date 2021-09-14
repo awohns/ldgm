@@ -86,8 +86,7 @@ def interval_while_leaf(ts):
 def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
     """
     Add a dummy bricks to the tree sequence, allowing each sample or leaf node
-    (depending on mode)
-    to be the parent node of a brick.
+    (depending on mode) to be the *parent* node of a brick.
     Dummy nodes are *not* marked as samples.
     Convert from dummy node ids to previous ids by subtracting the number of
     leaves or samples
@@ -116,12 +115,10 @@ def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
             tables.nodes.add_row(flags=0, time=node.time)
         else:
             # Add target
-            tables.nodes.add_row(flags=node.flags, time=node.time)
+            tables.nodes.add_row(flags=node.flags, time=node.time + epsilon)
     # adding dummy nodes
     for target in targets:
-        node_mapping[target] = tables.nodes.add_row(
-            flags=0, time=bts.node(target).time + epsilon
-        )
+        node_mapping[target] = tables.nodes.add_row(flags=0, time=bts.node(target).time)
     tables.edges.clear()
     # Then we add bricks in
     leaf_spans = interval_while_leaf(bts)
@@ -130,8 +127,8 @@ def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
             tables.edges.add_row(
                 left=interval[0],
                 right=interval[1],
-                parent=node_mapping[dummy],
-                child=dummy,
+                parent=dummy,
+                child=node_mapping[dummy],
             )
     for edge in bts.edges():
         tables.edges.add_row(
@@ -150,8 +147,6 @@ def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
             time=mut.time,
         )
     # Then make a new brick tree sequence
-    print(tables.edges)
-    print(tables.nodes)
     tables.sort()
     return tables.tree_sequence()
 
