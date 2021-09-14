@@ -120,15 +120,22 @@ def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
     for target in targets:
         node_mapping[target] = tables.nodes.add_row(flags=0, time=bts.node(target).time)
     tables.edges.clear()
-    # Then we add bricks in
-    leaf_spans = interval_while_leaf(bts)
-    for dummy, intervals in leaf_spans.items():
-        for interval in intervals:
+    if mode == "leaves":
+        # Then we add bricks in
+        leaf_spans = interval_while_leaf(bts)
+        for dummy, intervals in leaf_spans.items():
+            for interval in intervals:
+                tables.edges.add_row(
+                    left=interval[0],
+                    right=interval[1],
+                    parent=dummy,
+                    child=node_mapping[dummy],
+                )
+    elif mode == "samples":
+        sequence_length = bts.get_sequence_length()
+        for target in targets:
             tables.edges.add_row(
-                left=interval[0],
-                right=interval[1],
-                parent=dummy,
-                child=node_mapping[dummy],
+                left=0, right=sequence_length, parent=target, child=node_mapping[target]
             )
     for edge in bts.edges():
         tables.edges.add_row(
