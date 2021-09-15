@@ -83,7 +83,7 @@ def interval_while_leaf(ts):
     return uninterrupted_leaf_spans
 
 
-def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
+def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
     """
     Add a dummy bricks to the tree sequence, allowing each sample or leaf node
     (depending on mode) to be the *parent* node of a brick.
@@ -95,6 +95,10 @@ def add_dummy_bricks(bts, mode="samples", epsilon=1e-6):
     # Check that the first (num_samples) nodes are all samples
     # for i in range(bts.num_samples):
     #    assert i in bts.samples()
+    if epsilon == "adaptive":
+        time = bts.tables.nodes.time
+        gaps = time[bts.tables.edges.parent] - time[bts.tables.edges.child]
+        epsilon = np.min(np.unique(gaps)) * 0.1
 
     node_mapping = {}
     tables = bts.dump_tables()
