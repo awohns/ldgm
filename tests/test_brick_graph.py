@@ -1,10 +1,12 @@
 """
 Test cases for building the brick graph
 """
+import io
 import unittest
 
 import ld_graph
 import numpy as np
+import tskit
 
 from . import utility_functions
 
@@ -156,3 +158,135 @@ class TestExampleTrees(unittest.TestCase):
         ):  # iterate through every module's attributes
             if callable(val):  # check if callable (normally functions)
                 self.verify(val())
+
+
+class TestDummyBricks(unittest.TestCase):
+    """
+    Test that dummy bricks make expected connections
+    """
+
+    """
+    Two example tree sequences to test dummy bricks
+    """
+
+    def dummy_brick_test_one(self):
+        r"""
+        Minimal example where a different reduced graph occurs with and without
+        dummy bricks.
+           1   |  2
+           x 0 |  x 1
+           0   |  0
+        """
+        nodes = io.StringIO(
+            """\
+        id      is_sample   time
+        0       1           0
+        1       0           1
+        2       0           1
+        """
+        )
+        edges = io.StringIO(
+            """\
+        left    right   parent  child
+        0       0.5     1       0
+        0.5     1       2       0
+        """
+        )
+        sites = io.StringIO(
+            """\
+        position    ancestral_state
+        0.2         0
+        0.8         0
+        """
+        )
+        mutations = io.StringIO(
+            """\
+        site    node    derived_state
+        0       0       1
+        1       0       1
+        """
+        )
+        return tskit.load_text(
+            nodes=nodes, edges=edges, sites=sites, mutations=mutations, strict=False
+        )
+
+    def dummy_brick_test_two(self):
+        r"""
+        Small example where a different reduced graph occurs with and without dummy
+        bricks.
+           3   |  3
+           x 1 |  |
+           1   |  2
+           x 0 |  x 2
+           0   |  0
+        """
+        nodes = io.StringIO(
+            """\
+        id      is_sample   time
+        0       1           0
+        1       0           1
+        2       0           1
+        3       0           2
+        """
+        )
+        edges = io.StringIO(
+            """\
+        left    right   parent  child
+        0       0.5     1       0
+        0.5     1       2       0
+        0       0.5     3       1
+        0.5     1       3       2
+        """
+        )
+        sites = io.StringIO(
+            """\
+        position    ancestral_state
+        0.2         0
+        0.3         0
+        0.8         0
+        """
+        )
+        mutations = io.StringIO(
+            """\
+        site    node    derived_state
+        0       0       1
+        1       1       1
+        2       0       1
+        """
+        )
+        return tskit.load_text(
+            nodes=nodes, edges=edges, sites=sites, mutations=mutations, strict=False
+        )
+
+    def test_dummy_example_one(self):
+        ts = self.dummy_brick_test_one()
+        bts_no_dummy = ld_graph.brick_ts(ts, add_dummy_bricks=False)
+        brick_graph_no_dummy = ld_graph.brick_graph(bts_no_dummy)
+        reduced_graph_no_dummy = ld_graph.reduce_graph(
+            brick_graph_no_dummy, bts_no_dummy, threshold=100
+        )
+        bts_dummy = ld_graph.brick_ts(ts, add_dummy_bricks=True)
+        brick_graph_dummy = ld_graph.brick_graph(bts_dummy)
+        reduced_graph_dummy = ld_graph.reduce_graph(
+            brick_graph_dummy, bts_dummy, threshold=100
+        )
+        assert reduced_graph_no_dummy.number_of_edges() == 0
+        assert reduced_graph_dummy.number_of_edges() == 1
+        assert (0, 1) in reduced_graph_dummy.edges()
+
+    def test_dummy_example_two(self):
+        ts = self.dummy_brick_test_two()
+        bts_no_dummy = ld_graph.brick_ts(ts, add_dummy_bricks=False)
+        brick_graph_no_dummy = ld_graph.brick_graph(bts_no_dummy)
+        reduced_graph_no_dummy = ld_graph.reduce_graph(
+            brick_graph_no_dummy, bts_no_dummy, threshold=100
+        )
+        bts_dummy = ld_graph.brick_ts(ts, add_dummy_bricks=True)
+        brick_graph_dummy = ld_graph.brick_graph(bts_dummy)
+        reduced_graph_dummy = ld_graph.reduce_graph(
+            brick_graph_dummy, bts_dummy, threshold=100
+        )
+        assert reduced_graph_no_dummy.number_of_edges() == 1
+        assert reduced_graph_dummy.number_of_edges() == 2
+        assert (0, 1) in reduced_graph_no_dummy.edges()
+        assert (0, 2) in reduced_graph_dummy.edges()

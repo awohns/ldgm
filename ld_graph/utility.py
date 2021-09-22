@@ -119,10 +119,12 @@ def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
             tables.nodes.add_row(flags=0, time=node.time)
         else:
             # Add target
-            tables.nodes.add_row(flags=node.flags, time=node.time + epsilon)
+            tables.nodes.add_row(flags=0, time=node.time + epsilon)
     # adding dummy nodes
     for target in targets:
-        node_mapping[target] = tables.nodes.add_row(flags=0, time=bts.node(target).time)
+        node_mapping[target] = tables.nodes.add_row(
+            flags=bts.node(target).flags, time=bts.node(target).time
+        )
     tables.edges.clear()
     if mode == "leaves":
         # Then we add bricks in
