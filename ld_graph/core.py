@@ -7,11 +7,11 @@ from . import reduction
 from . import regularization
 
 
-def brick_ts(ts, add_dummy_bricks=True):
+def brick_ts(ts, threshold, add_dummy_bricks=True):
     """
     Make a bricked tree sequence
     """
-    brick = bricks.Bricks(ts, add_dummy_bricks)
+    brick = bricks.Bricks(ts, threshold, add_dummy_bricks)
     bricked = brick.naive_split_edges()
     return bricked
 
