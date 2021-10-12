@@ -11,6 +11,8 @@ class Bricks:
     def __init__(self, ts, threshold, add_dummy_bricks=True):
         self.ts = ts
         self.add_dummy_bricks = add_dummy_bricks
+        if threshold is None:
+            threshold = 0
         self.threshold = threshold
 
     def bifurcate_edge(self, edge_child, interval, tables, current_edges):
