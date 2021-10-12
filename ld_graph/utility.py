@@ -98,7 +98,9 @@ def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
     if epsilon == "adaptive":
         time = bts.tables.nodes.time
         gaps = time[bts.tables.edges.parent] - time[bts.tables.edges.child]
-        epsilon = np.min(np.unique(gaps)) * 0.1
+        epsilon = np.min(
+            [np.min(np.unique(gaps)) * 0.1, np.min(bts.tables.mutations.time)]
+        )
 
     node_mapping = {}
     tables = bts.dump_tables()
