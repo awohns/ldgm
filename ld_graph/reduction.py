@@ -29,6 +29,12 @@ class SNP_Graph:
             id_to_muts[index] = muts
             bricks_to_id[brick] = index
 
+        # Dictionary with keys = mutation id, values = graph node id
+        self.mut_node = np.zeros(brick_ts.num_mutations)
+        for _, val in self.bricks_to_muts.items():
+            for v in val:
+                self.mut_node[v] = val[0]
+
     def create_reduced_graph(self):
         nodes = np.array(list(self.brick_graph.nodes()))
         l_in = nodes[nodes % 4 == 2]
@@ -50,4 +56,4 @@ class SNP_Graph:
                         weight=value,
                     )
 
-        return R
+        return R, self.mut_node
