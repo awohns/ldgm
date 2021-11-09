@@ -1,6 +1,6 @@
-addpath(genpath('~/Documents/GitHub/ld_graph/precision'))
-path_prefix='/Users/loconnor/Dropbox/Pouria/data/';
-filename = '1kg_med';
+addpath(genpath('/Users/anthonywohns/Documents/Broad Institute/ld_graph/precision/'))
+path_prefix='/Users/anthonywohns/Documents/Broad Institute/snp_graph/';
+filename = 'sim';
 
 maxReps = 1e5;
 convergenceTol=1e-5;
@@ -48,7 +48,7 @@ for tt = tt:length(thresholds)
         'convergence_tol',convergenceTol,'printstuff',true);
 
     % Plotting
-    if 0
+    if 1
         plotting_script;drawnow
     else
         Rr = inv(precisionEstimate);

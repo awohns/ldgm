@@ -1,8 +1,6 @@
 """
 Create a brick graph
 """
-import itertools
-
 import networkx as nx
 import numpy as np
 from tqdm import tqdm
@@ -84,9 +82,11 @@ class BrickGraph:
             odds_b = odds_c
         if combine_odds == "division":
             weight = self.log_odds(odds_a / odds_b)
-        elif combine_odds == "multiply":
-            weight = self.log_odds(odds_a * odds_b)
+        elif combine_odds == "square":
+            assert odds_a == odds_b
+            weight = self.log_odds(odds_a ** 2)
         elif combine_odds == "self":
+            assert odds_a == odds_b
             weight = self.log_odds(1)
         else:
             raise ValueError("Incorrect combine_odds method")
@@ -162,74 +162,10 @@ class BrickGraph:
                 reverse_odds=True,
             )
 
-    def rule_two(self, edge, siblings):
-        # Rule 2: Connect focal brick to its siblings
-        if len(siblings) > 1:
-            for pair in itertools.combinations(siblings, 2):
-                # Up before left to down before right
-                self.connect_vertices(
-                    self.node_edge_dict[pair[0]],
-                    self.node_edge_dict[pair[1]],
-                    down_b=True,
-                    combine_odds="multiply",
-                )
-                # Up before right to down before left
-                self.connect_vertices(
-                    self.node_edge_dict[pair[1]],
-                    self.node_edge_dict[pair[0]],
-                    down_b=True,
-                    combine_odds="multiply",
-                )
-                # Up after left to down after right
-                self.connect_vertices(
-                    self.node_edge_dict[pair[0]],
-                    self.node_edge_dict[pair[1]],
-                    after_a=True,
-                    after_b=True,
-                    down_b=True,
-                    combine_odds="multiply",
-                )
-                # Up after right to down after left
-                self.connect_vertices(
-                    self.node_edge_dict[pair[1]],
-                    self.node_edge_dict[pair[0]],
-                    after_a=True,
-                    after_b=True,
-                    down_b=True,
-                    combine_odds="multiply",
-                )
-
-    def rule_three(self, edges, child):
-        """
-        Connect left before down to right after up and right before down to left after up
-        """
-        if len(edges) > 1:
-            for pair in itertools.combinations(edges, 2):
-                # Down before left to up after right
-                self.connect_vertices(
-                    pair[0],
-                    pair[1],
-                    child=child,
-                    down_a=True,
-                    after_b=True,
-                    combine_odds="self",
-                )
-                # Down before right to up after left
-                self.connect_vertices(
-                    pair[1],
-                    pair[0],
-                    child=child,
-                    down_a=True,
-                    after_a=True,
-                    combine_odds="self",
-                )
-
     def make_connections(self, edge, tree2, index):
         roots = tree2.roots
         children = tree2.children(edge.child)
-        siblings = tree2.children(edge.parent)
         self.rule_one(edge, children, roots)
-        self.rule_two(edge, siblings)
 
     def make_brick_graph(self):
         """
@@ -259,13 +195,33 @@ class BrickGraph:
 
         # Rule Zero
         # For unlabeled nodes: connect down before to up after (within a brick)
-        for brick in self.unlabeled_bricks:
+        for brick in tqdm(self.unlabeled_bricks):
             self.connect_vertices(
                 brick,
                 brick,
                 down_a=True,
+                after_a=False,
+                down_b=False,
+                after_b=False,
+                combine_odds="self",
+            )
+            self.connect_vertices(
+                brick,
+                brick,
+                down_a=True,
+                down_b=False,
+                after_a=True,
                 after_b=True,
                 combine_odds="self",
+            )
+            self.connect_vertices(
+                brick,
+                brick,
+                down_a=False,
+                after_a=False,
+                down_b=True,
+                after_b=True,
+                combine_odds="square",
             )
 
         for index, (tree2, (_, edges_out, edges_in)) in tqdm(
