@@ -8,9 +8,13 @@ from . import utility
 
 
 class Bricks:
-    def __init__(self, ts, add_dummy_bricks=True):
+    def __init__(self, ts, threshold, add_dummy_bricks=True, progress=True):
         self.ts = ts
         self.add_dummy_bricks = add_dummy_bricks
+        if threshold is None:
+            threshold = 0
+        self.threshold = threshold
+        self.progress = progress
 
     def bifurcate_edge(self, edge_child, interval, tables, current_edges):
         """
@@ -60,8 +64,9 @@ class Bricks:
         # Look at edges in and out for subsequent trees
         for tree, (interval, edges_out, edges_in) in tqdm(
             zip(trees, edge_diffs),
-            desc="Brick tree sequence: iterate over edges",
+            desc="Brick tree sequence: iterate over trees",
             total=ts.num_trees - 1,
+            disable=not self.progress,
         ):
             # Add edges coming out to new edge table
             for edge in edges_out:
@@ -79,24 +84,25 @@ class Bricks:
                 if mode == "leaf":
                     right = edge.parent
                     left = prev_tree.parent(edge.child)
-                    while right != left and right != -1 and left != -1:
-                        tr = tree.get_time(right)
-                        tl = prev_tree.get_time(left)
-                        if tr < tl:
-                            tables, current_edges = self.bifurcate_edge(
-                                right, interval, tables, current_edges
-                            )
-                            right = tree.parent(right)
-                        elif tr > tl:
-                            tables, current_edges = self.bifurcate_edge(
-                                left, interval, tables, current_edges
-                            )
-                            left = prev_tree.parent(left)
-                        else:
-                            tables, current_edges = self.bifurcate_edge(
-                                right, interval, tables, current_edges
-                            )
-                            right = tree.parent(right)
+                    if tree.num_samples(edge.child) / ts.num_samples > self.threshold:
+                        while right != left and right != -1 and left != -1:
+                            tr = tree.get_time(right)
+                            tl = prev_tree.get_time(left)
+                            if tr < tl:
+                                tables, current_edges = self.bifurcate_edge(
+                                    right, interval, tables, current_edges
+                                )
+                                right = tree.parent(right)
+                            elif tr > tl:
+                                tables, current_edges = self.bifurcate_edge(
+                                    left, interval, tables, current_edges
+                                )
+                                left = prev_tree.parent(left)
+                            else:
+                                tables, current_edges = self.bifurcate_edge(
+                                    right, interval, tables, current_edges
+                                )
+                                right = tree.parent(right)
                 elif mode == "node":
                     parent = edge.parent
                     while parent != tree.root:

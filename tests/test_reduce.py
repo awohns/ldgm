@@ -28,14 +28,14 @@ class TestNumNodes(unittest.TestCase):
             length=1e4,
             Ne=10000,
         )
-        bricked = ld_graph.brick_ts(ts)
+        bricked = ld_graph.brick_ts(ts, threshold=None)
         number_of_labeled_bricks = len(ld_graph.utility.get_mut_edges(bricked).keys())
         assert (
-            ld_graph.reduce(ts, threshold=100).number_of_nodes()
+            ld_graph.reduce(ts, threshold=100)[0].number_of_nodes()
             == number_of_labeled_bricks
         )
         bricked_graph = ld_graph.brick_graph(bricked)
-        reduced_graph = ld_graph.reduce_graph(bricked_graph, bricked, threshold=100)
+        reduced_graph, _ = ld_graph.reduce_graph(bricked_graph, bricked, threshold=None)
         assert reduced_graph.number_of_nodes() == number_of_labeled_bricks
 
 
@@ -50,9 +50,9 @@ class TestReduce(unittest.TestCase):
 
         """
         ts = utility_functions.single_tree_ts_n2_2_mutations()
-        bts = ld_graph.brick_ts(ts, add_dummy_bricks=False)
+        bts = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=False)
         brick_graph = ld_graph.brick_graph(bts)
-        snp_grapher = ld_graph.snp_graph.SNP_Graph(brick_graph, bts, threshold=100)
+        snp_grapher = ld_graph.snp_graph.SNP_Graph(brick_graph, bts, threshold=None)
         reduced_graph = snp_grapher.create_reduced_graph()
 
         manual_graph = nx.Graph()

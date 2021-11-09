@@ -4,7 +4,6 @@ Utility functions
 import collections
 
 import numpy as np
-from tqdm import tqdm
 
 
 def get_mut_edges(ts):
@@ -38,64 +37,125 @@ def get_brick_frequencies(ts):
     return freqs
 
 
-def get_brick_descendants(ts):
-    X = np.zeros((ts.num_samples, ts.num_edges))
-    node_edge_dict = {}
-    for tree2, (_, edges_out, edges_in) in tqdm(zip(ts.trees(), ts.edge_diffs())):
-        for edge in edges_out:
-            node_edge_dict.pop(edge.child)
-        for edge in edges_in:
-            node_edge_dict[edge.child] = edge.id
-        for key, val in node_edge_dict.items():
-            for sample in tree2.samples(key):
-                X[sample, val] = 1
-    return X
+def interval_while_leaf(ts):
+    """
+    Returns a dictionary, with keys equal to leaves and values a list of
+    lists of intervals where the node is a leaf
+    """
+    leaf_spans = collections.defaultdict(list)
+    for tree in ts.trees():
+        for leaf in tree.leaves():
+            if tree.parent(leaf) != -1:
+                leaf_spans[leaf].append(tree.interval)
+
+    uninterrupted_leaf_spans = collections.defaultdict(list)
+    for val, interval in leaf_spans.items():
+        cur_interval = interval[0]
+        prev_right = cur_interval.right
+        uninterrupted_leaf_spans[val].append(cur_interval.left)
+        for cur_interval in interval[1:]:
+            if cur_interval.left != prev_right:
+                uninterrupted_leaf_spans[val].append(prev_right)
+                uninterrupted_leaf_spans[val].append(cur_interval.left)
+            prev_right = cur_interval.right
+        uninterrupted_leaf_spans[val].append(cur_interval.right)
+    for dummy, intervals in uninterrupted_leaf_spans.items():
+        leaf_list = []
+        for idx, _ in enumerate(intervals[::2]):
+            leaf_list.append((intervals[idx * 2], intervals[idx * 2 + 1]))
+        uninterrupted_leaf_spans[dummy] = leaf_list
+
+    return uninterrupted_leaf_spans
 
 
-def add_dummy_bricks(bts, epsilon=1e-6):
+def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
+    """
+    Add a dummy bricks to the tree sequence, allowing each sample or leaf node
+    (depending on mode) to be the *parent* node of a brick.
+    Dummy nodes are *not* marked as samples.
+    Convert from dummy node ids to previous ids by subtracting the number of
+    leaves or samples
+    (depending on mode used).
+    """
     # Check that the first (num_samples) nodes are all samples
-    for i in range(bts.num_samples):
-        assert i in bts.samples()
-
+    # for i in range(bts.num_samples):
+    #    assert i in bts.samples()
+    if epsilon == "adaptive":
+        time = bts.tables.nodes.time
+        gaps = time[bts.tables.edges.parent] - time[bts.tables.edges.child]
+        epsilon = np.min(np.unique(gaps)) * 0.1
+        if bts.num_mutations > 0:
+            if not np.isnan(np.min(bts.tables.mutations.time)):
+                epsilon = np.min(
+                    [np.min(np.unique(gaps)) * 0.1, np.min(bts.tables.mutations.time)]
+                )
     node_mapping = {}
     tables = bts.dump_tables()
 
     tables.nodes.clear()
-    for sample in bts.samples():
-        tables.nodes.add_row(flags=1, time=bts.node(sample).time)
+    if mode == "samples":
+        targets = bts.samples()
+    elif mode == "leaves":
+        targets = set()
+        for tree in bts.trees():
+            for leaf in tree.leaves():
+                if tree.parent(leaf) != -1:
+                    targets.add(leaf)
 
     # Add all the nodes in
     for node in bts.nodes():
-        if node.id not in bts.samples():
-            node_mapping[node.id] = tables.nodes.add_row(flags=0, time=node.time)
+        if node.id not in targets:
+            tables.nodes.add_row(flags=0, time=node.time)
         else:
-            # Add a dummy for samples
-            node_mapping[node.id] = tables.nodes.add_row(
-                flags=0, time=node.time + epsilon
-            )
-    tables.edges.clear()
-    sequence_length = bts.get_sequence_length()
-    # Then we add bricks in
-    for dummy in bts.samples():
-        tables.edges.add_row(
-            left=0, right=sequence_length, parent=node_mapping[dummy], child=dummy
+            # Add target
+            tables.nodes.add_row(flags=0, time=node.time + epsilon)
+    # adding dummy nodes
+    for target in targets:
+        node_mapping[target] = tables.nodes.add_row(
+            flags=bts.node(target).flags, time=bts.node(target).time
         )
+    tables.edges.clear()
+    if mode == "leaves":
+        # Then we add bricks in
+        leaf_spans = interval_while_leaf(bts)
+        for dummy, intervals in leaf_spans.items():
+            for interval in intervals:
+                tables.edges.add_row(
+                    left=interval[0],
+                    right=interval[1],
+                    parent=dummy,
+                    child=node_mapping[dummy],
+                )
+    elif mode == "samples":
+        sequence_length = bts.get_sequence_length()
+        for target in targets:
+            tables.edges.add_row(
+                left=0, right=sequence_length, parent=target, child=node_mapping[target]
+            )
     for edge in bts.edges():
         tables.edges.add_row(
             left=edge.left,
             right=edge.right,
-            parent=node_mapping[edge.parent],
-            child=node_mapping[edge.child],
+            parent=edge.parent,
+            child=edge.child,
         )
     # Fix the mutation nodes
     tables.mutations.clear()
     for mut in bts.mutations():
         tables.mutations.add_row(
             site=mut.site,
-            node=node_mapping[mut.node],
+            node=mut.node,
             derived_state=mut.derived_state,
             time=mut.time,
         )
     # Then make a new brick tree sequence
     tables.sort()
     return tables.tree_sequence()
+
+
+def check_bricked(ts):
+    """
+    Checks that the input tree sequence is "bricked" by tree, node, or leaf.
+    Returns True if bricked by the given mode, False if not.
+    """
+    return "TODO"

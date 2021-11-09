@@ -1,4 +1,4 @@
-function [P, objective_function_value, p_value] = LDPrecision(R,varargin)
+function [P, objective_function_value, converged, pval] = LDPrecision(R,varargin)
 % Calculates maximum likelihood precision matrix from correlation
 % matrix R. R is a SNPs x SNPs matrix, possibly sparse, where edge (i,j)
 % is the correlation between SNPs i and j. By default, LDPrecision
@@ -16,13 +16,13 @@ function [P, objective_function_value, p_value] = LDPrecision(R,varargin)
 
 % Input data handling
 p=inputParser;
-addRequired(p, 'R', @(M)issymmetric(M) & isnumeric(M));
+addRequired(p, 'R', @(M) isnumeric(M));
 mm = length(R);
-addParameter(p, 'convergence_tol', 1e-5, @isscalar);
-addParameter(p, 'max_steps', 1e3, @isscalar);
-addParameter(p, 'P0', speye(mm), @issymmetric);
-addParameter(p, 'graphical_model', R~=0, @issymmetric);
-addParameter(p, 'printstuff', false, @islogical);
+addParameter(p, 'convergence_tol', 1e-6, @isscalar);
+addParameter(p, 'max_steps', 1e4, @isscalar);
+addParameter(p, 'P0', speye(mm));
+addParameter(p, 'graphical_model', R~=0);
+addParameter(p, 'printstuff', true, @islogical);
 addParameter(p, 'sample_size', 1, @isscalar);
 
 parse(p,R,varargin{:});
@@ -40,8 +40,9 @@ objective_function_value = obj(P);
 % gradient descent
 tic;
 stepsize = 1;
+converged = false;
 for step = 1:p.Results.max_steps
-    if p.Results.printstuff
+    if p.Results.printstuff && mod(step,100)==0
         fprintf('%d ', step)
     end
     % gradient of objective function
@@ -50,11 +51,16 @@ for step = 1:p.Results.max_steps
     
     % line search to determine step size
     oldObj = objective_function_value;
-    [P, stepsize, objective_function_value] = linesearch(P, objective_function_value, gradient, obj, stepsize);
+    [P, stepsize, objective_function_value] = ...
+        linesearch(P, objective_function_value, gradient, obj, stepsize);
     
     % convergence
-    if abs(objective_function_value - oldObj) / abs(objective_function_value) < p.Results.convergence_tol
-        break;
+    if abs(objective_function_value - oldObj) / abs(objective_function_value) ...
+            < p.Results.convergence_tol
+        converged = converged + 1;
+        if converged >= 2
+            break;
+        end
     end
 end
 
@@ -62,12 +68,12 @@ if p.Results.printstuff
     fprintf('\n time = %f\n', toc)
 end
 
-if objective_function_value <= (1 - p.Results.convergence_tol) * oldObj
+if converged < 2
     warning('Gradient descent failed to converge in %d steps', p.Results.max_steps);
 end
 
 % p-value for whether graph fits data
-if nargout > 2
+if nargout > 3
     if ~issparse(R) && p.Results.sample_size ~= 1
         pval = chi2cdf(2 * (obj(inv(R)) - obj(P)), mm*(mm+1)/2 - (nnz(G) + mm)/2, 'upper');
     else
@@ -96,8 +102,11 @@ stepsize_factor = 2;
 if ~isreal(oldObj); error('objective function value should be real at initial point for line search'); end
 
 newObj = objFn(initTheta - step * grad);
-if newObj < oldObj && isreal(newObj)
-    while newObj < oldObj && isreal(newObj)
+if newObj < oldObj - step * sum(nonzeros(grad).^2) / stepsize_factor...
+        && isreal(newObj)
+    
+    while newObj < oldObj - step * sum(nonzeros(grad).^2) / stepsize_factor...
+        && isreal(newObj)
         
         step = step * stepsize_factor;
         oldObj = newObj;
@@ -105,6 +114,7 @@ if newObj < oldObj && isreal(newObj)
         
         
     end
+    
     step = step / stepsize_factor;
     newObj = oldObj;
 end
