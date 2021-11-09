@@ -12,6 +12,6 @@ from . import utility_functions
 class TestBrickTreeSequence(unittest.TestCase):
     def test_modes(self):
         ts = utility_functions.single_tree_ts_n2()
-        bricks = ld_graph.bricks.Bricks(ts)
+        bricks = ld_graph.bricks.Bricks(ts, threshold=None)
         with pytest.raises(Exception):
             bricks.naive_split_edges(mode="wrong")
