@@ -229,7 +229,11 @@ class BrickGraph:
         children = tree2.children(edge.child)
         siblings = tree2.children(edge.parent)
         self.rule_one(edge, children, roots)
-        self.rule_two(edge, siblings)
+        if self.threshold is not None:
+            if self.log_odds(self.find_odds(edge.id) ** 2) < self.threshold:
+                self.rule_two(edge, siblings)
+        else:
+            self.rule_two(edge, siblings)
 
     def make_brick_graph(self):
         """
