@@ -15,14 +15,14 @@ data=textscan(file,strformat);
 if ~feof(file)
     error('failed to import file')
 end
-nn=max([data{1}; data{2}])+1;
+nn=double(max([data{1}; data{2}])+1);
 if weighted
     weights = 1./(1+data{3});
 else
     weights = true(length(data{1}),1);
 end
-ii = [data{1}+1; data{2}+1];
-jj = [data{2}+1; data{1}+1];
+ii = double([data{1}+1; data{2}+1]);
+jj = double([data{2}+1; data{1}+1]);
 weights = [weights; weights];
 incl = ii < jj;
 
