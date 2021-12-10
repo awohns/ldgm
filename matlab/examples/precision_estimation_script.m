@@ -1,4 +1,4 @@
-addpath(genpath('~/Documents/GitHub/ld_graph/precision'))
+addpath(genpath('../../matlab'))
 path_prefix='';
 filename = '';
 
