@@ -28,7 +28,7 @@ if iscell(P)
     assert(iscell(alphahat) && iscell(whichSNPs) && ...
         (iscell(sigmasq) || isscalar(sigmasq)), ...
         'If P is a cell array then alphahat, sigmasq, whichSNPs should also cell arrays of the same size');
-    if isscalar(sigmasq)
+    if isscalar(sigmasq) && ~iscell(sigmasq)
         sigmasq = cellfun(@(b){ones(size(b))*sigmasq},alphahat);
     end
     assert(all(size(P) == size(sigmasq)) && all(size(P) == size(alphahat))...
@@ -46,9 +46,10 @@ end
 
     function ll = likelihoodFn(alphahat,sigmasq,P,nn,whichSNPs)
         
-        mm = sum(whichSNPs);
+        mm = length(whichSNPs);
+        mmz = sum(whichSNPs);
         assert(all(sigmasq>=0),'sigmasq should be nonnegative')
-        assert(mm == length(alphahat) && mm == length(sigmasq),...
+        assert(mmz == length(alphahat) && mmz == length(sigmasq),...
             'whichSNPs should be a boolean vector with sum equal to length of alphahat and sigmasq')
         assert(all(length(whichSNPs) == size(P)))
         
@@ -70,10 +71,10 @@ end
         % betahat' * PplusD\betahat == x'*x
         y = zeros(mm,1);
         y(whichSNPs) = betahat;
-        x = A \ y;
+        x = A' \ y;
         x = x(whichSNPs);
         
-        ll = 1/2 * (-(logdetDplusP - logdetP11) - x'*x - sum(whichSNPs)*log(2*pi));
+        ll = 1/2 * (-(logdetDplusP - logdetP11) - x'*x - mmz*log(2*pi));
     end
 
 

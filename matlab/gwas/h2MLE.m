@@ -1,6 +1,24 @@
-function [params,newObjVal,allSteps,allValues] = h2MLE(alphahat,P,varargin)
-%UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
+function [params,newObjVal,allSteps,allValues,allStepSizes] = h2MLE(alphahat,P,varargin)
+%h2MLE computes maximum-likelihood heritability estimates using gradient
+%descent and LDGMs
+%   Inputs:
+%   alphahat: effect-size estimates, units of sd(Y)/sd(X), or Z scores.
+%   Should be a cell array with one cell per LD block.
+%   P: LD graphacal model as a cell array.
+%   nn: GWAS sample size
+%   whichSNPs: which SNPs in the LDGM have nonmissing summary statistics.
+%   Recommended to use as many SNPs as possible. All SNPs in the summary
+%   statistics vectors should be in the LDGM.
+%   annot: annotation matrices, one for each LD block, same number of SNPs
+%   as alphahat
+%   linkFn: function mapping from annotation vectors to per-SNP h2
+%   linkFnGrad: derivative of linkFn
+%   params: initial point for parameters
+%   convergenceTol: terminates when objective function improves less than
+%   this
+%   maxReps: maximum number of steps to perform
+%   minReps: starts checking for convergence after this number of steps
+%   method: please use 'gradient'
 
 % initialize
 p=inputParser;
@@ -13,52 +31,36 @@ end
 addRequired(p, 'alphahat', @(x)isvector(x) || iscell(x))
 addRequired(p, 'P', @(x)ismatrix(x) || iscell(x))
 addOptional(p, 'nn', 1, @isscalar)
-addOptional(p, 'whichSNPs', 1:mm, @(x)isvector(x) || iscell(x))
+addOptional(p, 'whichSNPs', cellfun(@(x){true(size(x))},alphahat), @(x)isvector(x) || iscell(x))
 addOptional(p, 'annot', ones(mm,1), @(x)size(x,1)==mm || iscell(x))
-addOptional(p, 'blocks', {1:mm}, @iscell)
 addOptional(p, 'linkFn', @(a,x)max(a*x,0), @(f)isa(f,'function_handle'))
+addOptional(p, 'linkFnGrad', @(a,x)a.*(a*x>=0), @(f)isa(f,'function_handle'))
 addOptional(p, 'params', [], @isvector)
 addOptional(p, 'convergenceTol', 1e-6, @isscalar)
 addOptional(p, 'maxReps', 1e4, @isscalar)
 addOptional(p, 'minReps', 2, @isscalar)
-addOptional(p, 'method', 'coordinate', @isstr)
+addOptional(p, 'method', 'gradient', @isstr)
 
 parse(p, alphahat, P, varargin{:});
 
-whichSNPs = p.Results.whichSNPs;
-% if min(sum(whichSNPs),length(whichSNPs)) ~= length(alphahat)
-%     error('whichSNPs should specify indices corresponding to alphahat')
-% end
+% turns p.Results.x into just x
+fields = fieldnames(p.Results);
+for k=1:numel(fields)
+    line = sprintf('%s = p.Results.%s;', fields{k}, fields{k});
+    eval(line);
+end
 
-nn = p.Results.nn;
-
-annot = p.Results.annot;
-if ~iscell(annot); annot = {annot}; end
 noAnnot = size(annot{1},2);
-
-blocks = p.Results.blocks;
-
-linkFn = p.Results.linkFn;
-
-params = p.Results.params;
+noBlocks = length(annot);
 if isempty(params)
     params = zeros(noAnnot,1);
 end
 noParams = length(params);
-
-convergenceTol = p.Results.convergenceTol;
-
-minReps = p.Results.minReps;
-
-maxReps = p.Results.maxReps;
-
 smallNumber = 1e-12;
 
-whichSNPs = p.Results.whichSNPs;
-
-objFn = @(params)-GWASlikelihoodMissingness(alphahat,...
+objFn = @(params)-GWASlikelihood(alphahat,...
     cellfun(@(x){linkFn(x, params)}, annot),...
-    P, nn, whichSNPs, blocks);
+    P, nn, whichSNPs);
 
 newObjVal = objFn(params);
 
@@ -70,9 +72,11 @@ method = p.Results.method;
 if strcmp(method,'coordinate')
     minReps = minReps * noParams;
 end
-if strcmp(method,'coordinate') || strcmp(method,'weighted_gradient')
+if 1 %strcmp(method,'coordinate') || strcmp(method,'weighted_gradient')
     
-    stepSize = [1./sum(annot)'.^2/nn; ones(noParams-noAnnot,1)];
+    stepSize = [1./sum(annot{1})'.^2/nn; ones(noParams-noAnnot,1)];
+%         stepSize = ones(noParams,1)/nn/mm^2;
+
 elseif strcmp(method,'gradient')
     warning('This method seems to work poorly')
     stepSize = ones(noParams,1)/nn/mm^2;
@@ -83,19 +87,20 @@ end
 
 allSteps=zeros(maxReps,noParams);allValues=zeros(maxReps,1);
 for rep=1:maxReps
-    if mod(rep-1,minReps)==0
-        %         disp(params')
-    end
-    %     sigmasq = linkFn(annot, params);
-    %     sigmasqGrad = linkFnGrad(sigmasq).*annot;
     
     oldGradient=gradient;
-    if 0
-        warning('this isnt working yet')
-        gradient = - GWASlikelihoodGradient(alphahat,1./sigmasq,P,nn,sigmasqGrad);
+    if strcmp(method,'gradient')
+        gradient = 0;
+        whichParam = 1:noParams;
+        for block = 1:noBlocks
+            sigmasq = linkFn(annot{block}, params);
+            sigmasqGrad = linkFnGrad(annot{block}, params);
+            gradient = gradient + ...
+                GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},nn,sigmasqGrad,whichSNPs{block})';
+        end
     else
         gradient = zeros(noParams,1);
-        if strcmp(method,'gradient') || strcmp(method,'weighted_gradient')
+        if strcmp(method,'weighted_gradient')
             whichParam = 1:noParams;
         elseif strcmp(method,'coordinate')
             whichParam = mod(rep-1,noParams)+1;
@@ -104,7 +109,6 @@ for rep=1:maxReps
             eps = zeros(noParams,1);
             eps(k) = smallNumber;
             gradient(k) = (objFn(params + eps) - newObjVal) ./ eps(k);
-            
         end
         
     end
@@ -130,7 +134,7 @@ for rep=1:maxReps
     
     allSteps(rep,:)=params;
     allValues(rep)=newObjVal;
-    
+    allStepSizes(rep,:) = stepSize;
     
     
     if rep > minReps
