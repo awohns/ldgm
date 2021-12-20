@@ -1,4 +1,4 @@
-function [grad,M] = GWASlikelihoodGradient(alphahat,tau,P,nn,delSigmadelA,whichSNPs)
+function [grad, nGrad, M] = GWASlikelihoodGradient(alphahat, tau, P, nn, delSigmadelA, whichSNPs)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -11,7 +11,8 @@ M = zeros(mm,1);
 M(whichSNPs) = 1./tau;
 M = P/nn + speye(mm).*M;
 
-MinvDiag = diag(sparseinv(M));
+Minv = sparseinv(M);
+MinvDiag = diag(Minv);
 
 % P/P11 * alphaHat
 betahat = zeros(mm,1);
@@ -26,6 +27,13 @@ delLogDetP = sum(delSigmadelA .* MinvDiag(whichSNPs));
 
 grad = - 1/2 * (- delLogDetP - d);
 
-
+% gradient of minus log-likelihood wrt nn
+if nargout > 1
+    b = b(whichSNPs);
+    c = P(whichSNPs,whichSNPs) * b - ...
+        P(whichSNPs,~whichSNPs) * (P(~whichSNPs,~whichSNPs) \ ...
+        (P(~whichSNPs,whichSNPs)*b));
+    nGrad = 1/2 * (sum(nonzeros(Minv.*P)) + sum(b.*c)) * (-1/nn^2);
+end
 end
 
