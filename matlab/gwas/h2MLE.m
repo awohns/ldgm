@@ -30,7 +30,7 @@ end
 
 addRequired(p, 'alphahat', @(x)isvector(x) || iscell(x))
 addRequired(p, 'P', @(x)ismatrix(x) || iscell(x))
-addOptional(p, 'nn', 1, @isscalar)
+addOptional(p, 'nn', 1e3, @isscalar)
 addOptional(p, 'whichSNPs', cellfun(@(x){true(size(x))},alphahat), @(x)isvector(x) || iscell(x))
 addOptional(p, 'annot', ones(mm,1), @(x)size(x,1)==mm || iscell(x))
 addOptional(p, 'linkFn', @(a,x)max(a*x,0), @(f)isa(f,'function_handle'))
@@ -41,6 +41,8 @@ addOptional(p, 'maxReps', 1e4, @isscalar)
 addOptional(p, 'minReps', 2, @isscalar)
 addOptional(p, 'method', 'gradient', @isstr)
 addOptional(p, 'noVarianceEstimate', 0, @isscalar)
+addOptional(p, 'fixedIntercept', false, @isscalar)
+addOptional(p, 'printStuff', false, @isscalar)
 
 parse(p, alphahat, P, varargin{:});
 
@@ -52,96 +54,78 @@ for k=1:numel(fields)
 end
 
 noAnnot = size(annot{1},2);
+annotSum = cellfun(@(x){sum(x,1)},annot);
+annotSum = sum(vertcat(annotSum{:}));
+
 noBlocks = length(annot);
 if isempty(params)
     params = zeros(noAnnot,1);
 end
-noParams = length(params);
 smallNumber = 1e-12;
+noParams = length(params);
 
-objFn = @(params)-GWASlikelihood(alphahat,...
-    cellfun(@(x){linkFn(x, params)}, annot),...
-    P, nn, whichSNPs);
+annot_unnormalized = annot;
+annot = cellfun(@(a){mm*a./annotSum},annot);
+
+
+if fixedIntercept
+    objFn = @(params)-GWASlikelihood(alphahat,...
+        cellfun(@(x){linkFn(x, params)}, annot),...
+        P, nn, whichSNPs);
+    
+else
+    objFn = @(params)-GWASlikelihood(alphahat,...
+        cellfun(@(x){linkFn(x, params(1:end-1))}, annot),...
+        P, 1/max(smallNumber, params(end)), whichSNPs);
+    params(end+1) = 1/nn;
+end
 
 newObjVal = objFn(params);
 
 
-gradient = 1e-9*randn(noParams,1);
+gradient = zeros(noParams,1);
+stepSize = ones(noParams+1-fixedIntercept,1)/nn;
 
-
-method = p.Results.method;
-if strcmp(method,'coordinate')
-    minReps = minReps * noParams;
-end
-if 1 %strcmp(method,'coordinate') || strcmp(method,'weighted_gradient')
-    
-    stepSize = [1./sum(annot{1})'.^2/nn; ones(noParams-noAnnot,1)];
-    %         stepSize = ones(noParams,1)/nn/mm^2;
-    
-elseif strcmp(method,'gradient')
-    warning('This method seems to work poorly')
-    stepSize = ones(noParams,1)/nn/mm^2;
-else
-    error('Valid options for optimization method are coordinate, weighted_gradient, gradient')
-end
-% dampening = 0;
-
-allSteps=zeros(min(maxReps,1e6),noParams);
+allSteps=zeros(min(maxReps,1e6),noParams+1-fixedIntercept);
 allValues=zeros(min(maxReps,1e6),1);
 allStepSizes=allSteps;
 allGradients=allSteps;
 
 for rep=1:maxReps
-    
+    if printStuff
+        disp(rep)
+    end
     oldGradient=gradient;
-    if strcmp(method,'gradient')
-        gradient = 0;
-        whichParam = 1:noParams;
-        for block = 1:noBlocks
-            sigmasq = linkFn(annot{block}, params);
-            sigmasqGrad = linkFnGrad(annot{block}, params);
-            gradient = gradient + ...
-                GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},nn,sigmasqGrad,whichSNPs{block})';
-        end
-    else
-        gradient = zeros(noParams,1);
-        if strcmp(method,'weighted_gradient')
-            whichParam = 1:noParams;
-        elseif strcmp(method,'coordinate')
-            whichParam = mod(rep-1,noParams)+1;
-        end
-        for k = whichParam
-            eps = zeros(noParams,1);
-            eps(k) = smallNumber;
-            gradient(k) = (objFn(params + eps) - newObjVal) ./ eps(k);
-        end
-        
+    gradient = 0;
+    for block = 1:noBlocks
+        sigmasq = linkFn(annot{block}, params(1:noParams));
+        sigmasqGrad = linkFnGrad(annot{block}, params(1:noParams));
+        gradient = gradient + ...
+            GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},...
+            nn, sigmasqGrad, whichSNPs{block}, fixedIntercept)';
     end
     
-    % dampening to eliminate oscillations
-    %     gradient = dampening * oldGradient + (1 - dampening) * gradient;
-    %     grad_corr = dot(gradient,oldGradient)/sqrt(sum(gradient.^2)*sum(oldGradient.^2));
-    %     dampening = max(0, min(0.99, dampening - grad_corr * 0.05));
     
     oldObjVal = newObjVal;
     
-    % dealing with threshold effects
-    if all(gradient(whichParam)==0)
-        gradient(whichParam) = -1;
-        stepSize(whichParam) = 1;
+    
+    stepsize_factor = 1.5;% * 4.^(1/(1 + floor((rep-1)/noParams)));
+    
+    allGradients(rep,:) = gradient;
+    %     stepSize = learningRate .* abs(sum(allGradients(1:rep,:),1))' ./ sum(allGradients(1:rep,:).^2,1)';
+    
+    [params, stepSize, newObjVal] = linesearch(params, ...
+        oldObjVal, gradient, objFn, stepSize, stepsize_factor);
+    %         learningRate = sqrt(gradNormSq(1)) * stepSize(1);
+    
+    if ~fixedIntercept
+        nn = 1/max(0,params(end));
     end
-    
-    stepsize_factor = 1.5 * 4.^(1/(1 + floor((rep-1)/noParams)));
-    
-    
-    [params, stepSize(whichParam), newObjVal] = linesearch(params, ...
-        oldObjVal, gradient, objFn, stepSize(whichParam), stepsize_factor);
     
     allValues(rep)=newObjVal;
     if nargout > 1
         allSteps(rep,:)=params;
         allStepSizes(rep,:) = stepSize;
-        allGradients(rep,:) = gradient;
     end
     if rep > minReps
         if allValues(rep-minReps) - newObjVal < convergenceTol * minReps
@@ -162,65 +146,77 @@ if nargout > 1
 end
 
 % From paramaters to h2 estimates
-h2Est = 0;annotSize=0;totalh2=0;
+h2Est = 0;
 for block=1:noBlocks
-    perSNPh2 = linkFn(annot{block}, params);
-    h2Est = h2Est + sum(perSNPh2.*annot{block});
-    annotSize = annotSize + sum(annot{block});
+    perSNPh2 = linkFn(annot{block}, params(1:noParams));
+    h2Est = h2Est + sum(perSNPh2.*annot_unnormalized{block});
 end
 
-estimate.params = params;
+estimate.params = params(1:noParams);
 estimate.h2 = h2Est;
-estimate.annotSum = annotSize;
+estimate.annotSum = annotSum;
+estimate.likelihood = -newObjVal;
+estimate.nn = nn;
 
 % Enrichment only calculated if first annotation is all-ones vector
 if all(cellfun(@(a)all(a(:,1)==1),annot))
-    estimate.enrichment = (h2Est./annotSize) / (h2Est(1)/annotSize(1));
+    estimate.enrichment = (h2Est./annotSum) / (h2Est(1)/annotSum(1));
 end
 
 % Compute covariance of the parameter estimates
 if ~noVarianceEstimate
     smallNumber = 1e-6;
-    gradient = 0;
+    gradient = 0;gradient_k = 0;
     for block = 1:noBlocks
-        sigmasq = linkFn(annot{block}, params);
-        sigmasqGrad = linkFnGrad(annot{block}, params);
+        sigmasq = linkFn(annot{block}, params(1:noParams));
+        sigmasqGrad = linkFnGrad(annot{block}, params(1:noParams));
         gradient = gradient + ...
-            GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},nn,sigmasqGrad,whichSNPs{block})';
+            GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},nn,...
+            sigmasqGrad,whichSNPs{block},fixedIntercept)';
+        if ~fixedIntercept
+            gradient_k = gradient_k + ...
+                GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},...
+                1/(1/nn*(1+smallNumber)),...
+                sigmasqGrad,whichSNPs{block},fixedIntercept)';
+        end
     end
     
-    FI = zeros(noParams);
+    FI = zeros(noParams+1-fixedIntercept);
+    if ~fixedIntercept
+        FI(:,end) = (gradient_k - gradient) / (smallNumber * 1/nn);
+    end
     for k = 1:noParams
         newParams = params;
         newParams(k) = params(k) * (1+smallNumber);
         gradient_k = 0;
         for block = 1:noBlocks
-            sigmasq = linkFn(annot{block}, newParams);
-            sigmasqGrad = linkFnGrad(annot{block}, newParams);
+            sigmasq = linkFn(annot{block}, newParams(1:noAnnot));
+            sigmasqGrad = linkFnGrad(annot{block}, newParams(1:noAnnot));
             gradient_k = gradient_k + ...
-                GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},nn,sigmasqGrad,whichSNPs{block})';
+                GWASlikelihoodGradient(alphahat{block},1./sigmasq,P{block},...
+                nn,sigmasqGrad,whichSNPs{block},fixedIntercept)';
         end
         
         FI(:,k) = (gradient_k - gradient) / (smallNumber * params(k));
     end
     
+    
     % Variance of h2 estimates
     dh2da = 0;
     for block=1:noBlocks
-        dh2da = dh2da + linkFnGrad(annot{block}, params)'*annot{block};
-        
+        dh2da = dh2da + linkFnGrad(annot{block}, params(1:noParams))'*annot_unnormalized{block};
     end
-    h2Var = dh2da'/FI * dh2da;
-    
-    
+    h2Var = dh2da'/FI(1:noParams,1:noParams) * dh2da;
     
     estimate.paramsVar = pinv(FI);
-    estimate.FI = FI;
+    estimate.fisherInfo = FI;
     estimate.h2Var = h2Var;
+    estimate.h2SE = sqrt(diag(h2Var))';
+    estimate.interceptSE = sqrt(estimate.paramsVar(end,end));
     
     if all(cellfun(@(a)all(a(:,1)==1),annot))
-        estimate.enrichmentZscore = (h2Est./annotSize - h2Est(1)/annotSize(1)) ./ ...
-            sqrt(h2Var(1,:)./annotSize.^2 + h2Var(1)./annotSize(1).^2 - 2*h2Var(1,:)*h2Var(1)/annotSize(1)./annotSize);
+        estimate.enrichmentZscore = (h2Est./annotSum - h2Est(1)/annotSum(1)) ./ ...
+            sqrt(h2Var(1,:)./annotSum.^2 + h2Var(1)./annotSum(1).^2 - 2*h2Var(1,:)*h2Var(1)/annotSum(1)./annotSum);
         estimate.enrichmentZscore(1) = 0;
     end
     
@@ -239,10 +235,19 @@ step = step * stepsize_factor;
 
 newObj = objFn(initTheta - step .* grad);
 
-
-while newObj > initObj -  sum(step .* grad.^2) / stepsize_factor
+if newObj > oldObj
+    while newObj > oldObj -  sum(step .* grad.^2) / stepsize_factor
+        step = step / stepsize_factor;
+        newObj = objFn(initTheta - step .* grad);
+    end
+else
+    while newObj < oldObj %-  sum(step .* grad.^2) / stepsize_factor
+        oldObj = newObj;
+        step = step * stepsize_factor;
+        newObj = objFn(initTheta - step .* grad);
+    end
+    newObj = oldObj;
     step = step / stepsize_factor;
-    newObj = objFn(initTheta - step .* grad);
 end
 
 thetaNew = initTheta - step .* grad;
