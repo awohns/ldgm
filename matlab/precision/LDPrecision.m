@@ -13,6 +13,7 @@ function [P, objective_function_value, converged, data] = LDPrecision(R,varargin
 % max_steps: maximum no. gradient descent steps
 % num_steps_check_convergence: checks for convergence every this many steps
 % printstuff: 0, no output; 1, some output; 2, verbose
+% lambda: l1 penalty to increase sparsity of P.
 % Output arguments:
 % objective_function_value: final objective function value
 % converged: whether it terminated at convergence criterion (1) or max
@@ -30,6 +31,7 @@ addParameter(p, 'graphical_model', R~=0);
 addParameter(p, 'printstuff', 1, @isscalar);
 %addParameter(p, 'sample_size', 1, @isscalar);
 addParameter(p, 'num_steps_check_convergence', 100, @isscalar);
+addParameter(p, 'lambda', 0, @isscalar);
 
 %addParameter(p, 'dampening', 0, @isscalar);
 
@@ -40,6 +42,7 @@ G = p.Results.graphical_model;% Graphical model
 convergenceTol = p.Results.convergence_tol;
 numStepsCheckConvergence = p.Results.num_steps_check_convergence;
 printstuff = p.Results.printstuff;
+lambda = p.Results.lambda;
 
 %dampening = p.Results.dampening;
 if ~all(G(P~=0))
@@ -72,7 +75,7 @@ for step = 1:p.Results.max_steps
     
     % gradient of objective function
     oldGradient = gradient;
-    gradient =  sparse(ii,jj,2 * (R(G) - Pinv(G)),mm,mm);
+    gradient =  sparse(ii,jj,2 * (R(G) - Pinv(G)) + lambda * sign(P(G)),mm,mm);
     
     % dampening to eliminate oscillations
     gradient = dampening * oldGradient + (1 - dampening) * gradient;
@@ -138,7 +141,7 @@ end
     function val = objFn(R, omega)
         [L, pp] = chol(omega);
         if pp == 0 % omega is positive definite
-            val =  -0.5 * (sum(2*log(diag(L))) - dot(nonzeros(omega), R(omega~=0)));
+            val =  -0.5 * (sum(2*log(diag(L))) - dot(nonzeros(omega), R(omega~=0))) + lambda * sum(abs(nonzeros(omega)));
         else
             val = inf;
         end
