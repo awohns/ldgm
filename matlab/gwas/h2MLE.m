@@ -84,7 +84,7 @@ newObjVal = objFn(params);
 
 
 gradient = zeros(noParams,1);
-stepSize = ones(noParams+1-fixedIntercept,1)/nn;
+stepSize = ones(noParams+1-fixedIntercept,1)/nn/mm^2;
 
 allSteps=zeros(min(maxReps,1e6),noParams+1-fixedIntercept);
 allValues=zeros(min(maxReps,1e6),1);
