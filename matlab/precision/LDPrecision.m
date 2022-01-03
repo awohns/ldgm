@@ -44,14 +44,17 @@ numStepsCheckConvergence = p.Results.num_steps_check_convergence;
 printstuff = p.Results.printstuff;
 lambda = p.Results.lambda;
 
+smallNumber = 1e-12;
+
 %dampening = p.Results.dampening;
 if ~all(G(P~=0))
     error('Initial precision matrix conflicts with graphical model')
 end
 [ii,jj] = find(G);
+GnoSelfEdges = sparse(ii,jj,ii~=jj,mm,mm);
 
 % objective function
-obj = @(precision)objFn(R, precision);
+obj = @(precision)objFn(R,G,precision);
 objective_function_value = obj(P);
 
 if nargout > 3 || printstuff == 2
@@ -61,7 +64,7 @@ if nargout > 3 || printstuff == 2
     data.gradcorr = zeros(p.Results.max_steps,1);
     data.gradnorm = zeros(p.Results.max_steps,1);
 end
-    
+
 % gradient descent
 tic;
 stepsize = 0.01;
@@ -69,52 +72,54 @@ dampening = 0;
 gradient = G;
 converged = false;
 lastCheckedObj = inf;
-for step = 1:p.Results.max_steps
+for rep = 1:p.Results.max_steps
     
     Pinv = sparseinv(P);
     
     % gradient of objective function
     oldGradient = gradient;
-    gradient =  sparse(ii,jj,2 * (R(G) - Pinv(G)) + lambda * sign(P(G)),mm,mm);
+    penalty = lambda .* sign(P(G));
+    penalty(ii==jj) = 0;
+    gradient =  sparse(ii,jj,(R(G) - Pinv(G)) + penalty,mm,mm);
     
     % dampening to eliminate oscillations
-    gradient = dampening * oldGradient + (1 - dampening) * gradient;
-    grad_corr = corr(gradient(G),oldGradient(G));
-    dampening = max(0, min(0.99, dampening - grad_corr * 0.05));
+%     gradient = dampening * oldGradient + (1 - dampening) * gradient;
+     grad_corr = corr(gradient(G),oldGradient(G));
+%     dampening = max(0, min(0.99, dampening - grad_corr * 0.05));
+%     grad_corr=0;
     
-    
-    % line search to determine step size
-    oldObj = objective_function_value;
+    % backtracking line search to determine step size
     [P, stepsize, objective_function_value] = ...
         linesearch(P, objective_function_value, ...
         gradient, ...
         obj, stepsize);
+
     
     if nargout > 3 || printstuff == 2
-        data.stepsize(step) = stepsize;
-        data.dampening(step) = dampening;
-        data.obj(step) = objective_function_value / mm;
-        data.gradcorr(step) = grad_corr;
-        data.gradnorm(step) = sqrt(sum(nonzeros(gradient.^2)) / mm) ;
+        data.stepsize(rep) = stepsize;
+        data.dampening(rep) = dampening;
+        data.obj(rep) = objective_function_value / mm;
+        data.gradcorr(rep) = grad_corr;
+        data.gradnorm(rep) = sqrt(sum(nonzeros(gradient.^2)) / mm) ;
     end
     
     % sometimes bad descent direction causes step size to drop
     % dramatically, and it takes a long time to reset
-    if stepsize < 1e-6 / mm
-        stepsize = 1;
-        if printstuff == 2 && step > 10
-            warning('Bad descent direction led to small stepsize on step %d', step)
+    if stepsize < 1e-12 / mm
+        stepsize = 0.01;
+        if printstuff == 2 && rep > 10
+            warning('Bad descent direction led to small stepsize on step %d', rep)
         end
     end
     
     % convergence
-    if mod(step,numStepsCheckConvergence)==0
+    if mod(rep,numStepsCheckConvergence)==0
         
         if printstuff == 2
-            fprintf('step %d: F=%.4f, min ||grad||=%.4f\n', step, ...
-                objective_function_value / mm, min(nonzeros(data.gradnorm)))
+            fprintf('step %d: F=%.4f, min ||grad||=%.4f\n', rep, ...
+                full(objective_function_value / mm), full(min(nonzeros(data.gradnorm))))
         elseif printstuff == 1
-            fprintf('%d ',step)
+            fprintf('%d ',rep)
         end
         
         if objective_function_value - lastCheckedObj > - mm  * numStepsCheckConvergence * convergenceTol
@@ -130,6 +135,8 @@ end
 
 if printstuff == 2
     fprintf('\n time = %f\n', toc)
+elseif printstuff == 1
+    fprintf('\n')
 end
 
 if ~converged && printstuff >= 1
@@ -138,43 +145,66 @@ end
 
 
 % objective function
-    function val = objFn(R, omega)
+    function val = objFn(R,G, omega)
         [L, pp] = chol(omega);
         if pp == 0 % omega is positive definite
-            val =  -0.5 * (sum(2*log(diag(L))) - dot(nonzeros(omega), R(omega~=0))) + lambda * sum(abs(nonzeros(omega)));
+            val =  -1 * (sum(2*log(diag(L))) - sum(omega(G).* R(G))) + lambda * sum(abs(omega(GnoSelfEdges)));
         else
             val = inf;
         end
     end
-end
+
+% Step function with penalty
+    function thetaNew = step(thetaInit, grad, stepsize)
+        thetaInit = full(thetaInit(G));
+        grad = full(grad(G));
+        
+        % when starting at 0, shrink gradient toward 0 by lambda
+        grad(thetaInit == smallNumber) = sign(grad(thetaInit == smallNumber))...
+            .* max(0, abs(grad(thetaInit == smallNumber)) - lambda);
+        
+        % update theta
+        thetaNew = thetaInit - stepsize * grad;
+        
+        % if theta switches sign, set to smallNumber (not 0 for numerical
+        % reasons)
+        thetaNew(sign(thetaNew).*sign(thetaInit)==-1) = smallNumber;
+        
+        thetaNew = sparse(ii,jj,thetaNew,mm,mm);
+        
+    end
 
 % line search to find optimal step size
-function [thetaNew, step, newObj] = linesearch(initTheta, initObj, grad, objFn, step)
-
-oldObj = initObj;
-stepsize_factor = 1.5;
-
-if ~isreal(oldObj); error('objective function value should be real at initial point for line search'); end
-
-step = step * stepsize_factor;
-
-newObj = objFn(initTheta - step * grad);
-if 0
-    while newObj < oldObj
-        step = step * stepsize_factor;
-        oldObj = newObj;
-        newObj = objFn(initTheta - step * grad);
+    function [thetaNew, stepsize, newObj] = linesearch(thetaInit, initObj, grad, objFn, stepsize)
+        
+        oldObjVal = initObj;
+        stepsize_factor = 2;
+        
+        if ~isreal(oldObjVal); error('objective function value should be real at initial point for line search'); end
+        
+        stepsize = stepsize * sqrt(stepsize_factor);
+        
+        thetaNew = step(thetaInit, grad, stepsize);
+        newObj = objFn(thetaNew);
+        if 0
+            while newObj < oldObjVal
+                stepsize = stepsize * stepsize_factor;
+                oldObjVal = newObj;
+                newObj = objFn(step(thetaInit, grad, stepsize));
+            end
+            
+            stepsize = stepsize / stepsize_factor;
+            newObj = oldObjVal;
+        end
+        
+        while newObj > initObj %- step * sum(nonzeros(grad).^2) / stepsize_factor
+            stepsize = stepsize / stepsize_factor;
+            thetaNew = step(thetaInit, grad, stepsize);
+            newObj = objFn(thetaNew);
+        end
+        
     end
-    
-    step = step / stepsize_factor;
-    newObj = oldObj;
+
 end
 
-while newObj > initObj %- step * sum(nonzeros(grad).^2) / stepsize_factor
-    step = step / stepsize_factor;
-    newObj = objFn(initTheta - step * grad);
-end
-
-thetaNew = initTheta - step * grad;
-end
 

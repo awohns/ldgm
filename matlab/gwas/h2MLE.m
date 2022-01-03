@@ -214,9 +214,9 @@ if ~noVarianceEstimate
     estimate.h2SE = sqrt(diag(h2Var))';
     estimate.interceptSE = sqrt(estimate.paramsVar(end,end));
     
-    if all(cellfun(@(a)all(a(:,1)==1),annot))
+    if all(cellfun(@(a)all(a(:,1)==1),annot_unnormalized))
         estimate.enrichmentZscore = (h2Est./annotSum - h2Est(1)/annotSum(1)) ./ ...
-            sqrt(h2Var(1,:)./annotSum.^2 + h2Var(1)./annotSum(1).^2 - 2*h2Var(1,:)*h2Var(1)/annotSum(1)./annotSum);
+            sqrt(h2Var(1,:)./annotSum.^2 + h2Var(1)./annotSum(1).^2 - 2*h2Var(1,:)/annotSum(1)./annotSum);
         estimate.enrichmentZscore(1) = 0;
     end
     
