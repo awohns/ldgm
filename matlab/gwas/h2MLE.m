@@ -1,4 +1,4 @@
-function [estimate, steps] = h2MLE(alphahat,P,varargin)
+function [estimate, steps, objFn] = h2MLE(alphahat,P,varargin)
 %h2MLE computes maximum-likelihood heritability estimates using gradient
 %descent and LDGMs
 %   Inputs:
@@ -39,10 +39,13 @@ addOptional(p, 'params', [], @isvector)
 addOptional(p, 'convergenceTol', 1e-6, @isscalar)
 addOptional(p, 'maxReps', 1e4, @isscalar)
 addOptional(p, 'minReps', 2, @isscalar)
-addOptional(p, 'method', 'gradient', @isstr)
 addOptional(p, 'noVarianceEstimate', 0, @isscalar)
 addOptional(p, 'fixedIntercept', false, @isscalar)
 addOptional(p, 'printStuff', false, @isscalar)
+addOptional(p, 'stepSizeMethod', 'adagrad', @isstr)
+addOptional(p, 'stepMemory', 3, @isscalar)
+addOptional(p, 'momentumParam', 0, @(x)isscalar(x) & x<1 & x>=0)
+addOptional(p, 'stepSizeFactor', 1.5, @(x)isscalar(x) & x>1)
 
 parse(p, alphahat, P, varargin{:});
 
@@ -65,8 +68,8 @@ smallNumber = 1e-12;
 noParams = length(params);
 
 annot_unnormalized = annot;
-annot = cellfun(@(a){mm*a./annotSum},annot);
-
+annot = cellfun(@(a){mm*a./max(1,annotSum)},annot);
+annotCat = vertcat(annot{:});
 
 if fixedIntercept
     objFn = @(params)-GWASlikelihood(alphahat,...
@@ -84,7 +87,7 @@ newObjVal = objFn(params);
 
 
 gradient = zeros(noParams,1);
-stepSize = ones(noParams+1-fixedIntercept,1)/nn/mm^2;
+stepSizeVector = ones(noParams,1)/nn/mm^2;
 
 allSteps=zeros(min(maxReps,1e6),noParams+1-fixedIntercept);
 allValues=zeros(min(maxReps,1e6),1);
@@ -108,15 +111,33 @@ for rep=1:maxReps
     
     oldObjVal = newObjVal;
     
-    
-    stepsize_factor = 1.5;% * 4.^(1/(1 + floor((rep-1)/noParams)));
-    
     allGradients(rep,:) = gradient;
-    %     stepSize = learningRate .* abs(sum(allGradients(1:rep,:),1))' ./ sum(allGradients(1:rep,:).^2,1)';
+    gradient = (1 - momentumParam) * gradient + momentumParam * oldGradient;
     
-    [params, stepSize, newObjVal] = linesearch(params, ...
-        oldObjVal, gradient, objFn, stepSize, stepsize_factor);
+    if strcmp(stepSizeMethod,'adagrad')
+        newStepSizeVector = 1 ./...
+            sqrt(sum(allGradients(max(1,rep-stepMemory):rep,:).^2,1))';
+    elseif strcmp(stepSizeMethod,'adagrad2')
+        newStepSizeVector = abs(sum(allGradients(max(1,rep-stepMemory):rep,:)))' ./...
+            (sum(allGradients(max(1,rep-stepMemory):rep,:).^2,1))';
+    else
+        newStepSizeVector = ones(size(gradient));
+    end
+    newStepSizeVector(newStepSizeVector==inf)=0;
+    newStepSizeVector = newStepSizeVector * norm(stepSizeVector)/norm(newStepSizeVector);
+    
+    [params, stepSizeVector, newObjVal] = linesearch(params, ...
+        oldObjVal, gradient, objFn, newStepSizeVector, stepSizeFactor);
     %         learningRate = sqrt(gradNormSq(1)) * stepSize(1);
+    
+    %
+    perSNPh2 = (annotCat*params(1:noAnnot));
+    negAnnot = find(all(perSNPh2 .* annotCat <= 0),1);
+    idx=annotCat(:,negAnnot)~=0;
+    if any(idx)
+        params(negAnnot) = params(negAnnot) - max(perSNPh2(idx)./annotCat(idx,negAnnot));
+    end
+    
     
     if ~fixedIntercept
         nn = 1/max(0,params(end));
@@ -125,7 +146,7 @@ for rep=1:maxReps
     allValues(rep)=newObjVal;
     if nargout > 1
         allSteps(rep,:)=params;
-        allStepSizes(rep,:) = stepSize;
+        allStepSizes(rep,:) = stepSizeVector;
     end
     if rep > minReps
         if allValues(rep-minReps) - newObjVal < convergenceTol * minReps
@@ -159,7 +180,7 @@ estimate.likelihood = -newObjVal;
 estimate.nn = nn;
 
 % Enrichment only calculated if first annotation is all-ones vector
-if all(cellfun(@(a)all(a(:,1)==1),annot))
+if all(cellfun(@(a)all(a(:,1)==1),annot_unnormalized))
     estimate.enrichment = (h2Est./annotSum) / (h2Est(1)/annotSum(1));
 end
 
@@ -200,6 +221,11 @@ if ~noVarianceEstimate
         FI(:,k) = (gradient_k - gradient) / (smallNumber * params(k));
     end
     
+    if any(diag(FI)==0)
+        warning('Some parameters have zero fisher information. Regularizing FI matrix to obtain standard errors.')
+        FI = FI + smallNumber*eye(size(FI));
+    end
+    
     
     % Variance of h2 estimates
     dh2da = 0;
@@ -216,7 +242,7 @@ if ~noVarianceEstimate
     
     if all(cellfun(@(a)all(a(:,1)==1),annot_unnormalized))
         estimate.enrichmentZscore = (h2Est./annotSum - h2Est(1)/annotSum(1)) ./ ...
-            sqrt(h2Var(1,:)./annotSum.^2 + h2Var(1)./annotSum(1).^2 - 2*h2Var(1,:)/annotSum(1)./annotSum);
+            sqrt(diag(h2Var)'./annotSum.^2 + h2Var(1)./annotSum(1).^2 - 2*h2Var(1,:)/annotSum(1)./annotSum);
         estimate.enrichmentZscore(1) = 0;
     end
     
