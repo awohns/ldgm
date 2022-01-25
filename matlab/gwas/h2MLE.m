@@ -114,14 +114,14 @@ for rep=1:maxReps
     allGradients(rep,:) = gradient;
     gradient = (1 - momentumParam) * gradient + momentumParam * oldGradient;
     
-    if strcmp(stepSizeMethod,'adagrad')
+    if strcmp(stepSizeMethod,'adagrad') && rep > 1
         newStepSizeVector = 1 ./...
-            sqrt(sum(allGradients(max(1,rep-stepMemory):rep,:).^2,1))';
-    elseif strcmp(stepSizeMethod,'adagrad2')
+            sqrt(mean(allGradients(max(2,rep-stepMemory):rep,:).^2,1))';
+    elseif strcmp(stepSizeMethod,'adagrad2') && rep > 1
         newStepSizeVector = abs(sum(allGradients(max(1,rep-stepMemory):rep,:)))' ./...
             (sum(allGradients(max(1,rep-stepMemory):rep,:).^2,1))';
     else
-        newStepSizeVector = ones(size(gradient));
+        newStepSizeVector = stepSizeVector;
     end
     newStepSizeVector(newStepSizeVector==inf)=0;
     newStepSizeVector = newStepSizeVector * norm(stepSizeVector)/norm(newStepSizeVector);
@@ -262,7 +262,7 @@ step = step * stepsize_factor;
 newObj = objFn(initTheta - step .* grad);
 
 if newObj > oldObj
-    while newObj > oldObj -  sum(step .* grad.^2) / stepsize_factor
+    while newObj > oldObj %-  sum(step .* grad.^2) / 10
         step = step / stepsize_factor;
         newObj = objFn(initTheta - step .* grad);
     end
