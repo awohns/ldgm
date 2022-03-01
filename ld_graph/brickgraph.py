@@ -12,12 +12,12 @@ from . import utility
 
 class BrickGraph:
     """
-    Each brick has six nodes:
+    Each brick has three nodes (labeled or unlabeled)
     0: up before
     1: up after
-    2: down before
-    3: down after
-    4: in
+    2: down
+    3: in up before
+    4: in down/up after
     5: out
     """
 
@@ -38,25 +38,39 @@ class BrickGraph:
         else:
             return np.log(odds)
 
-    def add_edge_threshold(self, from_node, to_node, weight):
+    def add_edge_threshold(self, from_node, to_node, weight, add_metadata):
         if weight <= 0:
             weight = 0
-        if self.threshold is not None:
-            if weight < self.threshold:
+        if add_metadata is False:
+            if self.threshold is not None:
+                if weight < self.threshold:
+                    self.brick_graph.add_edge(from_node, to_node, weight=weight)
+            else:
                 self.brick_graph.add_edge(from_node, to_node, weight=weight)
         else:
-            self.brick_graph.add_edge(from_node, to_node, weight=weight)
+            if self.threshold is not None:
+                if weight < self.threshold:
+                    self.brick_graph.add_edge(
+                        from_node, to_node, weight=weight, edge_type=add_metadata
+                    )
+            else:
+                self.brick_graph.add_edge(
+                    from_node, to_node, weight=weight, edge_type=add_metadata
+                )
 
     def vertex(self, edge_id, down, after, out):
         vertex_id = 6 * edge_id
         if edge_id in self.labeled_bricks:
             if out:
+                vertex_id += 2
+            elif not after:
                 vertex_id += 1
-            return vertex_id + 4
-        if down:
-            vertex_id += 2
-        if after:
-            vertex_id += 1
+            return vertex_id + 3
+        else:
+            if down:
+                vertex_id += 2
+            elif after:
+                vertex_id += 1
         return vertex_id
 
     def connect_vertices(
@@ -70,6 +84,7 @@ class BrickGraph:
         after_b=False,
         reverse_odds=False,
         combine_odds="division",
+        add_metadata=False,
     ):
         """
         Up and before are default for both verticies
@@ -90,19 +105,23 @@ class BrickGraph:
             weight = self.log_odds(1)
         else:
             raise ValueError("Incorrect combine_odds method")
-        self.add_edge_threshold(vertex_a, vertex_b, weight)
+        self.add_edge_threshold(vertex_a, vertex_b, weight, add_metadata)
 
-    def rule_one(self, edge, children, roots):
+    def rule_one(self, edge, children, roots, add_metadata):
         """
         Rule 1:
         Connect focal brick (indexed by edge.child) to its child bricks
         """
         focal_node = edge.child
+        if add_metadata:
+            add_metadata = 1
         for child in children:
             assert self.node_edge_dict[child] != self.node_edge_dict[focal_node]
             # Up before of child to up before of parent
             self.connect_vertices(
-                self.node_edge_dict[child], self.node_edge_dict[focal_node]
+                self.node_edge_dict[child],
+                self.node_edge_dict[focal_node],
+                add_metadata=add_metadata,
             )
 
             # Up after of child to up after of parent
@@ -111,39 +130,33 @@ class BrickGraph:
                 self.node_edge_dict[focal_node],
                 after_a=True,
                 after_b=True,
+                add_metadata=add_metadata,
             )
 
-            # Down before of parent to down before of child
+            # Down of parent to down of child
             self.connect_vertices(
                 self.node_edge_dict[focal_node],
                 self.node_edge_dict[child],
                 down_a=True,
                 down_b=True,
                 reverse_odds=True,
-            )
-
-            # Down after of parent to down after of child
-            self.connect_vertices(
-                self.node_edge_dict[focal_node],
-                self.node_edge_dict[child],
-                after_a=True,
-                after_b=True,
-                down_a=True,
-                down_b=True,
-                reverse_odds=True,
+                add_metadata=add_metadata,
             )
 
         # Connect focal brick to its parent brick, making same connections as above
         if edge.parent not in roots and focal_node not in roots:
             assert self.node_edge_dict[focal_node] != self.node_edge_dict[edge.parent]
             self.connect_vertices(
-                self.node_edge_dict[focal_node], self.node_edge_dict[edge.parent]
+                self.node_edge_dict[focal_node],
+                self.node_edge_dict[edge.parent],
+                add_metadata=add_metadata,
             )
             self.connect_vertices(
                 self.node_edge_dict[focal_node],
                 self.node_edge_dict[edge.parent],
                 after_a=True,
                 after_b=True,
+                add_metadata=add_metadata,
             )
             self.connect_vertices(
                 self.node_edge_dict[edge.parent],
@@ -151,19 +164,14 @@ class BrickGraph:
                 down_a=True,
                 down_b=True,
                 reverse_odds=True,
-            )
-            self.connect_vertices(
-                self.node_edge_dict[edge.parent],
-                self.node_edge_dict[focal_node],
-                after_a=True,
-                after_b=True,
-                down_a=True,
-                down_b=True,
-                reverse_odds=True,
+                add_metadata=add_metadata,
             )
 
-    def rule_two(self, edge, siblings):
+    def rule_two(self, edge, siblings, add_metadata):
         # Rule 2: Connect focal brick to its siblings
+        if add_metadata:
+            add_metadata = 2
+
         if len(siblings) > 1:
             for pair in itertools.combinations(siblings, 2):
                 # Up before left to down before right
@@ -172,6 +180,7 @@ class BrickGraph:
                     self.node_edge_dict[pair[1]],
                     down_b=True,
                     combine_odds="multiply",
+                    add_metadata=add_metadata,
                 )
                 # Up before right to down before left
                 self.connect_vertices(
@@ -179,6 +188,7 @@ class BrickGraph:
                     self.node_edge_dict[pair[0]],
                     down_b=True,
                     combine_odds="multiply",
+                    add_metadata=add_metadata,
                 )
                 # Up after left to down after right
                 self.connect_vertices(
@@ -188,6 +198,7 @@ class BrickGraph:
                     after_b=True,
                     down_b=True,
                     combine_odds="multiply",
+                    add_metadata=add_metadata,
                 )
                 # Up after right to down after left
                 self.connect_vertices(
@@ -197,6 +208,7 @@ class BrickGraph:
                     after_b=True,
                     down_b=True,
                     combine_odds="multiply",
+                    add_metadata=add_metadata,
                 )
 
     def rule_three(self, edges, child):
@@ -224,18 +236,18 @@ class BrickGraph:
                     combine_odds="self",
                 )
 
-    def make_connections(self, edge, tree2, index):
+    def make_connections(self, edge, tree2, index, add_metadata):
         roots = tree2.roots
         children = tree2.children(edge.child)
-        siblings = tree2.children(edge.parent)
-        self.rule_one(edge, children, roots)
-        if self.threshold is not None:
-            if self.log_odds(self.find_odds(edge.id) ** 2) < self.threshold:
-                self.rule_two(edge, siblings)
-        else:
-            self.rule_two(edge, siblings)
+        _ = tree2.children(edge.parent)
+        self.rule_one(edge, children, roots, add_metadata)
+        # if self.threshold is not None:
+        #    if self.log_odds(self.find_odds(edge.id) ** 2) < self.threshold:
+        #        self.rule_two(edge, siblings, add_metadata)
+        # else:
+        #    self.rule_two(edge, siblings, add_metadata)
 
-    def make_brick_graph(self):
+    def make_brick_graph(self, add_metadata=False):
         """
         Given a "bricked" ts, connect bricks according to three rules:
         1. Connect parent and child bricks
@@ -262,7 +274,12 @@ class BrickGraph:
         self.node_edge_dict = {}
 
         # Rule Zero
-        # For unlabeled nodes: connect down before to up after (within a brick)
+        # For unlabeled nodes: connect down to up after (within a brick)
+        if add_metadata:
+            metadata = 0
+        else:
+            metadata = add_metadata
+
         for brick in self.unlabeled_bricks:
             self.connect_vertices(
                 brick,
@@ -270,6 +287,7 @@ class BrickGraph:
                 down_a=True,
                 after_b=True,
                 combine_odds="self",
+                add_metadata=metadata,
             )
 
         for index, (tree2, (_, edges_out, edges_in)) in tqdm(
@@ -285,6 +303,6 @@ class BrickGraph:
             for edge in edges_in:
                 self.node_edge_dict[edge.child] = edge.id
             for edge in edges_in:
-                self.make_connections(edge, tree2, index)
+                self.make_connections(edge, tree2, index, add_metadata=add_metadata)
 
         return self.brick_graph
