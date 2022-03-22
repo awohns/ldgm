@@ -1,6 +1,8 @@
 """
 Create a reduced SNP graph
 """
+import collections
+
 import networkx as nx
 import numpy as np
 from tqdm import tqdm
@@ -9,10 +11,14 @@ from . import utility
 
 
 class SNP_Graph:
-    def __init__(self, brick_graph, brick_ts, threshold, progress=True):
+    def __init__(
+        self, brick_graph, brick_ts, threshold, make_snp_snp_edges=True, progress=True
+    ):
         self.brick_graph = brick_graph
+        self.brick_ts = brick_ts
         self.threshold = threshold
         self.progress = progress
+        self.make_snp_snp_edges = make_snp_snp_edges
 
         # Tree sequence must contain mutations
         if brick_ts.num_mutations == 0:
@@ -39,26 +45,77 @@ class SNP_Graph:
     def create_reduced_graph(self):
         nodes = np.array(list(self.brick_graph.nodes()))
         # l_in = nodes[nodes % 6 == 4]
-        l_out = nodes[nodes % 6 == 5]
+        l_out = nodes[nodes % 8 == 4]
 
-        R = nx.Graph()
-        R.add_nodes_from([self.bricks_to_muts[node // 6][0] for node in l_out])
+        R = nx.DiGraph()
+        R.add_nodes_from([self.bricks_to_muts[node // 8][0] for node in l_out])
         # assert len(l_in) == len(l_out)
 
+        reach_star_sets = collections.defaultdict(list)
+        # For each out vertex, find the reach set given a threshold
         for u in tqdm(
             l_out,
             desc="Reduce graph: iterate over out nodes",
             disable=not self.progress,
         ):
-            length = nx.single_source_dijkstra_path_length(
+            reach_set = nx.single_source_dijkstra_path_length(
                 self.brick_graph, u, cutoff=self.threshold, weight="weight"
             )
-            for key, value in length.items():
-                if key % 6 == 4 and key // 6 != u // 6:
-                    R.add_edge(
-                        self.bricks_to_muts[u // 6][0],
-                        self.bricks_to_muts[key // 6][0],
-                        weight=value,
-                    )
+            for vertex, weight in reach_set.items():
+                brick_haplo_id = vertex // 8
+                # that it is either labeled brick or haplotype
+                is_haplo = vertex % 8 == 5
+                # If brick id is in labeled list and not a haplotype,
+                # it's a labeled brick
+                is_labeled_brick = (
+                    brick_haplo_id in list(self.bricks_to_muts.keys())
+                ) and not is_haplo
+                if is_labeled_brick and self.make_snp_snp_edges:
+                    # Make sure the vertex in the reach set is a before
+                    # node, not after node
+                    if vertex % 8 == 0 or vertex % 8 == 2:
+                        # Check that the reach set does NOT contain after
+                        # TODO make this a one liner
+                        if (brick_haplo_id + 1) not in reach_set and (
+                            brick_haplo_id + 3
+                        ) not in reach_set:
+                            # Make connection from SNP to SNP or to haplotype
+                            reach_star_sets[u].append(vertex)
+                            R.add_edge(
+                                self.bricks_to_muts[u // 8][0],
+                                self.bricks_to_muts[brick_haplo_id][0],
+                                weight=weight,
+                            )
+                            R.add_edge(
+                                self.bricks_to_muts[brick_haplo_id][0],
+                                self.bricks_to_muts[u // 8][0],
+                                weight=weight,
+                            )
+                elif is_haplo:
+                    if vertex % 8 == 5 and (brick_haplo_id * 8 + 6) not in reach_set:
+                        # Use -brick_haplo_id - 1 to avoid haplotype and brick id
+                        # collision
+                        reach_star_sets[u].append(vertex)
+                        R.add_edge(
+                            self.bricks_to_muts[u // 8][0],
+                            -brick_haplo_id - 1,
+                            weight=weight,
+                        )
 
-        return R, self.mut_node
+        if False:
+            brick_child = self.brick_ts.tables.edges.child
+            for u in tqdm(
+                l_out,
+                desc="Reduce graph: look at haplotype child of each out node",
+                disable=not self.progress,
+            ):
+                brick_id = u // 8
+                for key, reach_set in reach_star_sets.items():
+                    if brick_child[brick_id] in reach_set and brick_id != u // 8:
+                        R.add_edge(
+                            self.bricks_to_muts[brick_id][0],
+                            self.bricks_to_muts[key // 8][0],
+                            weight=weight,
+                        )
+
+        return R, self.mut_node, reach_star_sets
