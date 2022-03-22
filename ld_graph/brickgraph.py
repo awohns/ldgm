@@ -26,12 +26,13 @@ class BrickGraph:
     brick/haplo_index * 8 + desired_node_type_id
     """
 
-    def __init__(self, bricked_ts, threshold, progress=True):
+    def __init__(self, bricked_ts, threshold, use_rule_two=False, progress=True):
         self.bricked_ts = bricked_ts
         self.threshold = threshold
         self.brick_graph = nx.DiGraph()
         self.freqs = utility.get_brick_frequencies(self.bricked_ts)
         self.progress = progress
+        self.use_rule_two = use_rule_two
 
     def find_odds(self, brick):
         return self.freqs[brick] / (1 - self.freqs[brick])
@@ -114,8 +115,8 @@ class BrickGraph:
         focal_node = edge.child
 
         def do_rule_one(parent, child):
-            labeled_parent = parent in self.labeled_bricks
-            labeled_child = child in self.labeled_bricks
+            labeled_parent = self.node_edge_dict[parent] in self.labeled_bricks
+            labeled_child = self.node_edge_dict[child] in self.labeled_bricks
             assert self.node_edge_dict[child] != self.node_edge_dict[parent]
 
             # Up after of child to up after of parent
@@ -188,7 +189,7 @@ class BrickGraph:
                     (pair_combo[1], pair_combo[0]),
                 ):
                     assert pair[0] != pair[1]
-                    labeled_0 = pair[0] in self.labeled_bricks
+                    labeled_0 = self.node_edge_dict[pair[0]] in self.labeled_bricks
                     # Up after left to down after right
                     self.connect_vertices(
                         self.node_edge_dict[pair[0]],
@@ -223,11 +224,12 @@ class BrickGraph:
         children = tree2.children(edge.child)
         siblings = tree2.children(edge.parent)
         self.rule_one(edge, children, roots)
-        if self.threshold is not None:
-            if self.log_odds(self.find_odds(edge.id) ** 2) < self.threshold:
+        if self.use_rule_two:
+            if self.threshold is not None:
+                if self.log_odds(self.find_odds(edge.id) ** 2) < self.threshold:
+                    self.rule_two(edge, siblings)
+            else:
                 self.rule_two(edge, siblings)
-        else:
-            self.rule_two(edge, siblings)
 
     def make_brick_graph(self):
         """

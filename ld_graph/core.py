@@ -15,21 +15,25 @@ def brick_ts(ts, threshold, add_dummy_bricks=False, progress=True):
     return bricked
 
 
-def brick_graph(brick_ts, threshold=None, progress=True):
+def brick_graph(brick_ts, threshold=None, use_rule_two=False, progress=True):
     """
     Make a brick graph
     """
-    brick_grapher = brickgraph.BrickGraph(brick_ts, threshold, progress=progress)
+    brick_grapher = brickgraph.BrickGraph(
+        brick_ts, threshold, use_rule_two=use_rule_two, progress=progress
+    )
     bricked_graph = brick_grapher.make_brick_graph()
     return bricked_graph
 
 
-def reduce_graph(brick_graph, brick_ts, threshold, progress=True):
+def reduce_graph(
+    brick_graph, brick_ts, threshold, make_snp_snp_edges=True, progress=True
+):
     """
     Make a reduced graph from a brick graph and bricked tree sequence
     """
     snp_grapher = reduction.SNP_Graph(
-        brick_graph, brick_ts, threshold, progress=progress
+        brick_graph, brick_ts, threshold, make_snp_snp_edges, progress=progress
     )
     reduced_graph = snp_grapher.create_reduced_graph()
     return reduced_graph
