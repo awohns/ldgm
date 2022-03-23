@@ -59,7 +59,11 @@ def reduce(
     )
     # Step 3 compute reach* and create SNP-haplo graph
     reduced = reduce_graph(
-        bricked_graph, bts, path_threshold, make_snp_snp_edges=True, progress=progress
+        bricked_graph,
+        bts,
+        threshold=path_threshold,
+        make_snp_snp_edges=True,
+        progress=progress,
     )
     H1 = reduced[0]
     # Step 4: brickgraph with rule two
@@ -70,7 +74,7 @@ def reduce(
     reduced_rule_two = reduce_graph(
         brickgraph_rule_two,
         bts,
-        path_threshold,
+        threshold=path_threshold,
         make_snp_snp_edges=True,
         progress=progress,
     )
@@ -82,7 +86,7 @@ def reduce(
     nodes = list(H_12_reduced.nodes())
     for node in nodes:
         if node < 0:
-            H_12_reduced = utility.remove_node(H_12_reduced, node)
+            H_12_reduced = utility.remove_node(H_12_reduced, node, path_threshold)
     H_12_reduced = H_12_reduced.to_undirected()
 
     return H_12_reduced
