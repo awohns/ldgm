@@ -46,25 +46,33 @@ def reduce(
     ts,
     path_threshold,
     recombination_threshold=None,
-    rule_two_threshold=None,
     progress=True,
 ):
     # Step 1: brick ts
     bts = brick_ts(ts, threshold=recombination_threshold, progress=progress)
     # Step 2 is brickgraph with no rule two
     bricked_graph = brick_graph(
-        bts, rule_two_threshold, progress=progress, use_rule_two=False
+        bts,
+        path_threshold,
+        progress=progress,
+        use_rule_two=False,
     )
     # Step 3 compute reach* and create SNP-haplo graph
     reduced = reduce_graph(
-        bricked_graph, bts, path_threshold, make_snp_snp_edges=True, progress=True
+        bricked_graph, bts, path_threshold, make_snp_snp_edges=True, progress=progress
     )
     H1 = reduced[0]
     # Step 4: brickgraph with rule two
-    brickgraph_rule_two = brick_graph(bts, use_rule_two=True, progress=True)
+    brickgraph_rule_two = brick_graph(
+        bts, path_threshold, use_rule_two=True, progress=progress
+    )
     # Step 5: reduce brickgraph created with rule two
     reduced_rule_two = reduce_graph(
-        brickgraph_rule_two, bts, path_threshold, make_snp_snp_edges=True, progress=True
+        brickgraph_rule_two,
+        bts,
+        path_threshold,
+        make_snp_snp_edges=True,
+        progress=progress,
     )
     H2 = reduced_rule_two[0]
     # Step 6: combine H1 and H2

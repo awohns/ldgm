@@ -101,7 +101,7 @@ class BrickGraph:
                 raise ValueError("odds of sink brick are 0")
             weight = abs(self.log_odds(odds_a / odds_b))
         elif combine_odds == "rule_two":
-            weight = self.log_odds(odds_a * odds_b)
+            weight = abs(self.log_odds(odds_a * odds_b))
         elif combine_odds == "haplo":
             weight = self.log_odds(1)
         else:
