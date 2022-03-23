@@ -118,4 +118,4 @@ class SNP_Graph:
                             weight=weight,
                         )
 
-        return R, self.mut_node, reach_star_sets
+        return R.to_undirected(), self.mut_node, reach_star_sets

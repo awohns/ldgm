@@ -35,18 +35,17 @@ class BrickGraph:
         self.use_rule_two = use_rule_two
 
     def find_odds(self, brick):
-        return self.freqs[brick] / (1 - self.freqs[brick])
+        odds = self.freqs[brick] / (1 - self.freqs[brick])
+        assert odds != 0, odds
+        return odds
 
     def log_odds(self, odds):
-        # TODO check why for numerical reasons we do this
         if odds != 1:
             return np.log(odds) * -1
         else:
             return np.log(odds)
 
     def add_edge_threshold(self, from_node, to_node, weight):
-        if weight <= 0:
-            weight = 0
         if self.threshold is not None:
             if weight < self.threshold:
                 self.brick_graph.add_edge(from_node, to_node, weight=weight)
@@ -98,7 +97,9 @@ class BrickGraph:
         odds_a = self.find_odds(id_a)
         odds_b = self.find_odds(id_b)
         if combine_odds == "rule_one":
-            weight = self.log_odds(odds_a / odds_b)
+            if odds_b == 0:
+                raise ValueError("odds of sink brick are 0")
+            weight = abs(self.log_odds(odds_a / odds_b))
         elif combine_odds == "rule_two":
             weight = self.log_odds(odds_a * odds_b)
         elif combine_odds == "haplo":
@@ -217,6 +218,7 @@ class BrickGraph:
                             self.node_edge_dict[pair[1]],
                             out=True,
                             down_b=True,
+                            combine_odds="rule_two",
                         )
 
     def make_connections(self, edge, tree2, index):
