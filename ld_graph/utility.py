@@ -2,6 +2,7 @@
 Utility functions
 """
 import collections
+import itertools
 
 import numpy as np
 
@@ -151,6 +152,30 @@ def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
     # Then make a new brick tree sequence
     tables.sort()
     return tables.tree_sequence()
+
+
+def remove_node(g, node):
+    if g.is_directed():
+        sources = [source for source, _ in g.in_edges(node)]
+        targets = [target for _, target in g.out_edges(node)]
+    else:
+        sources = g.neighbors(node)
+        targets = g.neighbors(node)
+
+    new_edges = itertools.product(sources, targets)
+    new_edges_no_self = []
+    for source, target in new_edges:
+        if source != target:
+            new_path_length = (
+                g.get_edge_data(source, node)["weight"]
+                + g.get_edge_data(node, target)["weight"]
+            )
+            new_edges_no_self.append((source, target, new_path_length))
+    g.add_weighted_edges_from(new_edges_no_self)
+
+    g.remove_node(node)
+
+    return g
 
 
 def check_bricked(ts):
