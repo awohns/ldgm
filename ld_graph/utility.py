@@ -3,8 +3,10 @@ Utility functions
 """
 import collections
 import itertools
+import json
 
 import numpy as np
+import tskit
 
 
 def get_mut_edges(ts):
@@ -183,3 +185,34 @@ def check_bricked(ts):
     Returns True if bricked by the given mode, False if not.
     """
     return "TODO"
+
+
+def prune_snps(ts, threshold):
+    """
+    Prune SNPs beneath a given threshold
+    """
+    a = ts.num_samples
+    sites_to_delete = []
+    for tree in ts.trees():
+        for site in tree.sites():
+            assert len(site.mutations) == 1
+            freq = tree.num_samples(site.mutations[0].node) / a
+            if freq < threshold or freq > 1 - threshold:
+                sites_to_delete.append(site.id)
+    return ts.delete_sites(sites_to_delete)
+
+
+def return_snp_list(ts):
+    """
+    Return list of SNPs in the tree sequence.
+    Columns are: rsids, anc, derived,
+    """
+    rsids = [json.loads(site.metadata)["ID"] for site in ts.sites()]
+    anc_alleles = tskit.unpack_strings(
+        ts.tables.sites.ancestral_state, ts.tables.sites.ancestral_state_offset
+    )
+    derived_alleles = tskit.unpack_strings(
+        ts.tables.mutations.derived_state, ts.tables.mutations.derived_state_offset
+    )
+    assert len(rsids) == len(anc_alleles) == len(derived_alleles) == ts.num_sites
+    return rsids, anc_alleles, derived_alleles

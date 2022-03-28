@@ -89,4 +89,12 @@ def reduce(
             H_12_reduced = utility.remove_node(H_12_reduced, node, path_threshold)
     H_12_reduced = H_12_reduced.to_undirected()
 
-    return H_12_reduced
+    return H_12_reduced, bts
+
+
+def prune_snps(ts, threshold):
+    return utility.prune_snps(ts, threshold)
+
+
+def return_snp_list(ts):
+    return utility.return_snp_list(ts)
