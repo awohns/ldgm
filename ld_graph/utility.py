@@ -172,6 +172,8 @@ def remove_node(g, node, path_threshold):
                 g.get_edge_data(source, node)["weight"]
                 + g.get_edge_data(node, target)["weight"]
             )
+            if g.has_edge(source, target):
+                combined_weight = np.minimum(g.get_edge_data(source, target)["weight"], combined_weight)
             if combined_weight <= path_threshold:
                 new_edges_no_self.append((source, target, combined_weight))
     g.add_weighted_edges_from(new_edges_no_self)
