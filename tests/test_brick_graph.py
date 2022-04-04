@@ -16,16 +16,14 @@ class TestExampleTrees(unittest.TestCase):
     def verify(self, ts):
         bts = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=False)
         g = ld_graph.brick_graph(bts)
-        # self.check_rule_0(bts, g)
+        self.check_rule_0(bts, g)
         self.check_rule_1(bts, g)
         self.check_in_out_nodes(g)
 
     def check_rule_0(self, brick_ts, brick_graph):
         """
-        Check down nodes are connected to up nodes at unlabeled bricks
+        Check each brick is connected to its child haplotype
         With a weight equal to log(1).
-        Also checks that labeled bricks do not have an up or down node
-        in the graphical model
         """
         graphical_model_edges = brick_graph.edges()
         graphical_model_nodes = brick_graph.nodes()
@@ -37,42 +35,39 @@ class TestExampleTrees(unittest.TestCase):
         for edge in brick_ts.edges():
             if edge.id not in labeled_bricks:
                 unlabeled_bricks.append(edge.id)
-
-        for unlabeled_brick in unlabeled_bricks:
-            reindexed_brick = unlabeled_brick * 4
-            assert (reindexed_brick + 1, reindexed_brick + 0) in graphical_model_edges
-
-        # Check that up down nodes do not exist for labeled bricks
+        # Check that out nodes exist for labeled bricks
         for labeled_brick in labeled_bricks:
-            reindexed_brick = labeled_brick * 4
-            assert reindexed_brick not in graphical_model_nodes
-            assert reindexed_brick + 1 not in graphical_model_nodes
+            reindexed_brick = labeled_brick * 8
+            assert reindexed_brick + 4 in graphical_model_nodes
 
-        # Check that in out nodes do not exist for unlabeled bricks
+        # Check that out nodes do not exist for unlabeled bricks
         for unlabeled_brick in unlabeled_bricks:
-            reindexed_brick = unlabeled_brick * 4
-            assert reindexed_brick + 2 not in graphical_model_nodes
-            assert reindexed_brick + 3 not in graphical_model_nodes
+            reindexed_brick = unlabeled_brick * 8
+            assert reindexed_brick + 4 not in graphical_model_nodes
 
     def return_node(self, brick_id, node_type):
         if node_type == "up_before":
-            return brick_id * 6 + 0
+            return brick_id * 8 + 0
         if node_type == "up_after":
-            return brick_id * 6 + 1
+            return brick_id * 8 + 1
         if node_type == "down_before":
-            return brick_id * 6 + 2
+            return brick_id * 8 + 2
         if node_type == "down_after":
-            return brick_id * 6 + 3
-        if node_type == "in":
-            return brick_id * 6 + 4
+            return brick_id * 8 + 3
         if node_type == "out":
-            return brick_id * 6 + 5
+            return brick_id * 8 + 4
+        if node_type == "haplo before":
+            return brick_id * 8 + 5
+        if node_type == "haplo after":
+            return brick_id * 8 + 6
 
     def check_rule_1(self, brick_ts, brick_graph):
         """
         Check that parent child bricks are connected
-        Up node of child should be connected to up of parent
-        Down of parent should be connected to down of child
+        Up after node of child should be connected to up after of parent
+        Down after of parent should be connected to down after of child
+        Up before of child to up before of parent (if child is unlabeled)
+        Up before of child to up after of parent (if child is labeled)
         """
         graphical_model_edges = brick_graph.edges()
         unlabeled_bricks = []
@@ -96,82 +91,76 @@ class TestExampleTrees(unittest.TestCase):
                 if tree.parent(node) != -1 and tree.parent(node) != tree.root:
                     brick = node_edge_dict[node]
                     brick_parent = node_edge_dict[tree.parent(node)]
-                    if (
-                        node_edge_dict[node] in unlabeled_bricks
-                        and node_edge_dict[tree.parent(node)] in unlabeled_bricks
-                    ):
-                        # Up of child to up of parent
+                    
+                    # Up after of child to up after of parent
+                    assert (
+                        self.return_node(brick, "up_after"),
+                        self.return_node(brick_parent, "up_after"),
+                    ) in graphical_model_edges
+                    # Down after of parent to down after of child 
+                    assert (
+                        self.return_node(brick_parent, "down_after"),
+                        self.return_node(brick, "down_after"),
+                    ) in graphical_model_edges
+                    
+                    # Up before of child to up before of parent (if child is unlabeled)
+                    if brick in unlabeled_bricks:
                         assert (
                             self.return_node(brick, "up_before"),
-                            self.return_node(brick_parent, "up_before"),
+                            self.return_node(brick_parent, "up_before")
                         ) in graphical_model_edges
-                        # Down of parent to down of child
-                        assert (
-                            self.return_node(brick_parent, "down_before"),
-                            self.return_node(brick, "down_before"),
-                        ) in graphical_model_edges
-                    elif (
-                        node_edge_dict[node] in unlabeled_bricks
-                        and node_edge_dict[tree.parent(node)] in labeled_bricks
-                    ):
-                        # Up of child to in of parent
+                    # Else if child is labeled, connect up before of child to up after of parent
+                    elif brick in labeled_bricks:
                         assert (
                             self.return_node(brick, "up_before"),
-                            self.return_node(brick_parent, "in"),
+                            self.return_node(brick_parent, "up_after"),
                         ) in graphical_model_edges
-                        # Out of parent to down of child
-                        assert (
-                            self.return_node(brick_parent, "out"),
-                            self.return_node(brick, "down_before"),
-                        ) in graphical_model_edges
+
+                    # If parent is unlabeled, down before of parent to down before of child
+                    if brick_parent in unlabeled_bricks:
+                        assert (self.return_node(brick_parent, "down_before"), self.return_node(brick, "down_before")
+                    ) in graphical_model_edges
+                    # Else if parent is labeled, connect down before of parent to down after of chidl
                     elif (
-                        node_edge_dict[node] in labeled_bricks
-                        and node_edge_dict[tree.parent(node)] in unlabeled_bricks
+                        brick_parent in labeled_bricks
                     ):
-                        # Out of child to up of parent
-                        assert (
-                            self.return_node(brick, "out"),
-                            self.return_node(brick_parent, "up_before"),
-                        ) in graphical_model_edges
-                        # Down of parent to in of child
-                        assert (
-                            self.return_node(brick_parent, "down_before"),
-                            self.return_node(brick, "in"),
-                        ) in graphical_model_edges
-                    elif (
-                        node_edge_dict[node] in labeled_bricks
-                        and node_edge_dict[tree.parent(node)] in labeled_bricks
-                    ):
-                        # Out of child to in of parent
-                        assert (
-                            self.return_node(brick, "out"),
-                            self.return_node(brick_parent, "in"),
-                        ) in graphical_model_edges
-                        # Out of parent to in of child
-                        assert (
-                            self.return_node(brick_parent, "out"),
-                            self.return_node(brick, "in"),
-                        ) in graphical_model_edges
-                    else:
-                        raise ValueError
+                        assert (self.return_node(brick_parent, "down_before"), self.return_node(brick, "down_after")) in graphical_model_edges
+                    
+                    # If parent brick is labeled, make out connections
+                    if brick_parent in labeled_bricks:
+                        # out of parent to down before of child
+                        assert (self.return_node(brick_parent, "out"), self.return_node(brick, "down_before")) in graphical_model_edges
+
+                    # If child brick is labeled
+                    if brick in labeled_bricks:
+                        # Out of child to up before of parent
+                        assert (self.return_node(brick, "out"), self.return_node(brick_parent, "up_before")) in graphical_model_edges
 
     def check_in_out_nodes(self, brick_graph):
+        # Check that no edge goes into an out node
         nodes = np.array(list(brick_graph.nodes()))
-        l_in = nodes[nodes % 6 == 4]
-        l_out = nodes[nodes % 6 == 5]
+        l_out = nodes[nodes % 8 == 4]
         for edge in brick_graph.edges():
-            assert edge[0] not in l_in
             assert edge[1] not in l_out
 
     def test_examples(self):
         for (
-            _,
+            name,
             val,
         ) in (
             utility_functions.__dict__.items()
         ):  # iterate through every module's attributes
-            print(val)
-            if callable(val):  # check if callable (normally functions)
+            print(name)
+            if name  == "single_tree_ts_n2_dangling":
+                with pytest.raises(ValueError):
+                    self.verify(val())
+            elif name == "two_tree_ts_with_unary_n3":
+                with pytest.raises(ZeroDivisionError):
+                    self.verify(val())
+            elif name == "two_tree_ts_n2_part_dangling":
+                with pytest.raises((ZeroDivisionError, ValueError)):
+                    self.verify(val())
+            elif callable(val):  # check if callable (normally functions)
                 self.verify(val())
 
 

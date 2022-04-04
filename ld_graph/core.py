@@ -38,15 +38,15 @@ def reduce_graph(
     snp_grapher = reduction.SNP_Graph(
         brick_graph, brick_ts, threshold, make_snp_snp_edges, progress=progress
     )
-    reduced_graph = snp_grapher.create_reduced_graph()
-    return reduced_graph
+    reduced_graph, mut_node, reach_star_sets = snp_grapher.create_reduced_graph()
+    return reduced_graph, mut_node, reach_star_sets
 
 
 def reduce(
     ts,
     path_threshold,
     recombination_threshold=None,
-    progress=True,
+    progress=False,
 ):
     # Step 1: brick ts
     bts = brick_ts(ts, threshold=recombination_threshold, progress=progress)

@@ -35,11 +35,17 @@ class BrickGraph:
         self.use_rule_two = use_rule_two
 
     def find_odds(self, brick):
+        if self.freqs[brick] == 1:
+            raise ZeroDivisionError("Cannot have a brick with frequency 1")
+        if self.freqs[brick] == 0:
+            raise ValueError("Cannot have brick with frequency 0")
         odds = self.freqs[brick] / (1 - self.freqs[brick])
-        assert odds != 0, odds
+        assert odds != 0, (odds, self.freqs[brick])
         return odds
 
     def log_odds(self, odds):
+        if odds == 0:
+            raise ValueError("Cannot have odds of zero")
         if odds != 1:
             return np.log(odds) * -1
         else:

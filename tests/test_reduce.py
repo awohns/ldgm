@@ -4,6 +4,7 @@ Test cases for building the brick graph
 import unittest
 
 import ld_graph
+import numpy as np
 import msprime
 import networkx as nx
 
@@ -31,12 +32,15 @@ class TestNumNodes(unittest.TestCase):
         bricked = ld_graph.brick_ts(ts, threshold=None)
         number_of_labeled_bricks = len(ld_graph.utility.get_mut_edges(bricked).keys())
         assert (
-            ld_graph.reduce(ts, threshold=100)[0].number_of_nodes()
+            ld_graph.reduce(ts, path_threshold=100)[0].number_of_nodes()
             == number_of_labeled_bricks
         )
         bricked_graph = ld_graph.brick_graph(bricked)
-        reduced_graph, _ = ld_graph.reduce_graph(bricked_graph, bricked, threshold=None)
-        assert reduced_graph.number_of_nodes() == number_of_labeled_bricks
+        reduced_graph, _, _ = ld_graph.reduce_graph(bricked_graph, bricked, threshold=None)
+        num_brick_nodes = np.sum(np.array(list(reduced_graph.nodes())) >= 0)
+        assert num_brick_nodes == number_of_labeled_bricks
+        max_haplotype = np.max(np.abs(np.array(list(reduced_graph.nodes()))))
+        assert max_haplotype <= bricked.num_nodes
 
 
 class TestReduce(unittest.TestCase):
