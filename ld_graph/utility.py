@@ -2,8 +2,11 @@
 Utility functions
 """
 import collections
+import itertools
+import json
 
 import numpy as np
+import tskit
 
 
 def get_mut_edges(ts):
@@ -153,9 +156,65 @@ def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
     return tables.tree_sequence()
 
 
+def remove_node(g, node, path_threshold):
+    if g.is_directed():
+        sources = [source for source, _ in g.in_edges(node)]
+        targets = [target for _, target in g.out_edges(node)]
+    else:
+        sources = g.neighbors(node)
+        targets = g.neighbors(node)
+
+    new_edges = itertools.product(sources, targets)
+    new_edges_no_self = []
+    for source, target in new_edges:
+        if source != target:
+            combined_weight = (
+                g.get_edge_data(source, node)["weight"]
+                + g.get_edge_data(node, target)["weight"]
+            )
+            if g.has_edge(source, target):
+                combined_weight = np.minimum(g.get_edge_data(source, target)["weight"], combined_weight)
+            if combined_weight <= path_threshold:
+                new_edges_no_self.append((source, target, combined_weight))
+    g.add_weighted_edges_from(new_edges_no_self)
+    g.remove_node(node)
+    return g
+
+
 def check_bricked(ts):
     """
     Checks that the input tree sequence is "bricked" by tree, node, or leaf.
     Returns True if bricked by the given mode, False if not.
     """
     return "TODO"
+
+
+def prune_snps(ts, threshold):
+    """
+    Prune SNPs beneath a given threshold
+    """
+    a = ts.num_samples
+    sites_to_delete = []
+    for tree in ts.trees():
+        for site in tree.sites():
+            assert len(site.mutations) == 1
+            freq = tree.num_samples(site.mutations[0].node) / a
+            if freq < threshold or freq > 1 - threshold:
+                sites_to_delete.append(site.id)
+    return ts.delete_sites(sites_to_delete)
+
+
+def return_snp_list(ts):
+    """
+    Return list of SNPs in the tree sequence.
+    Columns are: rsids, anc, derived,
+    """
+    rsids = [json.loads(site.metadata)["ID"] for site in ts.sites()]
+    anc_alleles = tskit.unpack_strings(
+        ts.tables.sites.ancestral_state, ts.tables.sites.ancestral_state_offset
+    )
+    derived_alleles = tskit.unpack_strings(
+        ts.tables.mutations.derived_state, ts.tables.mutations.derived_state_offset
+    )
+    assert len(rsids) == len(anc_alleles) == len(derived_alleles) == ts.num_sites
+    return rsids, anc_alleles, derived_alleles

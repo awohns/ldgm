@@ -32,5 +32,7 @@ while det(Omega)<=0
     D=diag(sqrt(1./D));
     Omega = D*Omega*D;
 end
+Omega = sparse(Omega);
+
 end
 
