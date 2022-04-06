@@ -116,9 +116,11 @@ A_weighted=importGraph([adjlist_dir, filename, '.adjlist'], 1, noSNPs);
 % Empty rows/columns correspond to duplicate SNPs (on same brick as
 % another SNP); also get rid of LF SNPs
 SNPs = any(A_weighted) .* (min(mean(X), 1-mean(X))>minimum_maf) == 1;
-
-A_weighted = A_weighted(SNPs,SNPs);
 X = X(:,SNPs);
+
+% Remove rare + redundant SNPs from LDGM, patching broken paths
+A_weighted = reduce_weighted_graph(A_weighted,~SNPs);
+
 SNPs = find(SNPs);
 snpTable = snpTable(SNPs,:);
 
