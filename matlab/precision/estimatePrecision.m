@@ -119,7 +119,7 @@ SNPs = any(A_weighted) .* (min(mean(X), 1-mean(X))>minimum_maf) == 1;
 X = X(:,SNPs);
 
 % Remove rare + redundant SNPs from LDGM, patching broken paths
-A_weighted = reduce_weighted_graph(A_weighted,~SNPs);
+A_weighted = reduce_weighted_graph(A_weighted,find(~SNPs));
 
 SNPs = find(SNPs);
 snpTable = snpTable(SNPs,:);
