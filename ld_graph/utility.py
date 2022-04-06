@@ -4,9 +4,14 @@ Utility functions
 import collections
 import itertools
 import json
+import math
 
 import numpy as np
 import tskit
+
+
+def softmin(val1, val2):
+    return -2 * np.log(math.e ** (-0.5 * val1) + math.e ** (-0.5 * val2))
 
 
 def get_mut_edges(ts):
@@ -173,9 +178,12 @@ def remove_node(g, node, path_threshold):
                 + g.get_edge_data(node, target)["weight"]
             )
             if g.has_edge(source, target):
-                combined_weight = np.minimum(
+                combined_weight = softmin(
                     g.get_edge_data(source, target)["weight"], combined_weight
                 )
+                # combined_weight = np.minimum(
+                #    g.get_edge_data(source, target)["weight"], combined_weight
+                # )
             if combined_weight <= path_threshold:
                 new_edges_no_self.append((source, target, combined_weight))
     g.add_weighted_edges_from(new_edges_no_self)
