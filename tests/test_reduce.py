@@ -74,3 +74,30 @@ class TestReduce(unittest.TestCase):
         ts = msprime.simulate(10)
         with pytest.raises(ValueError):
             ld_graph.reduce(ts, path_threshold=100)
+
+
+class TestExamples(unittest.TestCase):
+    """
+    Test specific trees by hand
+    """
+
+    def test_fig1(self):
+        ts = utility_functions.figure_one_example()
+        reduced = ld_graph.reduce(ts, path_threshold=100)
+        assert nx.is_connected(reduced[0])
+
+    def test_supplementary(self):
+        ts = utility_functions.supplementary_example()
+        reduced = ld_graph.reduce(ts, path_threshold=100)
+        edges = reduced[0].edges()
+        assert (0, 1) in edges
+        assert (1, 3) in edges
+        assert (0, 2) in edges
+        assert (0, 3) in edges
+        assert (2, 3) in edges
+        assert (1, 2) not in edges
+
+    def test_triangle(self):
+        ts = utility_functions.triangle_example()
+        reduced = ld_graph.reduce(ts, path_threshold=100)
+        assert nx.is_connected(reduced[0])
