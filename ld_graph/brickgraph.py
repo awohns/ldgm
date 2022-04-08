@@ -162,6 +162,7 @@ class BrickGraph:
                 after_b=labeled_parent,
             )
 
+
             # If parent brick is labeled, make out connections
             if labeled_parent:
                 # Out of parent to down before of child
@@ -171,6 +172,7 @@ class BrickGraph:
                     out=True,
                     down_b=True,
                 )
+                # TODO: U-turn of labeled parent to down before of ANY child
             if labeled_child:
                 # do out of child to up before of parent
                 self.connect_vertices(
@@ -178,7 +180,9 @@ class BrickGraph:
                     self.node_edge_dict[parent],
                     out=True,
                 )
+                # TODO: Out of labeled child to u-turn of labeled parent
 
+            # TODO: Up before of UNLABELED CHILD to u-turn of labeled parent
         for child in children:
             do_rule_one(focal_node, child)
 
@@ -196,6 +200,7 @@ class BrickGraph:
                     (pair_combo[1], pair_combo[0]),
                 ):
                     assert pair[0] != pair[1]
+                    
                     labeled_0 = self.node_edge_dict[pair[0]] in self.labeled_bricks
                     # Up after left to down after right
                     self.connect_vertices(

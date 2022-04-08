@@ -30,13 +30,13 @@ def brick_graph(brick_ts, threshold=None, use_rule_two=False, progress=True):
 
 
 def reduce_graph(
-    brick_graph, brick_ts, threshold, make_snp_snp_edges=True, progress=True
+    brick_graph, brick_ts, threshold, progress=True
 ):
     """
     Make a reduced graph from a brick graph and bricked tree sequence
     """
     snp_grapher = reduction.SNP_Graph(
-        brick_graph, brick_ts, threshold, make_snp_snp_edges, progress=progress
+        brick_graph, brick_ts, threshold, progress=progress
     )
     reduced_graph, mut_node, reach_star_sets = snp_grapher.create_reduced_graph()
     return reduced_graph, mut_node, reach_star_sets
@@ -62,7 +62,6 @@ def reduce(
         bricked_graph,
         bts,
         threshold=path_threshold,
-        make_snp_snp_edges=True,
         progress=progress,
     )
     H1 = reduced[0]
@@ -75,7 +74,6 @@ def reduce(
         brickgraph_rule_two,
         bts,
         threshold=path_threshold,
-        make_snp_snp_edges=True,
         progress=progress,
     )
     H2 = reduced_rule_two[0]
