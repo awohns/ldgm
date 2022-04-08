@@ -166,8 +166,7 @@ def remove_node(g, node, path_threshold):
         sources = [source for source, _ in g.in_edges(node)]
         targets = [target for _, target in g.out_edges(node)]
     else:
-        sources = g.neighbors(node)
-        targets = g.neighbors(node)
+        raise ValueError
 
     new_edges = itertools.product(sources, targets)
     new_edges_no_self = []

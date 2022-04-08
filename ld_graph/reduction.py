@@ -11,9 +11,7 @@ from . import utility
 
 
 class SNP_Graph:
-    def __init__(
-        self, brick_graph, brick_ts, threshold, progress=True
-    ):
+    def __init__(self, brick_graph, brick_ts, threshold, progress=True):
         self.brick_graph = brick_graph
         self.brick_ts = brick_ts
         self.threshold = threshold
@@ -95,7 +93,7 @@ class SNP_Graph:
                         # collision
                         reach_star_sets[out_node].append(vertex)
                         R.add_edge(
-                            self.bricks_to_muts[out_node// 8][0],
+                            self.bricks_to_muts[out_node // 8][0],
                             -brick_haplo_id - 1,
                             weight=weight,
                         )

@@ -7,13 +7,14 @@ import ld_graph
 import numpy as np
 import msprime
 import networkx as nx
+import pytest
 
 from . import utility_functions
 
 
 class TestNumNodes(unittest.TestCase):
     """
-    Test for some of the basic functions used in tsdate
+    Test the reduced graph node number is correct
     """
 
     def test_num_nodes(self):
@@ -36,7 +37,9 @@ class TestNumNodes(unittest.TestCase):
             == number_of_labeled_bricks
         )
         bricked_graph = ld_graph.brick_graph(bricked)
-        reduced_graph, _, _ = ld_graph.reduce_graph(bricked_graph, bricked, threshold=None)
+        reduced_graph, _, _ = ld_graph.reduce_graph(
+            bricked_graph, bricked, threshold=None
+        )
         num_brick_nodes = np.sum(np.array(list(reduced_graph.nodes())) >= 0)
         assert num_brick_nodes == number_of_labeled_bricks
         max_haplotype = np.max(np.abs(np.array(list(reduced_graph.nodes()))))
@@ -62,3 +65,12 @@ class TestReduce(unittest.TestCase):
         manual_graph = nx.Graph()
         manual_graph.add_edge(0, 1)
         assert nx.is_isomorphic(reduced_graph, manual_graph)
+
+    def test_no_mutations(self):
+        """
+        Test fails with no mutations
+        """
+
+        ts = msprime.simulate(10)
+        with pytest.raises(ValueError):
+            ld_graph.reduce(ts, path_threshold=100)

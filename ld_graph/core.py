@@ -29,9 +29,7 @@ def brick_graph(brick_ts, threshold=None, use_rule_two=False, progress=True):
     return bricked_graph
 
 
-def reduce_graph(
-    brick_graph, brick_ts, threshold, progress=True
-):
+def reduce_graph(brick_graph, brick_ts, threshold, progress=True):
     """
     Make a reduced graph from a brick graph and bricked tree sequence
     """

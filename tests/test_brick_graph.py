@@ -25,7 +25,6 @@ class TestExampleTrees(unittest.TestCase):
         Check each brick is connected to its child haplotype
         With a weight equal to log(1).
         """
-        graphical_model_edges = brick_graph.edges()
         graphical_model_nodes = brick_graph.nodes()
         unlabeled_bricks = []
 
@@ -91,50 +90,62 @@ class TestExampleTrees(unittest.TestCase):
                 if tree.parent(node) != -1 and tree.parent(node) != tree.root:
                     brick = node_edge_dict[node]
                     brick_parent = node_edge_dict[tree.parent(node)]
-                    
+
                     # Up after of child to up after of parent
                     assert (
                         self.return_node(brick, "up_after"),
                         self.return_node(brick_parent, "up_after"),
                     ) in graphical_model_edges
-                    # Down after of parent to down after of child 
+                    # Down after of parent to down after of child
                     assert (
                         self.return_node(brick_parent, "down_after"),
                         self.return_node(brick, "down_after"),
                     ) in graphical_model_edges
-                    
+
                     # Up before of child to up before of parent (if child is unlabeled)
                     if brick in unlabeled_bricks:
                         assert (
                             self.return_node(brick, "up_before"),
-                            self.return_node(brick_parent, "up_before")
+                            self.return_node(brick_parent, "up_before"),
                         ) in graphical_model_edges
-                    # Else if child is labeled, connect up before of child to up after of parent
+                    # Else if child is labeled, connect up before of child to up
+                    # after of parent
                     elif brick in labeled_bricks:
                         assert (
                             self.return_node(brick, "up_before"),
                             self.return_node(brick_parent, "up_after"),
                         ) in graphical_model_edges
 
-                    # If parent is unlabeled, down before of parent to down before of child
+                    # If parent is unlabeled, down before of parent to down
+                    # before of child
                     if brick_parent in unlabeled_bricks:
-                        assert (self.return_node(brick_parent, "down_before"), self.return_node(brick, "down_before")
-                    ) in graphical_model_edges
-                    # Else if parent is labeled, connect down before of parent to down after of chidl
-                    elif (
-                        brick_parent in labeled_bricks
-                    ):
-                        assert (self.return_node(brick_parent, "down_before"), self.return_node(brick, "down_after")) in graphical_model_edges
-                    
+                        assert (
+                            self.return_node(brick_parent, "down_before"),
+                            self.return_node(brick, "down_before"),
+                        ) in graphical_model_edges
+                    # Else if parent is labeled, connect down before of parent
+                    # to down after of chidl
+                    elif brick_parent in labeled_bricks:
+                        assert (
+                            self.return_node(brick_parent, "down_before"),
+                            self.return_node(brick, "down_after"),
+                        ) in graphical_model_edges
+
                     # If parent brick is labeled, make out connections
                     if brick_parent in labeled_bricks:
                         # out of parent to down before of child
-                        assert (self.return_node(brick_parent, "out"), self.return_node(brick, "down_before")) in graphical_model_edges
+                        assert (
+                            self.return_node(brick_parent, "out"),
+                            self.return_node(brick, "down_before"),
+                        ) in graphical_model_edges
 
                     # If child brick is labeled
                     if brick in labeled_bricks:
                         # Out of child to up before of parent
-                        assert (self.return_node(brick, "out"), self.return_node(brick_parent, "up_before")) in graphical_model_edges
+                        assert (
+                            self.return_node(brick, "out"),
+                            self.return_node(brick_parent, "up_before"),
+                        ) in graphical_model_edges
 
     def check_in_out_nodes(self, brick_graph):
         # Check that no edge goes into an out node
@@ -150,8 +161,7 @@ class TestExampleTrees(unittest.TestCase):
         ) in (
             utility_functions.__dict__.items()
         ):  # iterate through every module's attributes
-            print(name)
-            if name  == "single_tree_ts_n2_dangling":
+            if name == "single_tree_ts_n2_dangling":
                 with pytest.raises(ValueError):
                     self.verify(val())
             elif name == "two_tree_ts_with_unary_n3":
