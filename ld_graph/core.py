@@ -44,8 +44,25 @@ def reduce(
     ts,
     path_threshold,
     recombination_threshold=None,
+    use_softmin=False,
     progress=False,
 ):
+    """
+    Run the entire pipeline from tree sequence to reduced graph.
+
+    :param TreeSequence tree_sequence: The input :class:`tskit.TreeSequence`,
+        which will be used to create the linkage disequilibrium graphical
+        model.
+    :param float path_threshold: The maximum path threshold to retain in
+        the linkage disequilibrium graphical model.
+    :param float recombination_threshold: Defines the minimum frequency of
+        recombination events used to create bricks in the tree sequence.
+        Default: None (any recombination creates bricks).
+    :param bool use_softmin: If True, use the softmin function to combine
+        path weights when removing nodes. If False, use the minimum of path
+        weights. Default: False
+    :param bool progress: Whether to display a progress bar. Default: False
+    """
     # Step 1: brick ts
     bts = brick_ts(ts, threshold=recombination_threshold, progress=progress)
     # Step 2 is brickgraph with no rule two
@@ -82,7 +99,8 @@ def reduce(
     nodes = list(H_12_reduced.nodes())
     for node in nodes:
         if node < 0:
-            H_12_reduced = utility.remove_node(H_12_reduced, node, path_threshold)
+            H_12_reduced = utility.remove_node(
+                    H_12_reduced, node, path_threshold, use_softmin=use_softmin)
     H_12_reduced = H_12_reduced.to_undirected()
 
     return H_12_reduced, bts

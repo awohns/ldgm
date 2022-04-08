@@ -161,7 +161,7 @@ def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
     return tables.tree_sequence()
 
 
-def remove_node(g, node, path_threshold):
+def remove_node(g, node, path_threshold, use_softmin=False):
     if g.is_directed():
         sources = [source for source, _ in g.in_edges(node)]
         targets = [target for _, target in g.out_edges(node)]
@@ -177,12 +177,14 @@ def remove_node(g, node, path_threshold):
                 + g.get_edge_data(node, target)["weight"]
             )
             if g.has_edge(source, target):
-                combined_weight = softmin(
-                    g.get_edge_data(source, target)["weight"], combined_weight
-                )
-                # combined_weight = np.minimum(
-                #    g.get_edge_data(source, target)["weight"], combined_weight
-                # )
+                if use_softmin:
+                    combined_weight = softmin(
+                        g.get_edge_data(source, target)["weight"], combined_weight
+                    )
+                else:
+                    combined_weight = np.minimum(
+                       g.get_edge_data(source, target)["weight"], combined_weight
+                    )
             if combined_weight <= path_threshold:
                 new_edges_no_self.append((source, target, combined_weight))
     g.add_weighted_edges_from(new_edges_no_self)
