@@ -18,9 +18,9 @@ class BrickGraph:
     2: down before
     3: down after
     4: out
-    5: haplo before
-    6: haplo after
-    7: [empty]
+    5: uturn
+    6: haplo before
+    7: haplo after
 
     So to find nodes for a brick or haplotype:
     brick/haplo_index * 8 + desired_node_type_id
@@ -58,7 +58,7 @@ class BrickGraph:
         else:
             self.brick_graph.add_edge(from_node, to_node, weight=weight)
 
-    def vertex(self, identifier, down, after, out, haplo):
+    def vertex(self, identifier, down, after, out, uturn, haplo):
         """
         Function to convert haplo/brick ID to desired vertex id.
         identifier is the haplotype (node) or brick id from the tree sequence.
@@ -71,6 +71,10 @@ class BrickGraph:
         if out:
             if identifier in self.labeled_bricks:
                 return vertex_id + 4
+            else:
+                raise ValueError("vertex not a labeled brick")
+        if uturn:
+            return vertex_id + 5
         if down:
             vertex_id += 2
             if haplo:
@@ -78,7 +82,7 @@ class BrickGraph:
         if after:
             vertex_id += 1
         if haplo:
-            vertex_id += 5
+            vertex_id += 6
         return vertex_id
 
     def connect_vertices(
@@ -91,6 +95,8 @@ class BrickGraph:
         down_b=False,
         after_a=False,
         after_b=False,
+        uturn_a = False,
+        uturn_b = False,
         haplo=False,
         reverse_odds=False,
         combine_odds="rule_one",
@@ -98,8 +104,10 @@ class BrickGraph:
         """
         Up and before are default for both verticies
         """
-        vertex_a = self.vertex(id_a, out=out, after=after_a, down=down_a, haplo=False)
-        vertex_b = self.vertex(id_b, out=False, after=after_b, down=down_b, haplo=haplo)
+        # Both vertices cannot be uturns
+        assert ~(uturn_a is True and uturn_b is True)
+        vertex_a = self.vertex(id_a, out=out, after=after_a, down=down_a, uturn=uturn_a, haplo=False)
+        vertex_b = self.vertex(id_b, out=False, after=after_b, down=down_b, uturn=uturn_b, haplo=haplo)
         odds_a = self.find_odds(id_a)
         odds_b = self.find_odds(id_b)
         if combine_odds == "rule_one":
@@ -162,7 +170,7 @@ class BrickGraph:
                 after_b=labeled_parent,
             )
 
-            # If parent brick is labeled, make out connections
+            # If parent brick is labeled, make out and uturn connections
             if labeled_parent:
                 # Out of parent to down before of child
                 self.connect_vertices(
@@ -171,7 +179,13 @@ class BrickGraph:
                     out=True,
                     down_b=True,
                 )
-                # TODO: U-turn of labeled parent to down before of ANY child
+                # uturn of labeled parent to down before of ANY child
+                self.connect_vertices(
+                    self.node_edge_dict[parent],
+                    self.node_edge_dict[child],
+                    uturn_a=True,
+                    down_b=True
+                )
             if labeled_child:
                 # do out of child to up before of parent
                 self.connect_vertices(
@@ -179,9 +193,21 @@ class BrickGraph:
                     self.node_edge_dict[parent],
                     out=True,
                 )
-                # TODO: Out of labeled child to u-turn of labeled parent
+                # Out of labeled child to u-turn of labeled parent
+                self.connect_vertices(
+                    self.node_edge_dict[child],
+                    self.node_edge_dict[parent],
+                    out=True,
+                    uturn_b=True
+                )
+            elif labeled_parent:
+                # Up before of UNLABELED CHILD to u-turn of labeled parent
+                self.connect_vertices(
+                    self.node_edge_dict[child],
+                    self.node_edge_dict[parent],
+                    uturn_b=True
+                )
 
-            # TODO: Up before of UNLABELED CHILD to u-turn of labeled parent
 
         for child in children:
             do_rule_one(focal_node, child)

@@ -18,7 +18,7 @@ class TestExampleTrees(unittest.TestCase):
         g = ld_graph.brick_graph(bts)
         self.check_rule_0(bts, g)
         self.check_rule_1(bts, g)
-        self.check_in_out_nodes(g)
+        self.check_out_nodes(g)
 
     def check_rule_0(self, brick_ts, brick_graph):
         """
@@ -147,7 +147,7 @@ class TestExampleTrees(unittest.TestCase):
                             self.return_node(brick_parent, "up_before"),
                         ) in graphical_model_edges
 
-    def check_in_out_nodes(self, brick_graph):
+    def check_out_nodes(self, brick_graph):
         # Check that no edge goes into an out node
         nodes = np.array(list(brick_graph.nodes()))
         l_out = nodes[nodes % 8 == 4]

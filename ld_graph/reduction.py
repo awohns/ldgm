@@ -61,7 +61,7 @@ class SNP_Graph:
             for vertex, weight in reach_set.items():
                 brick_haplo_id = vertex // 8
                 # that it is either labeled brick or haplotype
-                is_haplo = vertex % 8 == 5
+                is_haplo = vertex % 8 == 6
                 # If brick id is in labeled list and not a haplotype,
                 # it's a labeled brick
                 is_labeled_brick = (
@@ -88,7 +88,7 @@ class SNP_Graph:
                                 weight=weight,
                             )
                 elif is_haplo:
-                    if vertex % 8 == 5 and (brick_haplo_id * 8 + 6) not in reach_set:
+                    if vertex % 8 == 6 and (brick_haplo_id * 8 + 7) not in reach_set:
                         # Use -brick_haplo_id - 1 to avoid haplotype and brick id
                         # collision
                         reach_star_sets[out_node].append(vertex)
