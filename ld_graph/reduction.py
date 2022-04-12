@@ -55,8 +55,22 @@ class SNP_Graph:
             desc="Reduce graph: iterate over out nodes",
             disable=not self.progress,
         ):
+            removed_brick_graph = self.brick_graph.subgraph(
+                [
+                    node
+                    for node in self.brick_graph.nodes()
+                    if node
+                    not in [
+                        out_node - 4,
+                        out_node - 3,
+                        out_node - 2,
+                        out_node - 1,
+                        out_node + 1,
+                    ]
+                ]
+            )
             reach_set = nx.single_source_dijkstra_path_length(
-                self.brick_graph, out_node, cutoff=self.threshold, weight="weight"
+                removed_brick_graph, out_node, cutoff=self.threshold, weight="weight"
             )
             for vertex, weight in reach_set.items():
                 brick_haplo_id = vertex // 8

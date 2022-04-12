@@ -26,13 +26,13 @@ class BrickGraph:
     brick/haplo_index * 8 + desired_node_type_id
     """
 
-    def __init__(self, bricked_ts, threshold, use_rule_two=False, progress=True):
+    def __init__(self, bricked_ts, threshold, make_sibs=False, progress=True):
         self.bricked_ts = bricked_ts
         self.threshold = threshold
         self.brick_graph = nx.DiGraph()
         self.freqs = utility.get_brick_frequencies(self.bricked_ts)
         self.progress = progress
-        self.use_rule_two = use_rule_two
+        self.make_sibs = make_sibs
 
     def find_odds(self, brick):
         if self.freqs[brick] == 1:
@@ -95,8 +95,8 @@ class BrickGraph:
         down_b=False,
         after_a=False,
         after_b=False,
-        uturn_a = False,
-        uturn_b = False,
+        uturn_a=False,
+        uturn_b=False,
         haplo=False,
         reverse_odds=False,
         combine_odds="rule_one",
@@ -106,8 +106,12 @@ class BrickGraph:
         """
         # Both vertices cannot be uturns
         assert ~(uturn_a is True and uturn_b is True)
-        vertex_a = self.vertex(id_a, out=out, after=after_a, down=down_a, uturn=uturn_a, haplo=False)
-        vertex_b = self.vertex(id_b, out=False, after=after_b, down=down_b, uturn=uturn_b, haplo=haplo)
+        vertex_a = self.vertex(
+            id_a, out=out, after=after_a, down=down_a, uturn=uturn_a, haplo=False
+        )
+        vertex_b = self.vertex(
+            id_b, out=False, after=after_b, down=down_b, uturn=uturn_b, haplo=haplo
+        )
         odds_a = self.find_odds(id_a)
         odds_b = self.find_odds(id_b)
         if combine_odds == "rule_one":
@@ -179,35 +183,38 @@ class BrickGraph:
                     out=True,
                     down_b=True,
                 )
-                # uturn of labeled parent to down before of ANY child
-                self.connect_vertices(
-                    self.node_edge_dict[parent],
-                    self.node_edge_dict[child],
-                    uturn_a=True,
-                    down_b=True
-                )
+                if self.make_sibs:
+                    # uturn of labeled parent to down before of ANY child
+                    self.connect_vertices(
+                        self.node_edge_dict[parent],
+                        self.node_edge_dict[child],
+                        uturn_a=True,
+                        down_b=True,
+                    )
             if labeled_child:
-                # do out of child to up before of parent
+                # out of child to up before of parent
                 self.connect_vertices(
                     self.node_edge_dict[child],
                     self.node_edge_dict[parent],
                     out=True,
                 )
-                # Out of labeled child to u-turn of labeled parent
-                self.connect_vertices(
-                    self.node_edge_dict[child],
-                    self.node_edge_dict[parent],
-                    out=True,
-                    uturn_b=True
-                )
+                if labeled_parent:
+                    # out of labeled child to uturn of labeled parent
+                    if self.make_sibs:
+                        self.connect_vertices(
+                            self.node_edge_dict[child],
+                            self.node_edge_dict[parent],
+                            out=True,
+                            uturn_b=True,
+                        )
             elif labeled_parent:
-                # Up before of UNLABELED CHILD to u-turn of labeled parent
-                self.connect_vertices(
-                    self.node_edge_dict[child],
-                    self.node_edge_dict[parent],
-                    uturn_b=True
-                )
-
+                # up before of UNLABELED CHILD to uturn of labeled parent
+                if self.make_sibs:
+                    self.connect_vertices(
+                        self.node_edge_dict[child],
+                        self.node_edge_dict[parent],
+                        uturn_b=True,
+                    )
 
         for child in children:
             do_rule_one(focal_node, child)
@@ -263,7 +270,7 @@ class BrickGraph:
         children = tree2.children(edge.child)
         siblings = tree2.children(edge.parent)
         self.rule_one(edge, children, roots)
-        if self.use_rule_two:
+        if self.make_sibs:
             if self.threshold is not None:
                 if self.log_odds(self.find_odds(edge.id) ** 2) < self.threshold:
                     self.rule_two(edge, siblings)

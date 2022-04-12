@@ -173,6 +173,65 @@ class TestExampleTrees(unittest.TestCase):
             elif callable(val):  # check if callable (normally functions)
                 self.verify(val())
 
+    def test_triangle_brickgraph(self):
+        ts = utility_functions.triangle_example()
+        brick_graph_wo_sibs = ld_graph.brick_graph(ts, make_sibs=False)
+        brick_graph_w_sibs = ld_graph.brick_graph(ts, make_sibs=True)
+        edges_wo_sibs = list(brick_graph_wo_sibs.edges())
+        edges_w_sibs = list(brick_graph_w_sibs.edges())
+        for name, edges in {"nosibs": edges_wo_sibs, "sibs": edges_w_sibs}.items():
+            # Rule 0 labeled bricks
+            assert ((8 * 0) + 2, (8 * 0) + 7) in edges
+            assert ((8 * 0) + 3, (8 * 0) + 7) in edges
+            assert ((8 * 0) + 4, (8 * 0) + 6) in edges
+            assert ((8 * 1) + 2, (8 * 1) + 7) in edges
+            assert ((8 * 1) + 3, (8 * 1) + 7) in edges
+            assert ((8 * 1) + 4, (8 * 1) + 6) in edges
+            assert ((8 * 2) + 2, (8 * 2) + 7) in edges
+            assert ((8 * 2) + 3, (8 * 2) + 7) in edges
+            assert ((8 * 2) + 4, (8 * 2) + 6) in edges
+            # Rule 0 unlabeled brick
+            assert ((8 * 3) + 2, (8 * 3) + 6) in edges
+            assert ((8 * 3) + 3, (8 * 3) + 7) in edges
+            # Rule One Brick 0 to 2
+            assert ((8 * 0) + 0, (8 * 2) + 1) in edges
+            assert ((8 * 0) + 1, (8 * 2) + 1) in edges
+            assert ((8 * 0) + 4, (8 * 2) + 0) in edges
+            assert ((8 * 2) + 2, (8 * 0) + 3) in edges
+            assert ((8 * 2) + 3, (8 * 0) + 3) in edges
+            assert ((8 * 2) + 4, (8 * 0) + 2) in edges
+            # Rule One Brick 1 to 2
+            assert ((8 * 1) + 0, (8 * 2) + 1) in edges
+            assert ((8 * 1) + 1, (8 * 2) + 1) in edges
+            assert ((8 * 1) + 4, (8 * 2) + 0) in edges
+            assert ((8 * 2) + 2, (8 * 1) + 3) in edges
+            assert ((8 * 2) + 3, (8 * 1) + 3) in edges
+            assert ((8 * 2) + 4, (8 * 1) + 2) in edges
+
+            if name == "nosibs":
+                assert len(edges) == 23
+            else:
+                # Rule One Uturn connections
+                assert ((8 * 0) + 4, (8 * 2) + 5) in edges
+                assert ((8 * 2) + 5, (8 * 0) + 2) in edges
+                assert ((8 * 1) + 4, (8 * 2) + 5) in edges
+                assert ((8 * 2) + 5, (8 * 1) + 2) in edges
+                # Rule Two Brick 0 to 1
+                assert ((8 * 0) + 0, (8 * 1) + 3) in edges
+                assert ((8 * 0) + 1, (8 * 1) + 3) in edges
+                assert ((8 * 0) + 4, (8 * 1) + 2) in edges
+                assert ((8 * 1) + 0, (8 * 0) + 3) in edges
+                assert ((8 * 1) + 1, (8 * 0) + 3) in edges
+                assert ((8 * 1) + 4, (8 * 0) + 2) in edges
+                # Rule Two Brick 2 to 3
+                assert ((8 * 2) + 0, (8 * 3) + 3) in edges
+                assert ((8 * 2) + 1, (8 * 3) + 3) in edges
+                assert ((8 * 2) + 4, (8 * 3) + 2) in edges
+                assert ((8 * 3) + 0, (8 * 2) + 2) in edges
+                assert ((8 * 3) + 1, (8 * 2) + 3) in edges
+
+                assert len(edges) == 38
+
 
 class TestDummyBricks(unittest.TestCase):
     """
