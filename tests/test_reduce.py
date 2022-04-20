@@ -3,7 +3,7 @@ Test cases for building the brick graph
 """
 import unittest
 
-import ld_graph
+import ldgm
 import numpy as np
 import msprime
 import networkx as nx
@@ -30,14 +30,14 @@ class TestNumNodes(unittest.TestCase):
             length=1e4,
             Ne=10000,
         )
-        bricked = ld_graph.brick_ts(ts, threshold=None)
-        number_of_labeled_bricks = len(ld_graph.utility.get_mut_edges(bricked).keys())
+        bricked = ldgm.brick_ts(ts, threshold=None)
+        number_of_labeled_bricks = len(ldgm.utility.get_mut_edges(bricked).keys())
         assert (
-            ld_graph.reduce(ts, path_threshold=100)[0].number_of_nodes()
+            ldgm.reduce(ts, path_threshold=100)[0].number_of_nodes()
             == number_of_labeled_bricks
         )
-        bricked_graph = ld_graph.brick_graph(bricked)
-        reduced_graph, _, _ = ld_graph.reduce_graph(
+        bricked_graph = ldgm.brick_graph(bricked)
+        reduced_graph, _, _ = ldgm.reduce_graph(
             bricked_graph, bricked, threshold=None
         )
         num_brick_nodes = np.sum(np.array(list(reduced_graph.nodes())) >= 0)
@@ -57,9 +57,9 @@ class TestReduce(unittest.TestCase):
 
         """
         ts = utility_functions.single_tree_ts_n2_2_mutations()
-        bts = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        brick_graph = ld_graph.brick_graph(bts)
-        snp_grapher = ld_graph.snp_graph.SNP_Graph(brick_graph, bts, threshold=None)
+        bts = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
+        brick_graph = ldgm.brick_graph(bts)
+        snp_grapher = ldgm.snp_graph.SNP_Graph(brick_graph, bts, threshold=None)
         reduced_graph = snp_grapher.create_reduced_graph()
 
         manual_graph = nx.Graph()
@@ -73,7 +73,7 @@ class TestReduce(unittest.TestCase):
 
         ts = msprime.simulate(10)
         with pytest.raises(ValueError):
-            ld_graph.reduce(ts, path_threshold=100)
+            ldgm.reduce(ts, path_threshold=100)
 
 
 class TestExamples(unittest.TestCase):
@@ -83,13 +83,13 @@ class TestExamples(unittest.TestCase):
 
     def test_fig1(self):
         ts = utility_functions.figure_one_example()
-        reduced = ld_graph.reduce(ts, path_threshold=100)
+        reduced = ldgm.reduce(ts, path_threshold=100)
         assert nx.is_connected(reduced[0])
         assert reduced[0].number_of_edges() == 6
 
     def test_supplementary(self):
         ts = utility_functions.supplementary_example()
-        reduced = ld_graph.reduce(ts, path_threshold=100)
+        reduced = ldgm.reduce(ts, path_threshold=100)
         edges = reduced[0].edges()
         assert (0, 1) in edges
         assert (1, 3) in edges
@@ -101,6 +101,6 @@ class TestExamples(unittest.TestCase):
 
     def test_triangle(self):
         ts = utility_functions.triangle_example()
-        reduced = ld_graph.reduce(ts, path_threshold=100)
+        reduced = ldgm.reduce(ts, path_threshold=100)
         assert nx.is_connected(reduced[0])
         assert reduced[0].number_of_edges() == 3

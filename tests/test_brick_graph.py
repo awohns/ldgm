@@ -4,7 +4,7 @@ Test cases for building the brick graph
 import io
 import unittest
 
-import ld_graph
+import ldgm
 import numpy as np
 import pytest
 import tskit
@@ -14,8 +14,8 @@ from . import utility_functions
 
 class TestExampleTrees(unittest.TestCase):
     def verify(self, ts):
-        bts = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        g = ld_graph.brick_graph(bts)
+        bts = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
+        g = ldgm.brick_graph(bts)
         self.check_rule_0(bts, g)
         self.check_rule_1(bts, g)
         self.check_out_nodes(g)
@@ -28,7 +28,7 @@ class TestExampleTrees(unittest.TestCase):
         graphical_model_nodes = brick_graph.nodes()
         unlabeled_bricks = []
 
-        bricks_to_muts = ld_graph.utility.get_mut_edges(brick_ts)
+        bricks_to_muts = ldgm.utility.get_mut_edges(brick_ts)
         labeled_bricks = list(bricks_to_muts.keys())
 
         for edge in brick_ts.edges():
@@ -71,7 +71,7 @@ class TestExampleTrees(unittest.TestCase):
         graphical_model_edges = brick_graph.edges()
         unlabeled_bricks = []
 
-        bricks_to_muts = ld_graph.utility.get_mut_edges(brick_ts)
+        bricks_to_muts = ldgm.utility.get_mut_edges(brick_ts)
         labeled_bricks = list(bricks_to_muts.keys())
 
         for edge in brick_ts.edges():
@@ -175,8 +175,8 @@ class TestExampleTrees(unittest.TestCase):
 
     def test_triangle_brickgraph(self):
         ts = utility_functions.triangle_example()
-        brick_graph_wo_sibs = ld_graph.brick_graph(ts, make_sibs=False)
-        brick_graph_w_sibs = ld_graph.brick_graph(ts, make_sibs=True)
+        brick_graph_wo_sibs = ldgm.brick_graph(ts, make_sibs=False)
+        brick_graph_w_sibs = ldgm.brick_graph(ts, make_sibs=True)
         edges_wo_sibs = list(brick_graph_wo_sibs.edges())
         edges_w_sibs = list(brick_graph_w_sibs.edges())
         for name, edges in {"nosibs": edges_wo_sibs, "sibs": edges_w_sibs}.items():
@@ -334,14 +334,14 @@ class TestDummyBricks(unittest.TestCase):
     @pytest.mark.skip
     def test_dummy_example_one(self):
         ts = self.dummy_brick_test_one()
-        bts_no_dummy = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        brick_graph_no_dummy = ld_graph.brick_graph(bts_no_dummy)
-        reduced_graph_no_dummy, _ = ld_graph.reduce_graph(
+        bts_no_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
+        brick_graph_no_dummy = ldgm.brick_graph(bts_no_dummy)
+        reduced_graph_no_dummy, _ = ldgm.reduce_graph(
             brick_graph_no_dummy, bts_no_dummy, threshold=100
         )
-        bts_dummy = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=True)
-        brick_graph_dummy = ld_graph.brick_graph(bts_dummy)
-        reduced_graph_dummy, _ = ld_graph.reduce_graph(
+        bts_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=True)
+        brick_graph_dummy = ldgm.brick_graph(bts_dummy)
+        reduced_graph_dummy, _ = ldgm.reduce_graph(
             brick_graph_dummy, bts_dummy, threshold=100
         )
         assert reduced_graph_no_dummy.number_of_edges() == 0
@@ -351,14 +351,14 @@ class TestDummyBricks(unittest.TestCase):
     @pytest.mark.skip
     def test_dummy_example_two(self):
         ts = self.dummy_brick_test_two()
-        bts_no_dummy = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        brick_graph_no_dummy = ld_graph.brick_graph(bts_no_dummy)
-        reduced_graph_no_dummy, _ = ld_graph.reduce_graph(
+        bts_no_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
+        brick_graph_no_dummy = ldgm.brick_graph(bts_no_dummy)
+        reduced_graph_no_dummy, _ = ldgm.reduce_graph(
             brick_graph_no_dummy, bts_no_dummy, threshold=100
         )
-        bts_dummy = ld_graph.brick_ts(ts, threshold=None, add_dummy_bricks=True)
-        brick_graph_dummy = ld_graph.brick_graph(bts_dummy)
-        reduced_graph_dummy, _ = ld_graph.reduce_graph(
+        bts_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=True)
+        brick_graph_dummy = ldgm.brick_graph(bts_dummy)
+        reduced_graph_dummy, _ = ldgm.reduce_graph(
             brick_graph_dummy, bts_dummy, threshold=100
         )
         assert reduced_graph_no_dummy.number_of_edges() == 1
