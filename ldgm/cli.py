@@ -1,12 +1,12 @@
 """
-Command line interface for ld_graph.
+Command line interface for ldgm.
 """
 import argparse
 import csv
 import logging
 import sys
 
-import ld_graph
+import ldgm
 import networkx as nx
 import tskit
 
@@ -30,13 +30,13 @@ def setup_logging(args):
     logging.basicConfig(level=log_level, format=log_format)
 
 
-def ld_graph_cli_parser():
+def ldgm_cli_parser():
     top_parser = argparse.ArgumentParser(
-        description="This is the command line interface for ld_graph, a tool to create \
+        description="This is the command line interface for ldgm, a tool to create \
                 graphical models of SNP dependencies from tree sequences."
     )
     top_parser.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {ld_graph.__version__}"
+        "-V", "--version", action="version", version=f"%(prog)s {ldgm.__version__}"
     )
 
     subparsers = top_parser.add_subparsers(dest="subcommand")
@@ -73,7 +73,7 @@ def run_reduce(args):
         ts = tskit.load(args.tree_sequence)
     except tskit.FileFormatError as ffe:
         error_exit(f"Error loading '{args.tree_sequence}: {ffe}")
-    snp_graph, id_to_muts = ld_graph.reduce(
+    snp_graph, id_to_muts = ldgm.reduce(
         ts,
     )
     nx.readwrite.edgelist.write_edgelist(snp_graph, args.output + ".txt")
@@ -83,8 +83,8 @@ def run_reduce(args):
             writer.writerow([key, value])
 
 
-def ld_graph_main(arg_list=None):
-    parser = ld_graph_cli_parser()
+def ldgm_main(arg_list=None):
+    parser = ldgm_cli_parser()
     args = parser.parse_args(arg_list)
     setup_logging(args)
     args.runner(args)

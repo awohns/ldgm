@@ -42,11 +42,11 @@ jobs:
       - run:
           name: Lint Python
           command: |
-              flake8 --max-line-length 89 ld_graph
+              flake8 --max-line-length 89 ldgm
       - run:
           name: Run tests
           # This assumes pytest is installed via the install-package step above
           command: |
-              python -m pytest --cov=ld_graph --cov-report=xml --cov-branch tests
+              python -m pytest --cov=ldgm --cov-report=xml --cov-branch tests
               python3 -m codecov 
 

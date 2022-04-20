@@ -2,7 +2,7 @@ from . import cli
 
 
 def main():
-    cli.ld_graph_main()
+    cli.ldgm_main()
 
 
 if __name__ == "__main__":

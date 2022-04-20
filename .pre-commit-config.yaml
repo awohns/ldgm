@@ -12,7 +12,7 @@ repos:
     hooks:
       - id: reorder-python-imports
         args: [--application-directories=python,
-               --unclassifiable-application-module=_ld_graph]
+               --unclassifiable-application-module=_ldgm]
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.7.4
     hooks:
@@ -23,7 +23,7 @@ repos:
     hooks:
       - id: black
         language_version: python3
-        args: [ld_graph, setup.py]
+        args: [ldgm, setup.py]
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.8.4
     hooks:
