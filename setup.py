@@ -4,17 +4,17 @@ with open("README.md") as fh:
     long_description = fh.read()
 
 setup(
-    name="ld_graph",
+    name="ldgm",
     author="Anthony Wilder Wohns",
     author_email="awohns@gmail.com",
     description="Create a graphical model of SNP conditional dependence",
     long_description=long_description,
-    packages=["ld_graph"],
+    packages=["ldgm"],
     long_description_content_type="text/markdown",
     python_requires=">=3.4",
     entry_points={
         "console_scripts": [
-            "ld_graph=ld_graph.__main__:main",
+            "ldgm=ldgm.__main__:main",
         ]
     },
     setup_requires=["setuptools_scm"],
@@ -27,13 +27,13 @@ setup(
         "pandas",
     ],
     project_urls={
-        "Source": "https://github.com/awohns/ld_graph",
-        "Bug Reports": "https://github.com/awohns/ld_graph/issues",
+        "Source": "https://github.com/awohns/ldgm",
+        "Bug Reports": "https://github.com/awohns/ldgm/issues",
     },
     classifiers=[
         "Programming Language :: Python :: 3.5",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX",
     ],
-    use_scm_version={"write_to": "ld_graph/_version.py"},
+    use_scm_version={"write_to": "ldgm/_version.py"},
 )
