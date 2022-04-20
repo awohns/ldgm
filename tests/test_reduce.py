@@ -85,6 +85,7 @@ class TestExamples(unittest.TestCase):
         ts = utility_functions.figure_one_example()
         reduced = ld_graph.reduce(ts, path_threshold=100)
         assert nx.is_connected(reduced[0])
+        assert reduced[0].number_of_edges() == 6
 
     def test_supplementary(self):
         ts = utility_functions.supplementary_example()
@@ -96,8 +97,10 @@ class TestExamples(unittest.TestCase):
         assert (0, 3) in edges
         assert (2, 3) in edges
         assert (1, 2) not in edges
+        assert len(edges) == 5
 
     def test_triangle(self):
         ts = utility_functions.triangle_example()
         reduced = ld_graph.reduce(ts, path_threshold=100)
         assert nx.is_connected(reduced[0])
+        assert reduced[0].number_of_edges() == 3

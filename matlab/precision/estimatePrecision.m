@@ -175,16 +175,18 @@ banded_error = mean((R_band(:) - Rr_band(:)).^2) / ...
     mean(R_band(:).^2);
 banded_error_noA = mean((R_band(~A_band) - Rr_band(~A_band)).^2) / ...
     mean(R_band(~A_band).^2);
+denom_noA = mean(R_band(~A_band).^2);
 error = mean((Rr(:) - R(:)).^2) / mean(R(:).^2);
 error_A = mean((R(A) - Rr(A)).^2) / mean(R(A).^2);
+mse = mean((Rr(~A) - R(~A)).^2);
 
 mkdir(output_dir);
 save([output_dir,filename,output_suffix,output_stats_suffix,'.mat'],...
     '*error*','avgDegree','initialDegree','varargin','convergence_data*','converged*',...
-    'noSNPs','SNPs','time*')
+    'noSNPs','SNPs','time*','mse','denom_noA')
 
 save([output_dir,filename,output_suffix,output_matrix_suffix,'.mat'],...
-    'precisionEstimate*','snpTable','A_weighted','-v7.3')
+    'precisionEstimate*','snpTable','A_weighted','SNPs','-v7.3')
 
 saveGraph([output_dir,filename,output_suffix,'.adjlist'],precisionEstimate,SNPs);
 
