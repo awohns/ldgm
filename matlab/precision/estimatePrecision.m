@@ -26,11 +26,20 @@ addParameter(p, 'genos_file_index', 1, @isscalar);
 % directory for saving
 addParameter(p, 'output_dir', '', @isstr);
 
-% file containing population data for each sample in genotype matrix
+% file path containing population data for each sample in genotype matrix
 addParameter(p, 'population_data_file', '', @isstr);
 
 % name of population for which to infer precision matrix, eg 'EUR'
 addParameter(p, 'population_name', 'ALL', @isstr);
+
+% meta-analysis weights across superpopulations
+addParameter(p, 'meta_weights', [], @isvector);
+
+% number of individuals to downsample
+addParameter(p, 'downsample', [], @isscalar);
+
+% extra filename field, added at beginning
+addParameter(p, 'custom_filename', '', @isstr);
 
 % retain LDGM edges with path distance < threshold 
 addParameter(p, 'path_distance_threshold', 4, @isscalar);
@@ -51,7 +60,7 @@ addParameter(p, 'max_gradient_steps_unpenalized', 2e5, @isscalar);
 addParameter(p, 'gradient_convergence_tolerance', 1e-6, @isscalar);
 
 % minimum MAF filter
-addParameter(p, 'minimum_maf', 0.05, @isscalar);
+addParameter(p, 'minimum_maf', 0.01, @isscalar);
 
 % band size for error estimation
 addParameter(p, 'bandsize', 200, @isscalar);
@@ -67,6 +76,7 @@ end
 % suffixes for output files
 output_matrix_suffix = '.precisionMatrix';
 output_stats_suffix = '.stats';
+output_correlation_suffix = '.correlationMatrix';
 output_suffix = sprintf('.path_distance=%.1f.l1_pen=%.2f.maf=%.2f.%s',...
     path_distance_threshold,l1_penalty,minimum_maf,population_name);
 
@@ -91,9 +101,13 @@ if ~isempty(population_data_file) && ~strcmp(population_name,'ALL')
     T = readtable(population_data_file);
     superpops = table2cell(T(:,3));
     assert(length(superpops) == size(X,1),'Number of rows in population_data_file should match number of samples in .genos file')
-    rows = cellfun(@(s)strcmp(s,population_name),superpops);
-    assert(~isempty(rows))
-    X = X(rows,:);
+    if ~strcmp(population_name,'META')
+        rows = cellfun(@(s)strcmp(s,population_name),superpops);
+        assert(~isempty(rows))
+        X = X(rows,:);
+    else
+        assert(length(meta_weights) == length(unique(superpops)));
+    end
 end
 noSNPs = size(X,2);
 
@@ -116,15 +130,32 @@ A_weighted=importGraph([adjlist_dir, filename, '.adjlist'], 1, noSNPs);
 % Empty rows/columns correspond to duplicate SNPs (on same brick as
 % another SNP); also get rid of LF SNPs
 SNPs = any(A_weighted) .* (min(mean(X), 1-mean(X))>minimum_maf) == 1;
+
+A_weighted = A_weighted(SNPs,SNPs);
 X = X(:,SNPs);
-
-% Remove rare + redundant SNPs from LDGM, patching broken paths
-A_weighted = reduce_weighted_graph(A_weighted,find(~SNPs));
-
 SNPs = find(SNPs);
 snpTable = snpTable(SNPs,:);
 
 [noHaplotypes, noSNPs] = size(X);
+
+% meta-analysis
+if strcmp(population_name,'META')
+    superpop_names = unique(superpops);
+    for ii=1:length(meta_weights)
+        rows = cellfun(@(s)strcmp(s,superpop_names(ii)),superpops);
+        X(rows,:) = (X(rows,:) - mean(X(rows,:))) * meta_weights(ii) / sum(rows);
+    end
+end
+
+% downsampling (without replacement)
+if ~isempty(downsample)
+    assert(~strcmp(population_name,'META'),'META option incompatitble with downsampling')
+    assert(downsample < 1 & downsample > 0)
+    samples = randsample(sum(rows),floor(sum(rows)*downsample),false);
+    X_out = X(setdiff(1:sum(rows),samples),:);
+    R_out = corr(X_out);
+    X = X(samples,:);
+end
 
 % LD correlation matrix
 R = corr(X);
@@ -179,14 +210,24 @@ denom_noA = mean(R_band(~A_band).^2);
 error = mean((Rr(:) - R(:)).^2) / mean(R(:).^2);
 error_A = mean((R(A) - Rr(A)).^2) / mean(R(A).^2);
 mse = mean((Rr(~A) - R(~A)).^2);
+banded_denom = mean(R_band(~A_band).^2);
 
+if ~isempty(downsample)
+    mse_out = mean((Rr(~A) - R_out(~A)).^2);
+    mse_out_in = mean((R(~A) - R_out(~A)).^2);
+end
+
+% saving
 mkdir(output_dir);
-save([output_dir,filename,output_suffix,output_stats_suffix,'.mat'],...
+save([output_dir,custom_filename,filename,output_suffix,output_stats_suffix,'.mat'],...
     '*error*','avgDegree','initialDegree','varargin','convergence_data*','converged*',...
-    'noSNPs','SNPs','time*','mse','denom_noA')
+    'noSNPs','SNPs','time*','meta_weights','mse*','*denom*')
 
-save([output_dir,filename,output_suffix,output_matrix_suffix,'.mat'],...
+save([output_dir,custom_filename,filename,output_suffix,output_matrix_suffix,'.mat'],...
     'precisionEstimate*','snpTable','A_weighted','SNPs','-v7.3')
+
+save([output_dir,custom_filename,filename,output_suffix,output_correlation_suffix,'.mat'],...
+    'R*','-v7.3')
 
 saveGraph([output_dir,filename,output_suffix,'.adjlist'],precisionEstimate,SNPs);
 
