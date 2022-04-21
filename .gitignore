@@ -1,4 +1,4 @@
-ld_graph/_version.py
+ldgm/_version.py
 *.asv
 .DS_Store
-ld_graph/__pycache__
+ldgm/__pycache__
