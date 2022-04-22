@@ -35,8 +35,8 @@ addParameter(p, 'population_name', 'ALL', @isstr);
 % meta-analysis weights across superpopulations
 addParameter(p, 'meta_weights', [], @isvector);
 
-% number of individuals to downsample
-addParameter(p, 'downsample', [], @isscalar);
+% number of individuals to downsample_fraction
+addParameter(p, 'downsample_fraction', [], @isscalar);
 
 % extra filename field, added at beginning
 addParameter(p, 'custom_filename', '', @isstr);
@@ -127,9 +127,22 @@ assert(~isempty(adjlist_files),"Adjacency list file not found in [adjlist_dir,fi
 % adjacency matrix
 A_weighted=importGraph([adjlist_dir, filename, '.adjlist'], 1, noSNPs);
 
+% meta-analysis
+if strcmp(population_name,'META')
+    superpop_names = unique(superpops);
+    for ii=1:length(meta_weights)
+        rows = cellfun(@(s)strcmp(s,superpop_names(ii)),superpops);
+        AF(ii,:) = mean(X(rows,:));
+        X(rows,:) = (X(rows,:) - AF(ii,:)) * meta_weights(ii)/sum(meta_weights) * size(X,1)/sum(rows);
+    end
+    AF = meta_weights*AF/sum(meta_weights);
+else
+    AF = mean(X);
+end
+
 % Empty rows/columns correspond to duplicate SNPs (on same brick as
 % another SNP); also get rid of LF SNPs
-SNPs = any(A_weighted) .* (min(mean(X), 1-mean(X))>minimum_maf) == 1;
+SNPs = any(A_weighted) .* (min(AF,1-AF)>minimum_maf) == 1;
 
 A_weighted = A_weighted(SNPs,SNPs);
 X = X(:,SNPs);
@@ -138,20 +151,11 @@ snpTable = snpTable(SNPs,:);
 
 [noHaplotypes, noSNPs] = size(X);
 
-% meta-analysis
-if strcmp(population_name,'META')
-    superpop_names = unique(superpops);
-    for ii=1:length(meta_weights)
-        rows = cellfun(@(s)strcmp(s,superpop_names(ii)),superpops);
-        X(rows,:) = (X(rows,:) - mean(X(rows,:))) * meta_weights(ii) / sum(rows);
-    end
-end
-
 % downsampling (without replacement)
-if ~isempty(downsample)
+if ~isempty(downsample_fraction)
     assert(~strcmp(population_name,'META'),'META option incompatitble with downsampling')
-    assert(downsample < 1 & downsample > 0)
-    samples = randsample(sum(rows),floor(sum(rows)*downsample),false);
+    assert(downsample_fraction < 1 & downsample_fraction > 0)
+    samples = randsample(sum(rows),floor(sum(rows)*downsample_fraction),false);
     X_out = X(setdiff(1:sum(rows),samples),:);
     R_out = corr(X_out);
     X = X(samples,:);
@@ -163,10 +167,11 @@ R_band = spdiags(R,1:bandsize);
 
 % Initial graphical model
 A = A_weighted + speye(noSNPs) >= 1/(1 + path_distance_threshold);
-initialDegree = ceil(nnz(A) / (2*noSNPs));
+bandSize = ceil(nnz(A) / (2*noSNPs));
+initialDegree = nnz(A) / noSNPs;
 
 if banded_control_ldgm
-    A = spdiags(true(noSNPs,2*initialDegree+1),-initialDegree:initialDegree,noSNPs,noSNPs);
+    A = spdiags(true(noSNPs,2*bandSize+1),-bandSize:bandSize,noSNPs,noSNPs);
     output_suffix = [output_suffix, '.banded_control'];
 end
 
@@ -212,7 +217,7 @@ error_A = mean((R(A) - Rr(A)).^2) / mean(R(A).^2);
 mse = mean((Rr(~A) - R(~A)).^2);
 banded_denom = mean(R_band(~A_band).^2);
 
-if ~isempty(downsample)
+if ~isempty(downsample_fraction)
     mse_out = mean((Rr(~A) - R_out(~A)).^2);
     mse_out_in = mean((R(~A) - R_out(~A)).^2);
 end
