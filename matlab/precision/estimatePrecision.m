@@ -14,6 +14,11 @@ addParameter(p, 'adjlist_dir', genos_path, @isstr);
 % and path_distance_threshold
 addParameter(p, 'banded_control_ldgm', 0, @isscalar);
 
+% instead of using adjacency matrix, create adjacency matrix with most
+% highly correlated neighbors. . Number of neighbors will be chosen based 
+% on adjacency matrix and path_distance_threshold
+addParameter(p, 'banded_control_ldgm', 0, @isscalar);
+
 % directory containing SNP list, defaults to genos_dir
 addParameter(p, 'snplist_dir', genos_path, @isstr);
 
@@ -167,13 +172,24 @@ R_band = spdiags(R,1:bandsize);
 
 % Initial graphical model
 A = A_weighted + speye(noSNPs) >= 1/(1 + path_distance_threshold);
-bandSize = ceil(nnz(A) / (2*noSNPs));
-initialDegree = nnz(A) / noSNPs;
 
+% banded control option
 if banded_control_ldgm
+    bandSize = ceil(nnz(A) / (2*noSNPs));
     A = spdiags(true(noSNPs,2*bandSize+1),-bandSize:bandSize,noSNPs,noSNPs);
     output_suffix = [output_suffix, '.banded_control'];
 end
+
+% r2 control option
+if r2_control_ldgm
+    assert(~banded_control_ldgm, 'banded_control_ldgm and r2_control_ldgm are incompatible options')
+    r2 = R(:).^2;
+    r2_threshold = quantile(r2, 1 - initialDegree/noSNPs);
+    A = R.^2 >= r2_threshold;
+    output_suffix = [output_suffix, '.r2_control'];
+end
+
+initialDegree = nnz(A) / noSNPs;
 
 % estimate precision matrix with L1 penalty
 tic;
@@ -215,6 +231,7 @@ denom_noA = mean(R_band(~A_band).^2);
 error = mean((Rr(:) - R(:)).^2) / mean(R(:).^2);
 error_A = mean((R(A) - Rr(A)).^2) / mean(R(A).^2);
 mse = mean((Rr(~A) - R(~A)).^2);
+banded_mse = mean((R_band(~A_band) - Rr_band(~A_band)).^2);
 banded_denom = mean(R_band(~A_band).^2);
 
 if ~isempty(downsample_fraction)
@@ -226,7 +243,7 @@ end
 mkdir(output_dir);
 save([output_dir,custom_filename,filename,output_suffix,output_stats_suffix,'.mat'],...
     '*error*','avgDegree','initialDegree','varargin','convergence_data*','converged*',...
-    'noSNPs','SNPs','time*','meta_weights','mse*','*denom*')
+    'noSNPs','SNPs','time*','meta_weights','*mse*','*denom*')
 
 save([output_dir,custom_filename,filename,output_suffix,output_matrix_suffix,'.mat'],...
     'precisionEstimate*','snpTable','A_weighted','SNPs','-v7.3')
