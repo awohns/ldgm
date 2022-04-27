@@ -1,4 +1,4 @@
-function [P, objective_function_value, converged, data] = LDPrecision(R,varargin)
+function [P, objective_function_value, converged, data] = LDPrecisionTesting(R,varargin)
 % Calculates maximum likelihood precision matrix from correlation
 % matrix R. R is a SNPs x SNPs matrix, possibly sparse, where edge (i,j)
 % is the correlation between SNPs i and j. By default, LDPrecision
@@ -69,7 +69,6 @@ end
 % gradient descent
 tic;
 stepsize = 0.01;
-% dampening = 0;
 gradient = G;
 converged = false;
 lastCheckedObj = inf;
@@ -86,14 +85,18 @@ for rep = 1:p.Results.max_steps
     % dampening to eliminate oscillations
     gradient = dampening * oldGradient + (1 - dampening) * gradient;
     grad_corr = corr(gradient(G),oldGradient(G));
-    %     dampening = max(0, min(0.99, dampening - grad_corr * 0.05));
+%     dampening = max(0, min(0.9, dampening - grad_corr * 0.05));
     %     grad_corr=0;
     
     % backtracking line search to determine step size
+    if mod(rep,10) == 0 || rep < 100
     [P, stepsize, objective_function_value] = ...
         linesearch(P, objective_function_value, ...
         gradient, ...
         obj, stepsize);
+    else
+        P = step(P, gradient, stepsize);
+    end
     
     
     if nargout > 3 || printstuff == 2
@@ -185,22 +188,12 @@ end
         
         if ~isreal(oldObjVal); error('objective function value should be real at initial point for line search'); end
         
-        stepsize = stepsize * sqrt(stepsize_factor);
+        stepsize = stepsize * stepsize_factor;
         
         thetaNew = step(thetaInit, grad, stepsize);
         newObj = objFn(thetaNew);
-        if 0
-            while newObj < oldObjVal
-                stepsize = stepsize * stepsize_factor;
-                oldObjVal = newObj;
-                newObj = objFn(step(thetaInit, grad, stepsize));
-            end
-            
-            stepsize = stepsize / stepsize_factor;
-            newObj = oldObjVal;
-        end
         
-        while newObj > initObj %- step * sum(nonzeros(grad).^2) / stepsize_factor
+        while newObj > initObj %- stepsize * sum(nonzeros(grad).^2) / stepsize_factor
             stepsize = stepsize / stepsize_factor;
             thetaNew = step(thetaInit, grad, stepsize);
             newObj = objFn(thetaNew);

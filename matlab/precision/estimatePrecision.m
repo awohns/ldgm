@@ -17,7 +17,7 @@ addParameter(p, 'banded_control_ldgm', 0, @isscalar);
 % instead of using adjacency matrix, create adjacency matrix with most
 % highly correlated neighbors. . Number of neighbors will be chosen based 
 % on adjacency matrix and path_distance_threshold
-addParameter(p, 'banded_control_ldgm', 0, @isscalar);
+addParameter(p, 'r2_control_ldgm', 0, @isscalar);
 
 % directory containing SNP list, defaults to genos_dir
 addParameter(p, 'snplist_dir', genos_path, @isstr);
@@ -69,6 +69,9 @@ addParameter(p, 'minimum_maf', 0.01, @isscalar);
 
 % band size for error estimation
 addParameter(p, 'bandsize', 200, @isscalar);
+
+% dampening parameter for gradient descent
+addParameter(p, 'dampening', 0, @isscalar);
 
 % turns p.Results.x into just x
 parse(p, genos_path, varargin{:});
@@ -184,7 +187,7 @@ end
 if r2_control_ldgm
     assert(~banded_control_ldgm, 'banded_control_ldgm and r2_control_ldgm are incompatible options')
     r2 = R(:).^2;
-    r2_threshold = quantile(r2, 1 - initialDegree/noSNPs);
+    r2_threshold = quantile(r2, 1 - mean(A(:)));
     A = R.^2 >= r2_threshold;
     output_suffix = [output_suffix, '.r2_control'];
 end
@@ -196,7 +199,8 @@ tic;
 [precisionEstimatePenalized, ~, converged_penalized, convergence_data_penalized] =...
     LDPrecision(R, 'graphical_model', A, ...
     'P0', speye(noSNPs), 'max_steps', max_gradient_steps_penalized,...
-    'convergence_tol', gradient_convergence_tolerance, 'printstuff', verbose, 'lambda', l1_penalty);
+    'convergence_tol', gradient_convergence_tolerance, 'printstuff', verbose,...
+    'lambda', l1_penalty, 'dampening', dampening);
 time_gd_penalized=toc;
     
 % Updated graphical model
@@ -216,7 +220,8 @@ end
 [precisionEstimate, ~, converged, convergence_data] =...
     LDPrecision(R, 'graphical_model', A, ...
     'P0', precisionEstimatePenalized, 'max_steps', max_gradient_steps_unpenalized,...
-    'convergence_tol', gradient_convergence_tolerance, 'printstuff', 1, 'lambda', 0);
+    'convergence_tol', gradient_convergence_tolerance, 'printstuff', verbose,...
+    'lambda', 0, 'dampening', dampening);
 time_gd_unpenalized=toc;
 
 % Error metrics
