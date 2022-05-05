@@ -6,6 +6,9 @@ p=inputParser;
 % directory containing genotype matrices
 addRequired(p, 'genos_dir', @isstr);
 
+% method to use: coordinate descent or gradient descent
+addParameter(p, 'method', 'coordinate_descent', @isstr);
+
 % directory containing adjacency matrices, defaults to genos_dir
 addParameter(p, 'adjlist_dir', genos_path, @isstr);
 
@@ -55,11 +58,14 @@ addParameter(p, 'l1_penalty', 0.05, @isscalar);
 % verbosity for gradient descent function (0,1,2)
 addParameter(p, 'verbose', 1, @isscalar);
 
-% maximum number of gradient descent steps with L1 penalty
-addParameter(p, 'max_gradient_steps_penalized', 2e4, @isscalar);
+% maximum number of iterations with L1 penalty
+addParameter(p, 'penalized_iterations', 5, @isscalar);
 
-% maximum number of gradient descent steps without L1 penalty
-addParameter(p, 'max_gradient_steps_unpenalized', 2e5, @isscalar);
+% maximum number of iterations without L1 penalty
+addParameter(p, 'unpenalized_iterations', 25, @isscalar);
+
+% lasso iterations for inner loop of coordinate descent
+addParameter(p, 'lasso_iters', 10, @isscalar);
 
 % convergence tolerance for gradient descent
 addParameter(p, 'gradient_convergence_tolerance', 1e-6, @isscalar);
@@ -196,19 +202,26 @@ initialDegree = nnz(A) / noSNPs;
 
 % estimate precision matrix with L1 penalty
 tic;
-[precisionEstimatePenalized, ~, converged_penalized, convergence_data_penalized] =...
-    LDPrecision(R, 'graphical_model', A, ...
-    'P0', speye(noSNPs), 'max_steps', max_gradient_steps_penalized,...
-    'convergence_tol', gradient_convergence_tolerance, 'printstuff', verbose,...
-    'lambda', l1_penalty, 'dampening', dampening);
+if strcmp(method, 'coordinate_descent')
+    precisionEstimatePenalized = LDGM_precision_coordinate_descent(A,...
+        R, penalized_iterations, l1_penalty, lasso_iters);
+elseif strcmp(method, 'gradient_descent')
+    precisionEstimatePenalized =...
+        LDPrecision(R, 'graphical_model', A, ...
+        'P0', speye(noSNPs), 'max_steps', penalized_iterations,...
+        'convergence_tol', gradient_convergence_tolerance, 'printstuff', verbose,...
+        'lambda', l1_penalty, 'dampening', dampening);
+else
+    error('method should be either coordinate_descent (recommended) or gradient_descent')
+end
 time_gd_penalized=toc;
     
 % Updated graphical model
-A = abs(precisionEstimatePenalized) > smallNumber;
-avgDegree = nnz(A) / length(A);
+A_l1 = abs(precisionEstimatePenalized) > smallNumber;
+avgDegree = nnz(A_l1) / length(A_l1);
 
 % initialize at regularized estimate
-precisionEstimatePenalized(~A)=0;
+precisionEstimatePenalized(~A_l1)=0;
 [~,a] = chol(precisionEstimatePenalized);
 while a > 0 % precisionEstimatePenalized is not PSD
     precisionEstimatePenalized = precisionEstimatePenalized + 0.01 * speye(noSNPs);
@@ -217,11 +230,20 @@ end
 
 % Estimate precision matrix at edges selected with L1 penalty, dropping the
 % penalty term
-[precisionEstimate, ~, converged, convergence_data] =...
-    LDPrecision(R, 'graphical_model', A, ...
-    'P0', precisionEstimatePenalized, 'max_steps', max_gradient_steps_unpenalized,...
-    'convergence_tol', gradient_convergence_tolerance, 'printstuff', verbose,...
-    'lambda', 0, 'dampening', dampening);
+tic
+if strcmp(method, 'coordinate_descent')
+    precisionEstimate = LDGM_precision_coordinate_descent(A_l1,...
+        R, unpenalized_iterations, 0, 0, precisionEstimatePenalized);
+elseif strcmp(method, 'gradient_descent')
+    precisionEstimate =...
+        LDPrecision(R, 'graphical_model', A_l1, ...
+        'P0', precisionEstimatePenalized, 'max_steps', unpenalized_iterations,...
+        'convergence_tol', gradient_convergence_tolerance, 'printstuff', verbose,...
+        'lambda', 0, 'dampening', dampening);
+else
+    error('method should be either coordinate_descent (recommended) or gradient_descent')
+end
+
 time_gd_unpenalized=toc;
 
 % Error metrics
@@ -247,14 +269,14 @@ end
 % saving
 mkdir(output_dir);
 save([output_dir,custom_filename,filename,output_suffix,output_stats_suffix,'.mat'],...
-    '*error*','avgDegree','initialDegree','varargin','convergence_data*','converged*',...
-    'noSNPs','SNPs','time*','meta_weights','*mse*','*denom*')
+    '*error*','avgDegree','initialDegree','varargin',...
+    'noSNPs','SNPs','time*','meta_weights','*mse*','*denom*','method')
 
 save([output_dir,custom_filename,filename,output_suffix,output_matrix_suffix,'.mat'],...
-    'precisionEstimate*','snpTable','A_weighted','SNPs','-v7.3')
+    'precisionEstimate*','snpTable','A*','SNPs','-v7.3')
 
 save([output_dir,custom_filename,filename,output_suffix,output_correlation_suffix,'.mat'],...
-    'R*','-v7.3')
+    'R','-v7.3')
 
 saveGraph([output_dir,filename,output_suffix,'.adjlist'],precisionEstimate,SNPs);
 
