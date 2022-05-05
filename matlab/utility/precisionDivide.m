@@ -12,11 +12,13 @@ function x = precisionDivide(P, y, notMissing)
 
 if iscell(P)
     assert(iscell(y) & iscell(notMissing))
-    x = cellfun(@precisionMultiply, P, y, notMissing, 'UniformOutput', false);
+    x = cellfun(@precisionDivide, P, y, notMissing, 'UniformOutput', false);
 else
     % yp is y augmented with zeros
-    yp = zeros(length(P),1);
-    yp(notMissing) = y;
+    if isa(notMissing,'logical')
+        notMissing = find(notMissing);
+    end
+    yp = sparse(notMissing,ones(length(notMissing),1),y,length(P),1);
     
     % xp is x augmented with entries that can be ignored
     xp = P \ yp;

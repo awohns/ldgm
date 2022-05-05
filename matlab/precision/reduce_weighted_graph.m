@@ -3,12 +3,13 @@ function [A] = reduce_weighted_graph(A,missing)
 %paths between remaining vertices
 
 mm=length(A);
-for j=1:length(missing)
-    i = missing(j);
-    Ni=find(A(:,i));
-    Ni=setdiff(Ni,i);
-    A(Ni,Ni)=max( A(Ni,Ni),...
-        1./( (1./A(Ni,i) - 1) + (1./A(i,Ni) - 1) + 1) );
+for jj=1:length(missing)
+    ii = missing(jj);
+    Ni=find(A(:,ii));
+    Ni=setdiff(Ni,ii);
+%     A(Ni,Ni)=max( A(Ni,Ni),...
+%         1./( (1./A(Ni,ii) - 1) + (1./A(ii,Ni) - 1) + 1) );
+    A(Ni,Ni) = min(
 end
 
 notmissing = setdiff(1:mm,missing);
