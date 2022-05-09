@@ -106,6 +106,12 @@ genos_filename = genos_files(genos_file_index).name;
 assert(strcmp(genos_filename(end-5:end),'.genos'));
 filename = genos_filename(1:end-6);
 
+% check if output file already exists
+if isfile([output_dir,custom_filename,filename,output_suffix,output_stats_suffix,'.mat'])
+    error('Output .stats file already exists')
+end
+
+
 % genotype matrix
 X = load([genos_dir, genos_filename])';
 assert(all(unique(X(:)) == [0 1]'));
@@ -250,13 +256,10 @@ time_gd_unpenalized=toc;
 A_band = spdiags(A,1:bandsize);
 Rr = inv(precisionEstimate);
 Rr_band = spdiags(Rr,1:bandsize);
-banded_error = mean((R_band(:) - Rr_band(:)).^2) / ...
     mean(R_band(:).^2);
-banded_error_noA = mean((R_band(~A_band) - Rr_band(~A_band)).^2) / ...
     mean(R_band(~A_band).^2);
 denom_noA = mean(R_band(~A_band).^2);
-error = mean((Rr(:) - R(:)).^2) / mean(R(:).^2);
-error_A = mean((R(A) - Rr(A)).^2) / mean(R(A).^2);
+mse_A = mean((R(A) - Rr(A)).^2);
 mse = mean((Rr(~A) - R(~A)).^2);
 banded_mse = mean((R_band(~A_band) - Rr_band(~A_band)).^2);
 banded_denom = mean(R_band(~A_band).^2);
@@ -269,7 +272,7 @@ end
 % saving
 mkdir(output_dir);
 save([output_dir,custom_filename,filename,output_suffix,output_stats_suffix,'.mat'],...
-    '*error*','avgDegree','initialDegree','varargin',...
+    'avgDegree','initialDegree','varargin',...
     'noSNPs','SNPs','time*','meta_weights','*mse*','*denom*','method')
 
 save([output_dir,custom_filename,filename,output_suffix,output_matrix_suffix,'.mat'],...
