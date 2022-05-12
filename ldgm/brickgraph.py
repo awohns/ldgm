@@ -245,7 +245,8 @@ class BrickGraph:
                         combine_odds="rule_two",
                     )
 
-                    # Up before left to down before right
+                    # If left is labeled, left up before to right down after.
+                    # If left is not labeled, we do left up before to right down before.
                     self.connect_vertices(
                         self.node_edge_dict[pair[0]],
                         self.node_edge_dict[pair[1]],
