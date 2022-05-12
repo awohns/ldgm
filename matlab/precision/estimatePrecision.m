@@ -122,6 +122,7 @@ if ~isempty(population_data_file) && ~strcmp(population_name,'ALL')
     superpops = table2cell(T(:,3));
     assert(length(superpops) == size(X,1),'Number of rows in population_data_file should match number of samples in .genos file')
     if ~strcmp(population_name,'META')
+        assert(isempty(meta_weights))
         rows = cellfun(@(s)strcmp(s,population_name),superpops);
         assert(~isempty(rows))
         X = X(rows,:);
