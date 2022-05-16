@@ -10,6 +10,7 @@ addRequired(p, 'sigmasqSupport', @isnumeric)
 addOptional(p, 'sigmasqPrior', 1, @(x)all(sum(x,2)==1))
 addOptional(p, 'annot', cellfun(@(x){ones(length(x),1)},P), @iscell)
 addOptional(p, 'linkFn', @(x)max(x,0), @(f)isa(f,'function_handle'))
+addOptional(p, 'popstrat', 0, @isscalar)
 
 parse(p,P, nn, sigmasqSupport,varargin{:});
 
@@ -26,7 +27,7 @@ beta = alphaHat; alpha = alphaHat; sigmasq = alphaHat;
 
 for b = 1:noBlocks
     [alphaHat{b}, beta{b}, alpha{b}, sigmasq{b}] = ...
-        simulate_sumstats_precision(P{b}, nn, sigmasqSupport, ...
+        simulate_sumstats_precision(P{b}, 1/(1/nn+popstrat), sigmasqSupport, ...
         'sigmasqPrior',sigmasqPrior, 'annot',annot{b}, 'linkFn',linkFn);
 end
 

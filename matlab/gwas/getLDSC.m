@@ -1,18 +1,18 @@
-function [l2, RDiag] = getLDSC(P,a,blocks)
-%UNTITLED Summary of this function goes here
-%   Detailed explanation goes here
-noAnnot = size(a,2);
-l2 = zeros(size(a));
-RDiag = zeros(size(a,1),1);
-for b=1:length(blocks)
+function [l2] = getLDSC(P,A)
+%getLDSC compute stratified LD scores from precision matrices and
+%annotation matrices
+% P: cell array of precision matrices
+% A: cell array of annotation matrices; each entry of A should have number
+% of rows == number of rows+columns in each entry of P
+% l2: LD scores
+
+noAnnot = size(A,2);
+l2 = cell(size(P));
+for b=1:length(P)
     R = inv(P{b});
     for k = 1:noAnnot
-%         A = speye(length(blocks{b})).*a(blocks{b},k);
-%         L = P(blocks{b},blocks{b}) \ A / P(blocks{b},blocks{b});
-%         l2(blocks{b},k) = diag(L);
-        l2(blocks{b},k) = sum(R.^2.*a(blocks{b},k));
+        l2{b}(:,k) = sum(R.^2.*A{b}(:,k));
     end
-    RDiag(blocks{b}) = diag(R);
 
 end
 end
