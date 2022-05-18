@@ -81,13 +81,14 @@ class TestExamples(unittest.TestCase):
     Test specific trees by hand
     """
 
-    def test_fig1(self):
+    def test_fig1(self, num_threads=1):
         ts = utility_functions.figure_one_example()
         reduced = ldgm.reduce(ts, path_threshold=100)
         assert nx.is_connected(reduced[0])
         assert reduced[0].number_of_edges() == 6
+        return reduced[0]
 
-    def test_supplementary(self):
+    def test_supplementary(self, num_threads=1):
         ts = utility_functions.supplementary_example()
         reduced = ldgm.reduce(ts, path_threshold=100)
         edges = reduced[0].edges()
@@ -98,9 +99,17 @@ class TestExamples(unittest.TestCase):
         assert (2, 3) in edges
         assert (1, 2) not in edges
         assert len(edges) == 5
+        return reduced[0]
 
-    def test_triangle(self):
+    def test_triangle(self, num_threads=1):
         ts = utility_functions.triangle_example()
         reduced = ldgm.reduce(ts, path_threshold=100)
         assert nx.is_connected(reduced[0])
         assert reduced[0].number_of_edges() == 3
+        return reduced[0]
+
+    def test_multithreaded(self):
+        for test in [self.test_fig1, self.test_supplementary, self.test_triangle]:
+            singlethreaded = test(num_threads=1)
+            multithreaded = test(num_threads=2)
+            assert nx.is_isomorphic(singlethreaded, multithreaded)
