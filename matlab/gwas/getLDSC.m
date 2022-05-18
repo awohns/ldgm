@@ -6,7 +6,7 @@ function [l2] = getLDSC(P,A)
 % of rows == number of rows+columns in each entry of P
 % l2: LD scores
 
-noAnnot = size(A,2);
+noAnnot = size(A{1},2);
 l2 = cell(size(P));
 for b=1:length(P)
     R = inv(P{b});
