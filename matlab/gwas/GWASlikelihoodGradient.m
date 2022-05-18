@@ -60,18 +60,17 @@ else
     
     % betahat = P/P11 * alphaHat
     betahat = precisionMultiply(P, alphaHat, whichSNPs);
-    b = M \ betahat;
+    b = precisionDivide(M, betahat, whichSNPs);
     
     % two terms of the log-likelihood (quadratic term + log-determinant
     % term)
-    d = -sum(delSigmaDelA .* b(whichSNPs).^2);
+    d = -sum(delSigmaDelA .* b.^2);
     delLogDetP = sum(delSigmaDelA .* MinvDiag(whichSNPs));
     
     grad = - 1/2 * (- delLogDetP - d);
     
     % gradient of minus log-likelihood wrt 1/nn
     if ~fixedIntercept
-        b = b(whichSNPs);
         c = precisionMultiply(P,b,whichSNPs);
         nGrad = 1/2 * (sum(nonzeros(Minv.*P)) - sum(b.*c));
         grad(end+1) = nGrad;
