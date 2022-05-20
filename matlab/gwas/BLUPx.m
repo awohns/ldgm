@@ -55,11 +55,11 @@ assert(all(cellfun(@(x,y)length(x)==length(y),SNPs,P)))
 % (per-sd-of-genotype) units. alpha_param is the AF-dependent architecture parameter
 % of e.g. Schoech et al. 2019. For a SNP that is missing in a population, 
 % its effect-size s.d. is zero.
-if 0% nargin < 7
-    sd = whichSNPs;
+if nargin < 7
+    sd = cellfun(@double,whichSNPs,'uniformoutput',0);
 else
     
-    if 0% nargin < 8
+    if nargin < 8
          % default no AF-dependent architecture (constant per-allele effect
          % size variance)
         alpha_param = 0;
