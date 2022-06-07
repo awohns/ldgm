@@ -2,7 +2,6 @@
 Command line interface for ldgm.
 """
 import argparse
-import csv
 import logging
 import sys
 
@@ -57,6 +56,12 @@ def ldgm_cli_parser():
         help="The path and name of output file, without an extension, which will store the \
                 SNP graphical model and dictionary mapping graph nodes to mutation ids.",
     )
+    parser.add_argument(
+        "path_threshold",
+        type=int,
+        help="The maximum path threshold to retain in the linkage disequilibrium graphical \
+                model.",
+    )
     # parser.add_argument(
     #    "-p", "--progress", action="store_true", help="Show progress bar."
     # )
@@ -73,14 +78,8 @@ def run_reduce(args):
         ts = tskit.load(args.tree_sequence)
     except tskit.FileFormatError as ffe:
         error_exit(f"Error loading '{args.tree_sequence}: {ffe}")
-    snp_graph, id_to_muts = ldgm.reduce(
-        ts,
-    )
-    nx.readwrite.edgelist.write_edgelist(snp_graph, args.output + ".txt")
-    with open(args.output + ".csv", "w") as csv_file:
-        writer = csv.writer(csv_file)
-        for key, value in id_to_muts.items():
-            writer.writerow([key, value])
+    snp_graph, id_to_muts = ldgm.reduce(ts, args.path_threshold)
+    nx.readwrite.edgelist.write_weighted_edgelist(snp_graph, args.output)
 
 
 def ldgm_main(arg_list=None):
