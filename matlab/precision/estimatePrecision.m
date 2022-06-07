@@ -1,6 +1,6 @@
 function P = estimatePrecision(genos_path, varargin)
-% Estimates precision matrices for EUR superpopulation using LDGMs derived
-% from union of NYGC superpopulations
+% Estimates LDGM precision matrix from an LDGM and genotype data using
+% modified DP-GLASSO algorithm
 
 p=inputParser;
 % directory containing genotype matrices
@@ -18,7 +18,7 @@ addParameter(p, 'adjlist_dir', genos_path, @isstr);
 addParameter(p, 'banded_control_ldgm', 0, @isscalar);
 
 % instead of using adjacency matrix, create adjacency matrix with most
-% highly correlated neighbors. . Number of neighbors will be chosen based 
+% highly correlated neighbors. . Number of neighbors will be chosen based
 % on adjacency matrix and path_distance_threshold
 addParameter(p, 'r2_control_ldgm', 0, @isscalar);
 
@@ -43,13 +43,19 @@ addParameter(p, 'population_name', 'ALL', @isstr);
 % meta-analysis weights across superpopulations
 addParameter(p, 'meta_weights', [], @isvector);
 
+% file path containing local ancestry matrix. Local ancestry file should
+% have same name as .genos file, ending in .localancestry instead. File
+% format should be same as .genos file (SNPs x individuals), each entry
+% encoding which ancestry group individual ii belongs to at position jj
+addParameter(p, 'local_ancestry_dir', '', @isstr);
+
 % number of individuals to downsample_fraction
 addParameter(p, 'downsample_fraction', [], @isscalar);
 
 % extra filename field, added at beginning
 addParameter(p, 'custom_filename', '', @isstr);
 
-% retain LDGM edges with path distance < threshold 
+% retain LDGM edges with path distance < threshold
 addParameter(p, 'path_distance_threshold', 4, @isscalar);
 
 % L1 penalty parameter
@@ -103,7 +109,7 @@ addpath(genpath('/broad/oconnor/trees/MATLAB'))
 genos_files = dir([genos_dir,genos_filename]);
 assert(~isempty(genos_files));
 genos_filename = genos_files(genos_file_index).name;
-assert(strcmp(genos_filename(end-5:end),'.genos'));
+assert(strcmp(genos_filename(end-5:end),'.genos'), 'genos file should end with .genos');
 filename = genos_filename(1:end-6);
 
 % check if output file already exists
@@ -114,7 +120,7 @@ end
 
 % genotype matrix
 X = load([genos_dir, genos_filename])';
-assert(all(unique(X(:)) == [0 1]'));
+assert(all(unique(X(:)) == [0 1]'), 'genos file should be binary');
 
 % which samples to retain
 if ~isempty(population_data_file) && ~strcmp(population_name,'ALL')
@@ -126,11 +132,28 @@ if ~isempty(population_data_file) && ~strcmp(population_name,'ALL')
         rows = cellfun(@(s)strcmp(s,population_name),superpops);
         assert(~isempty(rows))
         X = X(rows,:);
-    else
-        assert(length(meta_weights) == length(unique(superpops)));
     end
 end
-noSNPs = size(X,2);
+[noSamples, noSNPs] = size(X);
+
+% local ancestry file to handle admixture (or other structure)
+if ~isempty(local_ancestry_dir)
+    assert(isempty(population_data_file),...
+        'Specify either local ancestry or population labels but not both')
+    local_ancestry_file = [local_ancestry_dir, genos_filename(1:end-6), '.localancestry'];
+    local_ancestry = load(local_ancestry_file)';
+    noPopns = max(local_ancestry(:));
+    AF = mean(X);
+    for ii = 1:noSNPs
+        for pop = 1:noPopns
+            if any(local_ancestry(:,ii) == pop)
+                X(local_ancestry(:,ii) == pop, ii) = ...
+                    X(local_ancestry(:,ii) == pop, ii) - ...
+                    mean(X(local_ancestry(:,ii) == pop, ii));
+            end
+        end
+    end
+end
 
 % SNP list file
 snplist_files = dir([snplist_dir,filename,'.snplist']);
@@ -148,29 +171,34 @@ assert(~isempty(adjlist_files),"Adjacency list file not found in [adjlist_dir,fi
 % adjacency matrix
 A_weighted=importGraph([adjlist_dir, filename, '.adjlist'], 1, noSNPs);
 
-% meta-analysis
+% meta-analysis across populations
 if strcmp(population_name,'META')
     superpop_names = unique(superpops);
+    assert(length(superpop_names) == length(meta_weights), ...
+        'meta-analysis weights should be a vector of length number of populations')
     for ii=1:length(meta_weights)
         rows = cellfun(@(s)strcmp(s,superpop_names(ii)),superpops);
         AF(ii,:) = mean(X(rows,:));
         X(rows,:) = (X(rows,:) - AF(ii,:)) * meta_weights(ii)/sum(meta_weights) * size(X,1)/sum(rows);
     end
     AF = meta_weights*AF/sum(meta_weights);
-else
+elseif isempty(local_ancestry_dir)
     AF = mean(X);
 end
 
 % Empty rows/columns correspond to duplicate SNPs (on same brick as
-% another SNP); also get rid of LF SNPs
+% another SNP); also get rid of low-frequency SNPs
 SNPs = any(A_weighted) .* (min(AF,1-AF)>minimum_maf) == 1;
 
-A_weighted = A_weighted(SNPs,SNPs);
+% Remove low-frequency and duplicate SNPs, patching paths if needed
+A_weighted = reduce_weighted_graph(A_weighted, find(~SNPs)); 
+
 X = X(:,SNPs);
 SNPs = find(SNPs);
-snpTable = snpTable(SNPs,:);
-
-[noHaplotypes, noSNPs] = size(X);
+if ~isempty(snplist_files)
+    snpTable = snpTable(SNPs,:);
+end
+noSNPs = length(SNPs);
 
 % downsampling (without replacement)
 if ~isempty(downsample_fraction)
@@ -222,7 +250,7 @@ else
     error('method should be either coordinate_descent (recommended) or gradient_descent')
 end
 time_gd_penalized=toc;
-    
+
 % Updated graphical model
 A_l1 = abs(precisionEstimatePenalized) > smallNumber;
 avgDegree = nnz(A_l1) / length(A_l1);
@@ -257,13 +285,20 @@ time_gd_unpenalized=toc;
 A_band = spdiags(A,1:bandsize);
 Rr = inv(precisionEstimate);
 Rr_band = spdiags(Rr,1:bandsize);
-    mean(R_band(:).^2);
-    mean(R_band(~A_band).^2);
+mean(R_band(:).^2);
+mean(R_band(~A_band).^2);
 denom_noA = mean(R_band(~A_band).^2);
 mse_A = mean((R(A) - Rr(A)).^2);
-mse = mean((Rr(~A) - R(~A)).^2);
+mse_noA = mean((Rr(~A) - R(~A)).^2);
+mse = mean((Rr - R).^2, 'all');
 banded_mse = mean((R_band(~A_band) - Rr_band(~A_band)).^2);
 banded_denom = mean(R_band(~A_band).^2);
+
+RP = R * precisionEstimate;
+PR = RP';
+II = eye(noSNPs);
+alt_mse_noA = mean((II(~A) - RP(~A)) .* (II(~A) - PR(~A)));
+alt_mse = mean((II - RP) .* (II - PR), 'all');
 
 if ~isempty(downsample_fraction)
     mse_out = mean((Rr(~A) - R_out(~A)).^2);
