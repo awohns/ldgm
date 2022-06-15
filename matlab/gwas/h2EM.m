@@ -1,5 +1,5 @@
 function [h2, sigmasq, betaExpectation, betaVariance] =...
-    h2EM(alphaHat, P, nn, annot, reps, betaVar, convergence_tol, approx_threshold)
+    h2EM(alphaHat, P, nn, annot, reps, betaVar, convergence_tol, approx_threshold, dampener, stepsize)
 %h2EM computes MLE of h2 using expectation-maximization
 % Input arguments:
 % alphahat: GWAS sumstats (m x 1);
@@ -28,6 +28,11 @@ end
 if nargin < 8
     approx_threshold = 0.25;
 end
+
+momentum = zeros(noAnnot,1);
+update_every_block = true;
+% dampener = 0.5;
+% stepsize = 0.2;
 
 mm_cum = [0; cumsum(mm)];
 betaVariance = zeros(mm_cum(end),1);
@@ -73,15 +78,31 @@ for rep = 1:reps
         % E_Qtau(beta|alphaHat,tauExpectation) == (P/denominator) * alphaHat
         betaExpectation(idcs) = ...
             nn * P{block} * (((annot{block} * (1./betaVar)) .* P{block} + nn * speye(mm(block))) \ alphaHat{block});
+        
+        if update_every_block
+            for ii=1:noAnnot
+                annot_idcs = idcs(annot{block}(:,ii)==1);
+                if any(annot_idcs)
+                    diff = (mean(betaExpectation(annot_idcs).^2) + ...
+                        mean(betaVariance(annot_idcs)) ) - betaVar(ii);
+                    momentum(ii) = momentum(ii) * dampener + stepsize * diff;
+                    betaVar(ii) = betaVar(ii) + momentum(ii);
+                end
+            end
+%             disp(betaVar)
+            
+        end
+        
+    end
+    update_every_block = rep < 10;
+    if ~update_every_block
         for ii=1:noAnnot
-            annot_idcs = idcs(annot{block}(:,ii)==1);
-            dampener = (rep - 1) / rep;
+            annot_idcs = annot_cat(:,ii) == 1;
             if any(annot_idcs)
-                betaVar(ii) = dampener * betaVar(ii) + (1 - dampener) * (mean(betaExpectation(annot_idcs).^2) + ...
+                betaVar(ii) = (mean(betaExpectation(annot_idcs).^2) + ...
                     mean(betaVariance(annot_idcs)) );
             end
         end
-        
     end
     % E_Qbeta(log P(tau|beta)) == const + log prior + 1/2*log tau
     %     - 1/2 * tau * E(beta.^2)
