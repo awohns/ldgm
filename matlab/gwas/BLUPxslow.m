@@ -1,7 +1,7 @@
 function [betaExpectationPerSD, betaExpectationPerAllele] =...
-    BLUPx(alphaHat, P, nn, betaCov, SNPs, whichSNPs, AF, alpha_param)
-% BLUPx computes the cross-popn best linear unbiased predictor, E(beta|GWAS, gaussian
-% prior) where the GWAS data is alphaHat, the LD precision matrix is P, and
+    BLUPxslow(alphaHat, R, nn, betaCov, SNPs, whichSNPs, AF, alpha_param)
+% BLUPxslow computes the cross-popn best linear unbiased predictor, E(beta|GWAS, gaussian
+% prior) where the GWAS data is alphaHat, the LD correlation matrix is R, and
 % beta~N(0,tau^-1).
 % 
 % Input arguments
@@ -9,8 +9,9 @@ function [betaExpectationPerSD, betaExpectationPerAllele] =...
 % alphaHat: GWAS sumstats, as a number-of-LD-blocks by number-of-popns cell
 % array with each cell containing an association vector; 
 % 
-% P: LD precision matrices, as a number-of-LD-blocks by number-of-popns cell
-% array with each cell containing a precision matrix; 
+% R: LD correlation matrices, as a number-of-LD-blocks by number-of-popns cell
+% array with each cell containing a correlation matrix of the same size as 
+% corresponding entry of alphaHat
 % 
 % nn: GWAS sample size for each population, as a vector;
 % 
@@ -35,21 +36,23 @@ function [betaExpectationPerSD, betaExpectationPerAllele] =...
 % betaExpectation: expected value of beta for each popn. Reported for same
 % SNPs as alphaHat.
 
-[noBlocks, noPopns] = size(P);
+[noBlocks, noPopns] = size(R);
 mm = cellfun(@length, alphaHat);
 
-% turn whichSNPs into boolean vectors if needed
-if isa(whichSNPs{1},'boolean')
-    assert(all(cellfun(@(x,y)length(x)==length(y),whichSNPs,P),'all'))
-else
-    whichSNPs = cellfun(@(ii,X){unfind(ii,length(X))},whichSNPs,P);
+% subset correlation matrices to SNPs with sumstats
+if exist('whichSNPs','var')
+    assert(all(cellfun(@(x,y)length(x)==length(y),whichSNPs,R),'all'))
+    for block = 1:noBlocks
+        R{block} = R{block}(whichSNPs{block},whichSNPs{block});
+        SNPs{block} = SNPs{block}(whichSNPs{block},whichSNPs{block});
+    end
 end
 
 % turn SNPs into vectors of indices if needed
 if isa(SNPs{1},'boolean')
     SNPs = cellfun(@find,SNPs,'UniformOutput',false);
 end
-assert(all(cellfun(@(x,y)length(x)==length(y),SNPs,P),'all'))
+assert(all(cellfun(@(x,y)length(x)==length(y),SNPs,R),'all'))
 
 % effect-size s.d. for each SNP in each population, in standardized
 % (per-sd-of-genotype) units. alpha_param is the AF-dependent architecture parameter
@@ -70,41 +73,38 @@ else
     
 end
 
-% Causal effect-size estimates
-betaHat = precisionMultiply(P,alphaHat,whichSNPs);
-
-% Concatenated effect-size estimates and precision matrices across popns
-betaHatCat = cell(noBlocks,1);
-PCat = cell(noBlocks,1);
-whichSNPsCat = cell(noBlocks,1);
+% Concatenated effect-size estimates and correlation matrices across popns,
+% multiplied by popn-specific sample sizes
+nnAlphaHatCat = cell(noBlocks,1);
+nnRCat = cell(noBlocks,1);
 nn_cell = num2cell(nn);
 for block = 1:noBlocks
-    betaHatCat{block} = vertcat(betaHat{block, :});
-    Pblocks = cellfun(@(x,y)y/x, nn_cell, P(block,:),'UniformOutput',false);
-    PCat{block} = blkdiag(Pblocks{:});   
-    whichSNPsCat{block} = vertcat(whichSNPs{block, :});
+    nnAlphaHat = cellfun(@times, nn_cell, alphaHat(block,:),'UniformOutput',false);
+    nnAlphaHatCat{block} = vertcat(nnAlphaHat{:});
+    nnRblocks = cellfun(@times, nn_cell, R(block,:),'UniformOutput',false);
+    nnRCat{block} = blkdiag(nnRblocks{:});   
 end
 
-% Covariance matrix of effect sizes for each concatenated block
-Sigma = cell(noBlocks,1);
+% Precision matrix of beta_persd for each concatenated block
+betaPrecision = inv(betaCov); % per-allele units
+betaPrecision_persd = cell(noBlocks,1);
+L = cell(noPopns); % population-pair blocks of precision matrix
 for block = 1:noBlocks
-    S = cell(noPopns); % blocks of covariance matrix
     for ii = 1:noPopns
         for jj = 1:noPopns
             [~, i1, i2] = intersect(SNPs{block,ii}, SNPs{block,jj});
-            S{ii,jj} = sparse(i1,i2,...
-                betaCov(ii,jj).*sd{block,ii}(i1).*sd{block,jj}(i2),...
+            L{ii,jj} = sparse(i1,i2,...
+                betaPrecision(ii,jj)./(sd{block,ii}(i1).*sd{block,jj}(i2)),...
                 length(SNPs{block,ii}),length(SNPs{block,jj}));
         end
     end
-    Sigma{block} = cell2mat(S);
+    betaPrecision_persd{block} = cell2mat(L);
 end
 
 % E(beta|data)
-x = precisionDivide(cellfun(@(p,s){p+s},PCat,Sigma),...
-    betaHatCat, whichSNPsCat);
-betaExpectationCat = cellfun(@(s,v,idx)s(idx,idx)*v,Sigma,x,whichSNPsCat,...
-    'UniformOutput',false);%precisionMultiply(Sigma, x, whichSNPsCat);
+for block = 1:noBlocks
+    betaExpectationCat{block} = (nnRCat{block} + betaPrecision_persd{block}) \ nnAlphaHatCat{block};
+end
 
 % Un-concatenate populations
 betaExpectationPerSD = cell(size(alphaHat));
