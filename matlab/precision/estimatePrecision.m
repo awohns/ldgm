@@ -85,6 +85,10 @@ addParameter(p, 'bandsize', 200, @isscalar);
 % dampening parameter for gradient descent
 addParameter(p, 'dampening', 0, @isscalar);
 
+% whether to eliminate missing SNPs by calling reduce_weighted_graph to
+% patch paths that are lost, or (default) to simply remove those SNPs
+addParameter(p, 'patch_paths', false, @isscalar);
+
 % turns p.Results.x into just x
 parse(p, genos_path, varargin{:});
 fields = fieldnames(p.Results);
@@ -191,7 +195,11 @@ end
 SNPs = any(A_weighted) .* (min(AF,1-AF)>minimum_maf) == 1;
 
 % Remove low-frequency and duplicate SNPs, patching paths if needed
-A_weighted = reduce_weighted_graph(A_weighted, find(~SNPs)); 
+if patch_paths
+    A_weighted = reduce_weighted_graph(A_weighted, find(~SNPs)); 
+else
+    A_weighted = A_weighted(SNPs,SNPs);
+end
 
 X = X(:,SNPs);
 SNPs = find(SNPs);
