@@ -44,8 +44,15 @@ if exist('whichSNPs','var')
     assert(all(cellfun(@(x,y)length(x)==length(y),whichSNPs,R),'all'))
     for block = 1:noBlocks
         R{block} = R{block}(whichSNPs{block},whichSNPs{block});
-        SNPs{block} = SNPs{block}(whichSNPs{block},whichSNPs{block});
+        SNPs{block} = SNPs{block}(whichSNPs{block});
     end
+end
+
+% turn whichSNPs into boolean vectors if needed
+if isa(whichSNPs{1},'boolean')
+    assert(all(cellfun(@(x,y)length(x)==length(y),whichSNPs,R),'all'))
+else
+    whichSNPs = cellfun(@(ii,X){unfind(ii,length(X))},whichSNPs,R);
 end
 
 % turn SNPs into vectors of indices if needed
