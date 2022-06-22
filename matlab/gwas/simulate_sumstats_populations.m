@@ -13,10 +13,11 @@ function [alphaHat, beta_perallele, beta_persd, componentVariance] = simulate_su
 
 p=inputParser;
 
-% sample size for each population
+% sample size for each population as a vector
 addRequired(p, 'sampleSize', @isnumeric);
 
-% allele frequency for each LD block and each population
+% allele frequency for each LD block and each population as a number-of-LD
+% blocks by number-of-populations cell array
 addRequired(p, 'alleleFrequency', @iscell);
 
 % SNP identifiers (eg, RSIDs) for each LD block and each population, as a
@@ -24,16 +25,24 @@ addRequired(p, 'alleleFrequency', @iscell);
 % redundant across blocks; they are joined across populations.
 addParameter(p, 'SNPs', {}, @iscell);
 
-% precision matrix for each LD block and each population
+% precision matrix for each LD block and each population as a number-of-LD
+% blocks by number-of-populations cell array
 addParameter(p, 'precisionMatrices', {}, @iscell);
 
-% correlation matrix for each LD block and each population
+% correlation matrix for each LD block and each population as a number-of-LD
+% blocks by number-of-populations cell array
 addParameter(p, 'correlationMatrices', {}, @iscell);
 
-% total heritability for each population
-addParameter(p, 'heritability', [], @isscalar);
+% total heritability for each population, either as a scalar, a vector, or
+% a square matrix. If a matrix, it specifies both the heritability for each
+% population (along its diagonal) and the genetic correlations (off the
+% diagonal, i.e. with corrcof(heritability) == r_pop). If a vector, the
+% cross-population genetic correlations will be (almost) 1. If a scalar,
+% the cross-population genetic correlations will be (almost) 1, and the
+% heritability will be the same for each population.
+addParameter(p, 'heritability', [], @isnumeric);
 
-% per-allele effect-size covariance matrix for each heritability component,
+% per-allele effect-size covariance matrix for each mixture component,
 % as a number-of-populations by number-of-populations by
 % number-of-components array. These will be rescaled to match the total
 % heritability
@@ -61,6 +70,11 @@ noSNPs = cellfun(@length,alleleFrequency);
 
 if isscalar(heritability)
     heritability = heritability * ones(1,noPops);
+end
+if isvector(heritability)
+    h = sqrt(heritability);
+    M = (1-1e-6) * ones(noPops) + 1e-6 * eye(noPops);
+    heritability = h' .* M .* h;
 end
 
 if isempty(SNPs)
@@ -91,7 +105,8 @@ end
 
 if isempty(componentVariance)
     assert(isempty(componentWeight),'Specify both componentWeight and componentVariance or neither')
-    componentVariance = (1-1e-6) * ones(noPops) + 1e-6 * eye(noPops);
+    assert(~isempty(heritability), 'Specify either componentVariance (and componentWeight) or heritability')
+    componentVariance = heritability;
     componentWeight = 1;
 end
 
