@@ -2,6 +2,7 @@
 Functions to produce reduced graph and intermediate steps
 """
 import networkx as nx
+from tqdm import tqdm
 
 from . import brickgraph
 from . import bricks
@@ -29,12 +30,19 @@ def brick_graph(brick_ts, threshold=None, make_sibs=True, progress=True):
     return bricked_graph
 
 
-def reduce_graph(brick_graph, brick_ts, threshold, progress=True):
+def reduce_graph(
+    brick_graph, brick_ts, threshold, num_processes=1, progress=True, chunksize=100
+):
     """
     Make a reduced graph from a brick graph and bricked tree sequence
     """
     snp_grapher = reduction.SNP_Graph(
-        brick_graph, brick_ts, threshold, progress=progress
+        brick_graph,
+        brick_ts,
+        threshold,
+        num_processes=num_processes,
+        progress=progress,
+        chunksize=chunksize,
     )
     reduced_graph, mut_node, reach_star_sets = snp_grapher.create_reduced_graph()
     return reduced_graph, mut_node, reach_star_sets
@@ -45,6 +53,8 @@ def reduce(
     path_threshold,
     recombination_threshold=None,
     use_softmin=False,
+    num_processes=1,
+    chunksize=100,
     progress=False,
 ):
     """
@@ -77,6 +87,8 @@ def reduce(
         bricked_graph,
         bts,
         threshold=path_threshold,
+        num_processes=num_processes,
+        chunksize=chunksize,
         progress=progress,
     )
     # Step 4: brickgraph with rule two and uturns
@@ -88,14 +100,16 @@ def reduce(
         brickgraph_rule_two,
         bts,
         threshold=path_threshold,
+        num_processes=num_processes,
         progress=progress,
+        chunksize=chunksize,
     )
     # Step 6: combine H1 and H2
     H_12 = nx.compose_all([H1, nx.reverse(H1), H2])
     # Step 7: Remove haplotype vertices to reduce H_12
     H_12_reduced = H_12.copy()
     nodes = list(H_12_reduced.nodes())
-    for node in nodes:
+    for node in tqdm(nodes, total=len(nodes), desc="Removing nodes"):
         if node < 0:
             H_12_reduced = utility.remove_node(
                 H_12_reduced, node, path_threshold, use_softmin=use_softmin
