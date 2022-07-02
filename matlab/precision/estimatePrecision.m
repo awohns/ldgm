@@ -89,6 +89,9 @@ addParameter(p, 'dampening', 0, @isscalar);
 % patch paths that are lost, or (default) to simply remove those SNPs
 addParameter(p, 'patch_paths', false, @isscalar);
 
+% whether to save a .correlationMatrix file with sample correlations
+addParameter(p, 'save_correlation_matrix', true, @isscalar);
+
 % turns p.Results.x into just x
 parse(p, genos_path, varargin{:});
 fields = fieldnames(p.Results);
@@ -322,8 +325,10 @@ save([output_dir,custom_filename,filename,output_suffix,output_stats_suffix,'.ma
 save([output_dir,custom_filename,filename,output_suffix,output_matrix_suffix,'.mat'],...
     'precisionEstimate*','snpTable','A*','SNPs','-v7.3')
 
-save([output_dir,custom_filename,filename,output_suffix,output_correlation_suffix,'.mat'],...
-    'R','-v7.3')
+if save_correlation_matrix
+    save([output_dir,custom_filename,filename,output_suffix,output_correlation_suffix,'.mat'],...
+        'R','-v7.3')
+end
 
 saveGraph([output_dir,filename,output_suffix,'.adjlist'],precisionEstimate,SNPs);
 
