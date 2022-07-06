@@ -147,14 +147,14 @@ end
 % Normalize effect sizes so they add up to h2
 if ~isempty(heritability)
     for pop = 1:noPops
-        normalizer(pop) = sqrt(heritability(pop)/sum(cellfun(@(x)sum(x.^2),beta_persd(:,pop))));
+        normalizer(pop) = sqrt(heritability(pop,pop)/sum(cellfun(@(x)sum(x.^2),beta_persd(:,pop))));
         beta_perallele(:,pop) = cellfun(@(b){b*normalizer(pop)}, beta_perallele(:,pop));
         beta_persd(:,pop) = cellfun(@(b){b*normalizer(pop)}, beta_persd(:,pop));
         
     end
     % normalize variance component matrices as well
     for cpt = 1:noCpts
-        componentVariance(:,:,cpt) = componentVariance(:,:,cpt) .* (sqrt(normalizer) .* sqrt(normalizer)');
+        componentVariance(:,:,cpt) = componentVariance(:,:,cpt) .* (normalizer .* normalizer');
     end
 end
 
