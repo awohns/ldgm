@@ -2,3 +2,4 @@ ldgm/_version.py
 *.asv
 .DS_Store
 ldgm/__pycache__
+_build/
