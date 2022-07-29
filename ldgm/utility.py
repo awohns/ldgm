@@ -9,6 +9,8 @@ import math
 import numpy as np
 import tskit
 
+from . import provenance
+
 
 def softmin(val1, val2):
     return -2 * np.log(math.e ** (-0.5 * val1) + math.e ** (-0.5 * val2))
@@ -192,12 +194,30 @@ def remove_node(g, node, path_threshold, use_softmin=False):
     return g
 
 
+def get_provenance_dict(parameters=None):
+    """
+    Returns a dictionary encoding an execution of tskit conforming to the
+    provenance schema.
+    """
+    document = {
+        "schema_version": "1.0.0",
+        "software": {"name": "ldgm", "version": provenance.__version__},
+        "parameters": parameters,
+    }
+    return document
+
+
 def check_bricked(ts):
     """
     Checks that the input tree sequence is "bricked" by tree, node, or leaf.
     Returns True if bricked by the given mode, False if not.
     """
-    return "TODO"
+    bricked = False
+    for provenance in ts.provenances():
+        if "brick_ts" in provenance.record:
+            bricked = True
+
+    return bricked
 
 
 def prune_snps(ts, threshold):
@@ -215,17 +235,46 @@ def prune_snps(ts, threshold):
     return ts.delete_sites(sites_to_delete)
 
 
-def return_snp_list(ts):
+def identify_sites(bricked_ts):
+    # Identifying sites only supports infinite sites
+    assert bricked_ts.num_sites == bricked_ts.num_mutations
+    bricks_to_muts = get_mut_edges(bricked_ts)
+    identified_sites = collections.defaultdict(list)
+
+    for brick, muts in bricks_to_muts.items():
+        print(brick, muts)
+        identified_sites[muts[0]] = muts
+    return identified_sites
+
+
+def return_snp_list(bricked_ts):
     """
     Return list of SNPs in the tree sequence.
-    Columns are: rsids, anc, derived,
+    Columns are: index, rsids, anc, derived,
     """
-    rsids = [json.loads(site.metadata)["ID"] for site in ts.sites()]
+    assert check_bricked(bricked_ts)
+
+    # try:
+    #    rsids = [json.loads(site.metadata)["ID"] for site in bricked_ts.sites()]
+    # except KeyError:
+    #    print('"ID" is not a key in the metadata of this site')
+    rsids = np.zeros(bricked_ts.num_sites)
+
+    identified_sites_dict = identify_sites(bricked_ts)
+    identified_sites = np.full(bricked_ts.num_sites, -1)
+    for site_id, site_targets in identified_sites_dict.items():
+        for target in site_targets:
+            identified_sites[target] = site_id
     anc_alleles = tskit.unpack_strings(
-        ts.tables.sites.ancestral_state, ts.tables.sites.ancestral_state_offset
+        bricked_ts.tables.sites.ancestral_state,
+        bricked_ts.tables.sites.ancestral_state_offset,
     )
     derived_alleles = tskit.unpack_strings(
-        ts.tables.mutations.derived_state, ts.tables.mutations.derived_state_offset
+        bricked_ts.tables.mutations.derived_state,
+        bricked_ts.tables.mutations.derived_state_offset,
     )
-    assert len(rsids) == len(anc_alleles) == len(derived_alleles) == ts.num_sites
-    return rsids, anc_alleles, derived_alleles
+    assert (
+        len(rsids) == len(anc_alleles) == len(derived_alleles) == bricked_ts.num_sites
+    )
+    index = np.arange(0, bricked_ts.num_sites)
+    return index, rsids, anc_alleles, derived_alleles, identified_sites
