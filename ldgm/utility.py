@@ -209,8 +209,8 @@ def get_provenance_dict(parameters=None):
 
 def check_bricked(ts):
     """
-    Checks that the input tree sequence is "bricked" by tree, node, or leaf.
-    Returns True if bricked by the given mode, False if not.
+    Checks that ldgm.brick_ts() has been run on the input tree sequence.
+    Returns True if so, False if not.
     """
     bricked = False
     for provenance in ts.provenances():
@@ -220,7 +220,7 @@ def check_bricked(ts):
     return bricked
 
 
-def prune_snps(ts, threshold):
+def prune_sites(ts, threshold):
     """
     Prune SNPs beneath a given threshold
     """
@@ -247,18 +247,35 @@ def identify_sites(bricked_ts):
     return identified_sites
 
 
-def return_snp_list(bricked_ts):
+def return_site_list(bricked_ts, site_metadata_id=None):
     """
     Return list of SNPs in the tree sequence.
-    Columns are: index, rsids, anc, derived,
+    :param TreeSequence bricked_ts: The input :class`tskit.TreeSequence`,
+        from which the site list will be outputted. This tree sequence
+        must have been "bricked", i.e. ldgm.brick_ts() was run on
+        the tree sequence.
+    :param string site_metadata_id: The site ID in the site metadata field
+        in the tree sequence.
+    :return: A tuple containing the index of sites in the tree sequence,
+        the site ids (if specified, else None), the ancestral alleles for
+        each site, the derived alleles for each site, the identified SNP
+        for each site.
+    :rtype: tuple of lists
     """
     assert check_bricked(bricked_ts)
 
-    # try:
-    #    rsids = [json.loads(site.metadata)["ID"] for site in bricked_ts.sites()]
-    # except KeyError:
-    #    print('"ID" is not a key in the metadata of this site')
-    rsids = np.zeros(bricked_ts.num_sites)
+    if site_metadata_id is not None:
+        try:
+            rsids = [
+                json.loads(site.metadata)[site_metadata_id]
+                for site in bricked_ts.sites()
+            ]
+        except json.decoder.JSONDecodeError:
+            raise KeyError("Metadata is not JSON encoded")
+        except KeyError:
+            raise KeyError('"ID" is not a key in the metadata of this site')
+    else:
+        rsids = None
 
     identified_sites_dict = identify_sites(bricked_ts)
     identified_sites = np.full(bricked_ts.num_sites, -1)
@@ -273,8 +290,9 @@ def return_snp_list(bricked_ts):
         bricked_ts.tables.mutations.derived_state,
         bricked_ts.tables.mutations.derived_state_offset,
     )
-    assert (
-        len(rsids) == len(anc_alleles) == len(derived_alleles) == bricked_ts.num_sites
-    )
+    assert len(anc_alleles) == len(derived_alleles) == bricked_ts.num_sites
+
+    if rsids is not None:
+        assert len(rsids) == len(anc_alleles)
     index = np.arange(0, bricked_ts.num_sites)
-    return index, rsids, anc_alleles, derived_alleles, identified_sites
+    return (index, rsids, anc_alleles, derived_alleles, identified_sites)
