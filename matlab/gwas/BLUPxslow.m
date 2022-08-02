@@ -74,9 +74,8 @@ else
          % size variance)
         alpha_param = 0;
     end
-    % assign sqrt(2pq) (if alpha_param==0) to nonmissing SNPs
-    sd = cellfun(@(p,tf){assignto((2*p.*(1-p)) .^ ((alpha_param+1)/2), tf)},...
-        AF, whichSNPs);
+    %  sqrt(2pq) (if alpha_param==0)
+    sd = cellfun(@(p,tf){(2*p.*(1-p)) .^ ((alpha_param+1)/2)},AF);
     
 end
 
