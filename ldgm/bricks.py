@@ -3,6 +3,7 @@ Create a "bricked" tree sequence
 """
 import tskit
 from tqdm import tqdm
+import json
 
 from . import utility
 
@@ -126,7 +127,9 @@ class Bricks:
                 left=edge.left, right=edge.right, parent=edge.parent, child=edge.child
             )
         tables.sort()
-
+        tables.provenances.add_row(
+            record=json.dumps(utility.get_provenance_dict({"command": "brick_ts"}))
+        )
         new_ts = tables.tree_sequence()
         if self.add_dummy_bricks:
             new_ts = utility.add_dummy_bricks(new_ts)
