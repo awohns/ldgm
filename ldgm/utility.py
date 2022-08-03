@@ -213,8 +213,8 @@ def check_bricked(ts):
     Returns True if so, False if not.
     """
     bricked = False
-    for provenance in ts.provenances():
-        if "brick_ts" in provenance.record:
+    for recorded_provenance in ts.provenances():
+        if "brick_ts" in recorded_provenance.record:
             bricked = True
 
     return bricked
