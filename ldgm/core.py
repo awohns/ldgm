@@ -10,11 +10,22 @@ from . import reduction
 from . import utility
 
 
-def brick_ts(ts, threshold, add_dummy_bricks=False, progress=True):
+def brick_ts(ts, recombination_freq_threshold=None, add_dummy_bricks=False, progress=True):
     """
-    Make a bricked tree sequence
+    Take an input tree sequence and bifurcate edges to create "bricks" that
+    have the same set of descendants at every position.
+
+    :param tskit.TreeSequence ts: The input :class:`tskit.TreeSequence`, which has
+        not had `ldgm.brick_ts()` run on it.
+    :param float recombination_freq_threshold: The frequency threshold above
+        which a brick should be created.
+    :param bool add_dummy_bricks: Should "dummy bricks" be added?
+    :param bool progress: Whether to display a progress bar. Default: False
+    :return: A bricked version of the input tree sequence
+    :rtype: tskit.TreeSequence
     """
-    brick = bricks.Bricks(ts, threshold, add_dummy_bricks, progress=progress)
+    assert utility.check_bricked(ts) is False
+    brick = bricks.Bricks(ts, recombination_freq_threshold=recombination_freq_threshold, add_dummy_bricks=add_dummy_bricks, progress=progress)
     bricked = brick.naive_split_edges()
     return bricked
 
@@ -22,7 +33,18 @@ def brick_ts(ts, threshold, add_dummy_bricks=False, progress=True):
 def brick_graph(brick_ts, threshold=None, make_sibs=True, progress=True):
     """
     Make a brick graph
+
+    :param tskit.TreeSequence brick_ts: The input :class:`tskit.TreeSequence`, which
+        has been bricked (i.e. ``ldgm.brick_ts()`` has been run on it).
+    :param float threshold: The 
+    :param bool make_sibs: Whether to run rule two, connecting siblings. 
+        Default: True
+    :param bool progress: Whether to display a progress bar. Default: False
+    :return: A ``Networkx`` graph encoding conditional dependence between
+        labeled bricks.
+    :rtype: networkx.DiGraph
     """
+    assert utility.check_bricked(ts) is True
     brick_grapher = brickgraph.BrickGraph(
         brick_ts, threshold, make_sibs=make_sibs, progress=progress
     )
@@ -35,7 +57,15 @@ def reduce_graph(
 ):
     """
     Make a reduced graph from a brick graph and bricked tree sequence
+    
+    :param networkx.DiGraph brick_graph:
+    :param tskit.TreeSequence brick_ts: The input :class:`tskit.TreeSequence`, which
+        has been bricked (i.e. ``ldgm.brick_ts()`` has been run on it).
+    :param bool progress: Whether to display a progress bar. Default: False
+    :return: A tuple of the LDGM, .... TODO
+    :rtype: (networkx.DiGraph, numpy.ndarray, dict)
     """
+    assert utility.check_bricked(brick_ts)
     snp_grapher = reduction.SNP_Graph(
         brick_graph,
         brick_ts,
@@ -45,7 +75,7 @@ def reduce_graph(
         chunksize=chunksize,
     )
     reduced_graph, mut_node, reach_star_sets = snp_grapher.create_reduced_graph()
-    return reduced_graph, mut_node, reach_star_sets
+    return (reduced_graph, mut_node, reach_star_sets)
 
 
 def reduce(
@@ -58,9 +88,11 @@ def reduce(
     progress=False,
 ):
     """
-    Run the entire pipeline from tree sequence to reduced graph.
+    Take a tree sequence and produce an LDGM. The ``path_threshold`` and
+    ``recombination_threshold`` parameters allow differing levels of
+    regularization to be applied to this process.
 
-    :param TreeSequence tree_sequence: The input :class:`tskit.TreeSequence`,
+    :param tskit.TreeSequence tree_sequence: The input :class:`tskit.TreeSequence`,
         which will be used to create the linkage disequilibrium graphical
         model.
     :param float path_threshold: The maximum path threshold to retain in
@@ -72,6 +104,8 @@ def reduce(
         path weights when removing nodes. If False, use the minimum of path
         weights. Default: False
     :param bool progress: Whether to display a progress bar. Default: False
+    :return: A tuple of an LDGM and a bricked tree sequence.
+    :rtype: (networkx.DiGraph, tskit.TreeSequence)
     """
     # Step 1: brick ts
     bts = brick_ts(ts, threshold=recombination_threshold, progress=progress)
@@ -116,7 +150,7 @@ def reduce(
             )
     H_12_reduced = H_12_reduced.to_undirected()
 
-    return H_12_reduced, bts
+    return (H_12_reduced, bts)
 
 
 def prune_sites(ts, threshold):

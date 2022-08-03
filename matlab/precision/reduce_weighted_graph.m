@@ -1,6 +1,6 @@
 function [A] = reduce_weighted_graph(A, missing)
 %reduce_weighted_graph removes rows/columns "missing" from A and patches
-%paths between remaining vertices. 
+% paths between remaining vertices. 
 % A: weighted graph, with '1' corresponding to a strong edge.
 % missing: which SNPs are missing from A (logical or index)
 
