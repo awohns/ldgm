@@ -119,9 +119,9 @@ def reduce(
     return H_12_reduced, bts
 
 
-def prune_snps(ts, threshold):
-    return utility.prune_snps(ts, threshold)
+def prune_sites(ts, threshold):
+    return utility.prune_sites(ts, threshold)
 
 
-def return_snp_list(ts):
-    return utility.return_snp_list(ts)
+def return_site_list(ts, site_metadata_id=None):
+    return utility.return_site_list(ts, site_metadata_id)

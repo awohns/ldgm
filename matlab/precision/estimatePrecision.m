@@ -110,7 +110,7 @@ output_suffix = sprintf('.path_distance=%.1f.l1_pen=%.2f.maf=%.2f.%s',...
 % Threshold to decide if edge weights are zero
 smallNumber = 1e-12;
 
-addpath(genpath('/broad/oconnor/trees/MATLAB'))
+addpath(genpath('..'))
 
 % genotype file
 genos_files = dir([genos_dir,genos_filename]);

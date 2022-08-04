@@ -1,4 +1,4 @@
-function u = solveLasso(P,y,lambda,neighbors,noIter,min_stepsize,init)
+function u = solveLasso(P,y,lambda,neighbors,noIter,min_stepsize,u)
 %solveLasso solves:
 % X(idx,idx) * beta - y + lambda*sign(beta) == 0
 % where Xinv == inv(X). This is the gradient of the lasso regression
@@ -16,10 +16,10 @@ if nargin < 6
     min_stepsize = 0.01;
 end
 if nargin < 7
-    u =  precisionMultiply(P, y, neighbors);% zeros(length(idx),1);
-else
-    u = init;
+    u = precisionMultiply(P, y, neighbors);
 end
+
+A = precisionReorderCholesky(P, neighbors);
 
 obj = @(u,x,y)0.5*sum(u.*x)+y'*u + lambda*sum(abs(u));
 obj_val_new = inf;
@@ -28,20 +28,22 @@ counter = 0;
 while counter < noIter
     counter = counter + 1;
     obj_val_old = obj_val_new;
-    x = precisionDivide(P, u, neighbors);
+    %     x = precisionDivide(P, u, neighbors);
+    x = precisionCholeskyDivide(A, u);
     obj_val_new = obj(u, x, y);
     if obj_val_new > obj_val_old
         counter = counter - 1;
         gamma = gamma / 2;
         u = u_old;
-        x = precisionDivide(P, u, neighbors);
+        %         x = precisionDivide(P, u, neighbors);
+        x = precisionCholeskyDivide(A, u);
         obj_val_new = obj_val_old;
         if gamma < min_stepsize
+            warning('solveLasso getting stuck')
             break;
-%             warning('solveLasso getting stuck')
         end
     else
-%         fprintf('%.3f ',gamma)
+        %         fprintf('%.3f ',gamma)
     end
     u_old = u;
     u = prox(u - gamma  * (x - y) , gamma * lambda);
