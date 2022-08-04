@@ -85,7 +85,7 @@ class TestReturnSNPList(unittest.TestCase):
             anc_alleles,
             derived_alleles,
         ) = ldgm.return_site_list(bricked)
-        assert np.array_equal(index, np.array([0, 0, 2, 3, 0, 5, 6, 7, 8]))
+        assert np.array_equal(index, np.array([0, 0, 1, 2, 0, 3, 4, 5, 6]))
         assert rsids == None
         assert np.array_equal(anc_alleles, np.full(bricked.num_sites, "0"))
         assert np.array_equal(derived_alleles, np.full(bricked.num_sites, "1"))
@@ -111,7 +111,7 @@ class TestReturnSNPList(unittest.TestCase):
             anc_alleles,
             derived_alleles,
         ) = ldgm.return_site_list(bricked_w_ids, site_metadata_id="ID")
-        assert np.array_equal(index, np.array([0, 0, 2, 3, 0, 5, 6, 7, 8]))
+        assert np.array_equal(index, np.array([0, 0, 1, 2, 0, 3, 4, 5, 6]))
         assert np.array_equal(rsids, np.full(bricked_w_ids.num_sites, "an_id"))
         assert np.array_equal(anc_alleles, np.full(bricked_w_ids.num_sites, "0"))
         assert np.array_equal(derived_alleles, np.full(bricked_w_ids.num_sites, "1"))

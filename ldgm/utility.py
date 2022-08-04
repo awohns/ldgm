@@ -244,16 +244,15 @@ def prune_sites(ts, threshold):
     return ts.delete_sites(sites_to_delete)
 
 
-def identify_sites(bricked_ts):
-    # Identifying sites only supports infinite sites
+def identify_bricks(bricked_ts):
+    # This function only supports infinite sites
     assert bricked_ts.num_sites == bricked_ts.num_mutations
     bricks_to_muts = get_mut_edges(bricked_ts)
-    identified_sites = collections.defaultdict(list)
+    identified_bricks = collections.defaultdict(list)
 
-    for brick, muts in bricks_to_muts.items():
-        print(brick, muts)
-        identified_sites[muts[0]] = muts
-    return identified_sites
+    for brick_id, (brick, muts) in enumerate(bricks_to_muts.items()):
+        identified_bricks[brick_id] = muts
+    return identified_bricks
 
 
 def return_site_list(bricked_ts, site_metadata_id=None):
@@ -286,9 +285,9 @@ def return_site_list(bricked_ts, site_metadata_id=None):
     else:
         rsids = None
 
-    identified_sites_dict = identify_sites(bricked_ts)
+    identified_bricks_dict = identify_bricks(bricked_ts)
     index = np.full(bricked_ts.num_sites, -1)
-    for site_id, site_targets in identified_sites_dict.items():
+    for site_id, site_targets in identified_bricks_dict.items():
         for target in site_targets:
             index[target] = site_id
     anc_alleles = tskit.unpack_strings(
