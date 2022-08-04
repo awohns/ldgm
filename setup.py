@@ -5,9 +5,9 @@ with open("README.md") as fh:
 
 setup(
     name="ldgm",
-    author="Anthony Wilder Wohns",
+    author="Anthony Wilder Wohns, Luke O'Connor, Pouria Salehi Nowbandegani",
     author_email="awohns@gmail.com",
-    description="Create a graphical model of SNP conditional dependence",
+    description=" Sparse and accurate modeling of linkage disequilibrium",
     long_description=long_description,
     packages=["ldgm"],
     long_description_content_type="text/markdown",
