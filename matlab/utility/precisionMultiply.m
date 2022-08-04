@@ -1,21 +1,22 @@
-function x = precisionMultiply(P, y, notMissing)
-%precisionMultiply computes x = (P/P00)y where P = [P11, P10; P01 P00] and
-%P11 = P(notMissing,notMissing)
+function x = precisionMultiply(P, y, whichIndices)
+%precisionMultiply computes x = (P/P00)y where P = [P11, P10; P01 P00],
+% P11 = P(whichIndices,whichIndices), and P/P00 is the Schur complement
+% 
 % Input arguments:
 % P: precision matrix or cell array of precision matrices
 % y: vector or cell array of vectors with same dimension as P
-% notMissing: indices or cell array of indices, or boolean vector/cell
+% whichIndices: indices or cell array of indices, or boolean vector/cell
 % array of boolean vectors, indicating which entries of P correspond to the
-% entries of y (i.e. P11 = P(notMissing,notMissing))
+% entries of y
 % Output arguments:
-% x: solves x == (P/P00)*y
+% x == (P/P00)*y
 
 if iscell(P)
-    assert(iscell(y) & iscell(notMissing))
-    x = cellfun(@precisionMultiply, P, y, notMissing, 'UniformOutput', false);
+    assert(iscell(y) & iscell(whichIndices))
+    x = cellfun(@precisionMultiply, P, y, whichIndices, 'UniformOutput', false);
 else
-    x = P(notMissing,notMissing) * y - P(notMissing,~notMissing) * ...
-        (P(~notMissing,~notMissing) \ (P(~notMissing,notMissing) * y));
+    x = P(whichIndices,whichIndices) * y - P(whichIndices,~whichIndices) * ...
+        (P(~whichIndices,~whichIndices) \ (P(~whichIndices,whichIndices) * y));
 end
 end
 
