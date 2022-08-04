@@ -17,6 +17,12 @@ def softmin(val1, val2):
 
 
 def get_mut_edges(ts):
+    """
+    Returns a dictionary where keys are brick IDs and values are a list of
+    mutations on that brick.
+
+    NOTE: The first mutation on a brick is used as the node ID in the LDGM
+    """
     muts_to_brick = {}
     node_edge_dict = {}
     for tree, (_, edges_out, edges_in) in zip(ts.trees(), ts.edge_diffs()):
@@ -34,6 +40,9 @@ def get_mut_edges(ts):
 
     for mut, brick in muts_to_brick.items():
         bricks_to_muts[brick].append(mut)
+    # Ensure that these mutations are sorted by increasing ID
+    for brick, muts in bricks_to_muts.items():
+        assert np.array_equal(np.sort(muts), muts)
     return bricks_to_muts
 
 
@@ -278,10 +287,10 @@ def return_site_list(bricked_ts, site_metadata_id=None):
         rsids = None
 
     identified_sites_dict = identify_sites(bricked_ts)
-    identified_sites = np.full(bricked_ts.num_sites, -1)
+    index = np.full(bricked_ts.num_sites, -1)
     for site_id, site_targets in identified_sites_dict.items():
         for target in site_targets:
-            identified_sites[target] = site_id
+            index[target] = site_id
     anc_alleles = tskit.unpack_strings(
         bricked_ts.tables.sites.ancestral_state,
         bricked_ts.tables.sites.ancestral_state_offset,
@@ -294,5 +303,4 @@ def return_site_list(bricked_ts, site_metadata_id=None):
 
     if rsids is not None:
         assert len(rsids) == len(anc_alleles)
-    index = np.arange(0, bricked_ts.num_sites)
-    return (index, rsids, anc_alleles, derived_alleles, identified_sites)
+    return (index, rsids, anc_alleles, derived_alleles)

@@ -129,6 +129,8 @@ class SNP_Graph:
 
         # Make the reduced graph and add in all the SNPs corresponding to labeled bricks
         R = nx.DiGraph()
+        # NOTE: The first mutation on a brick (the lowest ID) is used as the node ID
+        # in the LDGM
         R.add_nodes_from([self.bricks_to_muts[node // 8][0] for node in l_out])
 
         reach_star_sets = collections.defaultdict(list)
