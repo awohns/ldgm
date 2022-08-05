@@ -255,26 +255,16 @@ def identify_bricks(bricked_ts):
     return identified_bricks
 
 
-def return_site_list(bricked_ts, site_metadata_id=None):
+def return_site_info(bricked_ts, site_metadata_id=None, sample_sets=None):
     """
     Return list of SNPs in the tree sequence.
-    :param TreeSequence bricked_ts: The input :class`tskit.TreeSequence`,
-        from which the site list will be outputted. This tree sequence
-        must have been "bricked", i.e. ldgm.brick_ts() was run on
-        the tree sequence.
-    :param string site_metadata_id: The site ID in the site metadata field
-        in the tree sequence.
-    :return: A tuple containing the index of sites in the tree sequence,
-        the site ids (if specified, else None), the ancestral alleles for
-        each site, the derived alleles for each site, the identified SNP
-        for each site.
-    :rtype: tuple of lists
     """
     assert check_bricked(bricked_ts)
 
+    return_lists = {}
     if site_metadata_id is not None:
         try:
-            rsids = [
+            site_ids = [
                 json.loads(site.metadata)[site_metadata_id]
                 for site in bricked_ts.sites()
             ]
@@ -282,24 +272,41 @@ def return_site_list(bricked_ts, site_metadata_id=None):
             raise KeyError("Metadata is not JSON encoded")
         except KeyError:
             raise KeyError('"ID" is not a key in the metadata of this site')
-    else:
-        rsids = None
+        assert len(site_ids) == bricked_ts.num_sites
+        return_lists["site_ids"] = np.array(site_ids)
 
     identified_bricks_dict = identify_bricks(bricked_ts)
     index = np.full(bricked_ts.num_sites, -1)
     for site_id, site_targets in identified_bricks_dict.items():
         for target in site_targets:
             index[target] = site_id
+    return_lists["index"] = index
     anc_alleles = tskit.unpack_strings(
         bricked_ts.tables.sites.ancestral_state,
         bricked_ts.tables.sites.ancestral_state_offset,
     )
-    derived_alleles = tskit.unpack_strings(
+    deriv_alleles = tskit.unpack_strings(
         bricked_ts.tables.mutations.derived_state,
         bricked_ts.tables.mutations.derived_state_offset,
     )
-    assert len(anc_alleles) == len(derived_alleles) == bricked_ts.num_sites
+    return_lists["anc_alleles"] = anc_alleles
+    return_lists["deriv_alleles"] = deriv_alleles
+    assert len(anc_alleles) == len(deriv_alleles) == bricked_ts.num_sites
 
-    if rsids is not None:
-        assert len(rsids) == len(anc_alleles)
-    return (index, rsids, anc_alleles, derived_alleles)
+    if sample_sets is not None:
+        site_frequencies = np.full(
+            (bricked_ts.num_sites, len(sample_sets)), -1, dtype=float
+        )
+        for sample_set_id, sample_set in enumerate(sample_sets):
+            num_samples = len(sample_set)
+            for tree in bricked_ts.trees(tracked_samples=sample_set):
+                for site in tree.sites():
+                    assert len(site.mutations) == 1
+                    for mutation in site.mutations:
+                        site_frequencies[site.id, sample_set_id] = (
+                            tree.num_tracked_samples(mutation.node) / num_samples
+                        )
+        assert np.sum(site_frequencies == -1) == 0
+        return_lists["site_frequencies"] = site_frequencies
+
+    return return_lists
