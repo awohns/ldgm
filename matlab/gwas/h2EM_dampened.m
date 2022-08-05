@@ -1,5 +1,5 @@
 function [h2, sigmasq, betaExpectation, betaVariance] =...
-    h2EM(alphaHat, P_cells, nn, annot, reps, betaVar, convergence_tol, approx_threshold, upweight_factor, upweight_factor_decay, weighted_avg_factor)
+    h2EM(alphaHat, P, nn, annot, reps, betaVar, convergence_tol, approx_threshold, dampener, stepsize)
 %h2EM computes MLE of h2 using expectation-maximization
 % Input arguments:
 % alphahat: GWAS sumstats (m x 1);
@@ -15,20 +15,13 @@ mm = cellfun(@length,alphaHat);
 noAnnot = size(annot{1},2);
 noBlocks = length(annot);
 annot_cat = vertcat(annot{:}) == 1;
-annotSum = sum(annot_cat)';
+mm_annot = sum(annot_cat);
 if nargin < 6
     betaVar = zeros(noAnnot,1);
     for ii=1:noAnnot
         betaVar(ii) = 1/nn;
     end
 end
-betaVarSum = betaVar.*annotSum;
-betaVarSum_blocks = zeros(noBlocks,noAnnot);
-for ii=1:length(P_cells)
-    betaVarSum_blocks(ii,:) = betaVar'.*sum(annot{ii});
-end
-
-
 if nargin < 7
     convergence_tol = 0.001;
 end
@@ -36,9 +29,8 @@ if nargin < 8
     approx_threshold = 0.25;
 end
 
+momentum = zeros(noAnnot,1);
 update_every_block = true;
-running_weighted_avg = betaVar;
-
 % dampener = 0.5;
 % stepsize = 0.2;
 
@@ -66,10 +58,10 @@ for rep = 1:reps
         
         
         if rep == 1 || diff > approx_threshold
-            denominator =  P_cells{block} + nn * speye(mm(block)).*sigmasq;
+            denominator =  P{block} + nn * speye(mm(block)).*sigmasq;
             denominator_inv{block} = sparseinv(denominator);
             betaVariance(idcs) = ...
-                sigmasq .* sum(P_cells{block}.*denominator_inv{block},1)';
+                sigmasq .* sum(P{block}.*denominator_inv{block},1)';
             sigmasq_old{block} = sigmasq;
             betaVariance_old(idcs) =...
                 betaVariance(idcs);
@@ -85,26 +77,19 @@ for rep = 1:reps
         
         % E_Qtau(beta|alphaHat,tauExpectation) == (P/denominator) * alphaHat
         betaExpectation(idcs) = ...
-            nn * P_cells{block} * (((annot{block} * (1./betaVar)) .* P_cells{block} + nn * speye(mm(block))) \ alphaHat{block});
+            nn * P{block} * (((annot{block} * (1./betaVar)) .* P{block} + nn * speye(mm(block))) \ alphaHat{block});
         
         if update_every_block
             for ii=1:noAnnot
                 annot_idcs = idcs(annot{block}(:,ii)==1);
                 if any(annot_idcs)
-                    betaVarSum(ii) = betaVarSum(ii) - betaVarSum_blocks(block,ii);
-                    betaVarSum_blocks(block,ii) = (sum(betaExpectation(annot_idcs).^2) + ...
-                        sum(betaVariance(annot_idcs)) );
-                    betaVarSum(ii) = betaVarSum(ii) + betaVarSum_blocks(block,ii);
-                    
-                    running_weighted_avg(ii) = running_weighted_avg(ii) * weighted_avg_factor + ...
-                        (1 - weighted_avg_factor) * betaVarSum_blocks(block,ii) / length(annot_idcs);
-                    
-                    betaVar(ii) = (betaVarSum(ii) + upweight_factor * ...
-                        running_weighted_avg(ii) * length(annot_idcs)) / ...
-                        (annotSum(ii) + upweight_factor * length(annot_idcs));
+                    diff = (mean(betaExpectation(annot_idcs).^2) + ...
+                        mean(betaVariance(annot_idcs)) ) - betaVar(ii);
+                    momentum(ii) = momentum(ii) * dampener + stepsize * diff;
+                    betaVar(ii) = betaVar(ii) + momentum(ii);
                 end
             end
-%                         disp(betaVar)
+%             disp(betaVar)
             
         end
         
@@ -131,8 +116,6 @@ for rep = 1:reps
         converged = true;
         break;
     end
-    
-    upweight_factor = upweight_factor * upweight_factor_decay;
 end
 if ~converged
     warning('EM did not converge in %d iterations',reps);

@@ -14,14 +14,20 @@ if iscell(P)
     assert(iscell(y) & iscell(whichIndices))
     x = cellfun(@precisionDivide, P, y, whichIndices, 'UniformOutput', false);
 else
-    % yp is y augmented with zeros
     if isa(whichIndices,'logical')
         whichIndices = find(whichIndices);
     end
+    
+    % handle zero diagonal elements in P
+    incl = diag(P) ~= 0;
+    assert(all(incl(whichIndices)),'Precision matrix should have nonzero diagonal entries for all non-missing SNPs')
+    
+    % yp is y augmented with zeros
     yp = sparse(whichIndices,ones(length(whichIndices),1),y,length(P),1);
     
     % xp is x augmented with entries that can be ignored
-    xp = P \ yp;
+    xp = zeros(size(yp));
+    xp(incl) = P(incl,incl) \ yp(incl);
     x = xp(whichIndices);
 end
 

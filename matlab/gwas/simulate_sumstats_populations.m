@@ -1,4 +1,5 @@
-function [alphaHat, beta_perallele, beta_persd, componentVariance] = simulate_sumstats_populations(sampleSize, alleleFrequency, varargin)
+function [alphaHat, beta_perallele, beta_persd, componentVariance] = ...
+    simulate_sumstats_populations(sampleSize, alleleFrequency, varargin)
 % Simulates summary statistics from specified prior distribution for
 % multiple populations. 
 % Input arguments: see below.
@@ -80,7 +81,7 @@ end
 if isempty(SNPs)
     assert(all(min(noSNPs,[],2) == max(noSNPs,[],2)),...
         'If SNP identifiers not specified, the number of SNPs in each LD block must be the same across populations');
-    SNPs = cellfun(@(n){1:n},noSNPs);
+    SNPs = arrayfun(@(n){1:n},noSNPs);
 else
     assert(all(cellfun(@iscolumn,SNPs), 'all'), 'Specify SNPs as a cell array of column vectors')
     for ii = 1:noBlocks

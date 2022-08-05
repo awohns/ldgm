@@ -1,12 +1,13 @@
-function [logLikelihood, logLikelihoodBlocks] = GWASlikelihood(alphahat,sigmasq,P,nn,whichSNPs)
+function [logLikelihood, logLikelihoodBlocks] = GWASlikelihood(alphahat,sigmasq,P,nn,whichIndices)
 % GWASlikelihood computes likelihood of the GWAS sumstats alphahat under a
 % gaussian model:
 %                   beta ~ MVN(mu,diag(sigmasq))
 %                   alphahat|beta ~ MVN(R*beta, R/nn)
 %                   inv(R) = P.
 % The GWAS SNPs in alphahat should be a subset of those in P, and in the
-% same order; boolean vector whichSNPs should be true for rows/columns of P
-% corresponding to one of these SNPs, false elsewhere.
+% same order; whichIndices should be true for rows/columns of P
+% corresponding to one of these SNPs, false elsewhere (or specify indices
+% instead of logicals)
 % Currently, sigmasq should be the same size as alphahat, such that missing
 % SNPs are modeled as having zero effect size.
 %
@@ -25,22 +26,22 @@ function [logLikelihood, logLikelihoodBlocks] = GWASlikelihood(alphahat,sigmasq,
 assert(isscalar(nn) && all(nn>0),'Sample size nn should be a positive scalar')
 
 if iscell(P)
-    assert(iscell(alphahat) && iscell(whichSNPs) && ...
+    assert(iscell(alphahat) && iscell(whichIndices) && ...
         (iscell(sigmasq) || isscalar(sigmasq)), ...
         'If P is a cell array then alphahat, sigmasq, whichSNPs should also cell arrays of the same size');
     if isscalar(sigmasq) && ~iscell(sigmasq)
         sigmasq = cellfun(@(b){ones(size(b))*sigmasq},alphahat);
     end
     assert(all(size(P) == size(sigmasq)) && all(size(P) == size(alphahat))...
-        && all(size(P) == size(whichSNPs)), 'Input cell arrays should have same size');
+        && all(size(P) == size(whichIndices)), 'Input cell arrays should have same size');
     
     % Iterate over cell arrays
     logLikelihoodBlocks = cellfun(@(a,s,p,w)likelihoodFn(a,s,p,nn,w), ...
-        alphahat, sigmasq, P, whichSNPs);
+        alphahat, sigmasq, P, whichIndices);
     
     logLikelihood = sum(logLikelihoodBlocks);
 else
-    logLikelihood = likelihoodFn(alphahat,sigmasq,P,nn,whichSNPs);
+    logLikelihood = likelihoodFn(alphahat,sigmasq,P,nn,whichIndices);
     logLikelihoodBlocks = logLikelihood;
 end
 

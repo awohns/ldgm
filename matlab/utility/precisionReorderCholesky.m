@@ -15,7 +15,7 @@ function [A, p, s] = precisionReorderCholesky(P, idcs)
 % 
 % With three output arguments, precisionReorderCholesky returns the entire
 % matrix A, the flag p (which should be 0), and the permutation that it 
-% used, s; with 1-2 output arguments, it only returns the last part of A, 
+% used, s; with 1 output argument, it only returns the last part of A, 
 % correponding to idcs.
 
 if iscell(P)
@@ -29,7 +29,7 @@ else
     
     [A, p] = chol(P(s,s));
     
-    if nargin == 1
+    if nargout == 1
         A = A(end-k+1:end, end-k+1:end);
     end
         
