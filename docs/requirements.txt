@@ -7,3 +7,4 @@ sphinx_issues
 tskit
 tqdm
 numpy
+networkx
