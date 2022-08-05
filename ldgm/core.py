@@ -123,5 +123,38 @@ def prune_sites(ts, threshold):
     return utility.prune_sites(ts, threshold)
 
 
-def return_site_list(ts, site_metadata_id=None):
-    return utility.return_site_list(ts, site_metadata_id)
+def return_site_info(ts, site_metadata_id=None, sample_sets=None):
+    """
+    Returns information on variant sites in the input
+        :class:`tskit.TreeSequence`.
+
+    :param TreeSequence bricked_ts: The input :class`tskit.TreeSequence`,
+        for which the site list will be determined. This tree sequence
+        must have been "bricked", i.e. ldgm.brick_ts() must have been
+        run on the tree sequence.
+    :param string site_metadata_id: The site ID field in the JSON-encoded
+        site metadata. If None, does not return site IDs. Default: None.
+    :param list sample_sets: A list of :math:`s` lists of node IDs, where
+        :math:`s` is the number of sample sets for which you wish to
+        compute allele frequencies. If None, does not return
+        site frequencies. Default: None.
+    :return: A dictionary containing the following key, value pairs:
+        key: "index", value: a numpy.ndarray of the IDs of the
+        node in the LDGM to which each site belongs. When multiple
+        mutations appear on the same brick, they will refer to the same node
+        in the LDGM.
+        key: "site_ids", value: a numpy.ndarray containing the site_id of
+        each site, only returned if `site_metadata_id` is specified.
+        key: "anc_alleles", value: a numpy.ndarray of the ancestral allele
+        of each site.
+        key: "deriv_alleles", value: a numpy.ndarray of the derived allele
+        of each site.
+        key: "site_frequencies", value: a mxp numpy.ndarray, where :math:`m`
+        is the number of sites in the input tree sequence and :math:`s` is
+        the number of sample sets passed to the `sample_sets` parameter.
+        Only returned if `sample_sets` is specified.
+    :rtype: dict
+    """
+    return utility.return_site_info(
+        ts, site_metadata_id=site_metadata_id, sample_sets=sample_sets
+    )

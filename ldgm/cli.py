@@ -53,14 +53,15 @@ def ldgm_cli_parser():
     )
     parser.add_argument(
         "output",
-        help="The path and name of output file, without an extension, which will store the \
-                SNP graphical model and dictionary mapping graph nodes to mutation ids.",
+        help="The path and name of output file, without an extension, which will \
+                store the SNP graphical model and dictionary mapping graph nodes \
+                to mutation ids.",
     )
     parser.add_argument(
         "path_threshold",
         type=int,
-        help="The maximum path threshold to retain in the linkage disequilibrium graphical \
-                model.",
+        help="The maximum path threshold to retain in the linkage disequilibrium \
+                graphical model.",
     )
     # parser.add_argument(
     #    "-p", "--progress", action="store_true", help="Show progress bar."
