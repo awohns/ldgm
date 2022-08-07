@@ -30,14 +30,16 @@ class TestNumNodes(unittest.TestCase):
             length=1e4,
             Ne=10000,
         )
-        bricked = ldgm.brick_ts(ts, threshold=None)
+        bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         number_of_labeled_bricks = len(ldgm.utility.get_mut_edges(bricked).keys())
         assert (
-            ldgm.reduce(ts, path_threshold=100)[0].number_of_nodes()
+            ldgm.reduce(ts, path_weight_threshold=100)[0].number_of_nodes()
             == number_of_labeled_bricks
         )
-        bricked_graph = ldgm.brick_graph(bricked)
-        reduced_graph, _, _ = ldgm.reduce_graph(bricked_graph, bricked, threshold=None)
+        bricked_graph = ldgm.brick_haplo_graph(bricked)
+        reduced_graph = ldgm.reduce_graph(
+            bricked_graph, bricked, path_weight_threshold=None
+        )
         num_brick_nodes = np.sum(np.array(list(reduced_graph.nodes())) >= 0)
         assert num_brick_nodes == number_of_labeled_bricks
         max_haplotype = np.max(np.abs(np.array(list(reduced_graph.nodes()))))
@@ -55,9 +57,13 @@ class TestReduce(unittest.TestCase):
 
         """
         ts = utility_functions.single_tree_ts_n2_2_mutations()
-        bts = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        brick_graph = ldgm.brick_graph(bts)
-        snp_grapher = ldgm.snp_graph.SNP_Graph(brick_graph, bts, threshold=None)
+        bts = ldgm.brick_ts(
+            ts, recombination_freq_threshold=None, add_dummy_bricks=False
+        )
+        brick_haplo_graph = ldgm.brick_haplo_graph(bts)
+        snp_grapher = ldgm.snp_graph.SNP_Graph(
+            brick_haplo_graph, bts, path_weight_threshold=None
+        )
         reduced_graph = snp_grapher.create_reduced_graph()
 
         manual_graph = nx.Graph()
@@ -71,7 +77,7 @@ class TestReduce(unittest.TestCase):
 
         ts = msprime.simulate(10)
         with pytest.raises(ValueError):
-            ldgm.reduce(ts, path_threshold=100)
+            ldgm.reduce(ts, path_weight_threshold=100)
 
 
 class TestExamples(unittest.TestCase):
@@ -81,15 +87,19 @@ class TestExamples(unittest.TestCase):
 
     def test_fig1(self, num_processes=1):
         ts = utility_functions.figure_one_example()
-        reduced = ldgm.reduce(ts, path_threshold=100, num_processes=num_processes)
-        assert nx.is_connected(reduced[0])
-        assert reduced[0].number_of_edges() == 6
-        return reduced[0]
+        reduced, _ = ldgm.reduce(
+            ts, path_weight_threshold=100, num_processes=num_processes
+        )
+        assert nx.is_connected(reduced)
+        assert reduced.number_of_edges() == 6
+        return reduced
 
     def test_supplementary(self, num_processes=1):
         ts = utility_functions.supplementary_example()
-        reduced = ldgm.reduce(ts, path_threshold=100, num_processes=num_processes)
-        edges = reduced[0].edges()
+        reduced, _ = ldgm.reduce(
+            ts, path_weight_threshold=100, num_processes=num_processes
+        )
+        edges = reduced.edges()
         assert (0, 1) in edges
         assert (1, 3) in edges
         assert (0, 2) in edges
@@ -97,17 +107,65 @@ class TestExamples(unittest.TestCase):
         assert (2, 3) in edges
         assert (1, 2) not in edges
         assert len(edges) == 5
-        return reduced[0]
+        return reduced
 
     def test_triangle(self, num_processes=1):
         ts = utility_functions.triangle_example()
-        reduced = ldgm.reduce(ts, path_threshold=100, num_processes=num_processes)
-        assert nx.is_connected(reduced[0])
-        assert reduced[0].number_of_edges() == 3
-        return reduced[0]
+        reduced, _ = ldgm.reduce(
+            ts, path_weight_threshold=100, num_processes=num_processes
+        )
+        assert nx.is_connected(reduced)
+        assert reduced.number_of_edges() == 3
+        return reduced
 
     def test_multithreaded(self):
         for test in [self.test_fig1, self.test_supplementary, self.test_triangle]:
             singlethreaded = test(num_processes=1)
             multithreaded = test(num_processes=2)
             assert nx.is_isomorphic(singlethreaded, multithreaded)
+        example_ts = msprime.simulate(
+            25,
+            mutation_rate=1e-8,
+            recombination_rate=1e-8,
+            Ne=10000,
+            length=1e4,
+            random_seed=1,
+        )
+        singlethreaded, _ = ldgm.reduce(
+            example_ts, path_weight_threshold=100, num_processes=1
+        )
+        multithreaded, _ = ldgm.reduce(
+            example_ts, path_weight_threshold=100, num_processes=5
+        )
+        assert nx.is_isomorphic(singlethreaded, multithreaded)
+
+
+class TestPathWeightThreshold(unittest.TestCase):
+    """
+    Test no edges are greater than the given path_weight_threshold
+    """
+
+    def test_path_weight_threshold(self, num_processes=1):
+        example_ts = msprime.simulate(
+            50,
+            mutation_rate=1e-8,
+            recombination_rate=1e-8,
+            Ne=10000,
+            length=1e4,
+            random_seed=1,
+        )
+        reduced_2, _ = ldgm.reduce(example_ts, path_weight_threshold=2)
+        edge_weights_2 = [
+            reduced_2.get_edge_data(u, v)["weight"] for u, v in reduced_2.edges()
+        ]
+        assert np.max(edge_weights_2) < 2
+        reduced_4, _ = ldgm.reduce(example_ts, path_weight_threshold=4)
+        edge_weights_4 = [
+            reduced_4.get_edge_data(u, v)["weight"] for u, v in reduced_4.edges()
+        ]
+        assert np.max(edge_weights_4) < 4
+        reduced_8, _ = ldgm.reduce(example_ts, path_weight_threshold=8)
+        edge_weights_8 = [
+            reduced_8.get_edge_data(u, v)["weight"] for u, v in reduced_8.edges()
+        ]
+        assert np.max(edge_weights_8) < 8

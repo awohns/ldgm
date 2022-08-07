@@ -1,5 +1,5 @@
 """
-Contains code to create a "bricked" tree sequence, where edges with 
+Contains code to create a "bricked" tree sequence, where edges with
 have different sets of descendants are bifurcated.
 """
 import tskit
@@ -10,7 +10,13 @@ from . import utility
 
 
 class Bricks:
-    def __init__(self, ts, recombination_freq_threshold=None, add_dummy_bricks=True, progress=True):
+    def __init__(
+        self,
+        ts,
+        recombination_freq_threshold=None,
+        add_dummy_bricks=True,
+        progress=True,
+    ):
         self.ts = ts
         self.add_dummy_bricks = add_dummy_bricks
         if recombination_freq_threshold is None:
@@ -86,7 +92,10 @@ class Bricks:
                 if mode == "leaf":
                     right = edge.parent
                     left = prev_tree.parent(edge.child)
-                    if tree.num_samples(edge.child) / ts.num_samples > self.rec_threshold:
+                    if (
+                        tree.num_samples(edge.child) / ts.num_samples
+                        > self.rec_threshold
+                    ):
                         while right != left and right != -1 and left != -1:
                             tr = tree.get_time(right)
                             tl = prev_tree.get_time(left)

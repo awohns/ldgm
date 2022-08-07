@@ -14,7 +14,7 @@ from . import utility
 def find_reach_set(params):
     out_node = params[0]
     brick_graph = params[1]
-    threshold = params[2]
+    path_weight_threshold = params[2]
     bricks_to_muts = params[3]
     reach_star_set = []
     new_edges = []
@@ -33,7 +33,7 @@ def find_reach_set(params):
         ]
     )
     reach_set = nx.single_source_dijkstra_path_length(
-        removed_brick_graph, out_node, cutoff=threshold, weight="weight"
+        removed_brick_graph, out_node, cutoff=path_weight_threshold, weight="weight"
     )
     for vertex, weight in reach_set.items():
         brick_haplo_id = vertex // 8
@@ -88,14 +88,14 @@ class SNP_Graph:
         self,
         brick_graph,
         brick_ts,
-        threshold,
+        path_weight_threshold,
         num_processes=1,
         chunksize=100,
         progress=True,
     ):
         self.brick_graph = brick_graph
         self.brick_ts = brick_ts
-        self.threshold = threshold
+        self.path_weight_threshold = path_weight_threshold
         self.num_processes = num_processes
         self.chunksize = chunksize
         self.progress = progress
@@ -137,7 +137,7 @@ class SNP_Graph:
         l_out_zipped = zip(
             l_out,
             (self.brick_graph for _ in range(len(l_out))),
-            (self.threshold for _ in range(len(l_out))),
+            (self.path_weight_threshold for _ in range(len(l_out))),
             (self.bricks_to_muts for _ in range(len(l_out))),
         )
 
@@ -168,4 +168,4 @@ class SNP_Graph:
                         R.add_edge(new_edge[0], new_edge[1], weight=new_edge[2])
                     reach_star_sets[row[0]] = row[1]
 
-        return R, self.mut_node, reach_star_sets
+        return R

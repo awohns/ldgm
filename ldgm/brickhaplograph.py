@@ -10,25 +10,31 @@ from tqdm import tqdm
 from . import utility
 
 
-class BrickGraph:
+class BrickHaploGraph:
     """
-    Each brick has five nodes:
-    0: up before
-    1: up after
-    2: down before
-    3: down after
-    4: out
-    5: uturn
-    6: haplo before
-    7: haplo after
+    Each brick has six or four vertices, depending on whether it is
+    labeled or unlabeled, respectively.
+    brick_id + 0: up before
+    brick_id + 1: up after
+    brick_id + 2: down before
+    brick_id + 3: down after
+    brick_id + 4: out
+    brick_id + 5: uturn
 
-    So to find nodes for a brick or haplotype:
+    Haplotypes have two vertices. node_id refers to the ID of the
+    node in the input tree sequence:
+    node_id + 6: haplo before
+    node_id + 7: haplo after
+
+    To find vertices in the brick-haplotype for a brick or haplotype:
     brick/haplo_index * 8 + desired_node_type_id
     """
 
-    def __init__(self, bricked_ts, threshold, make_sibs=False, progress=True):
+    def __init__(
+        self, bricked_ts, edge_weight_threshold, make_sibs=False, progress=True
+    ):
         self.bricked_ts = bricked_ts
-        self.threshold = threshold
+        self.edge_weight_threshold = edge_weight_threshold
         self.brick_graph = nx.DiGraph()
         self.freqs = utility.get_brick_frequencies(self.bricked_ts)
         self.progress = progress
@@ -52,8 +58,8 @@ class BrickGraph:
             return np.log(odds)
 
     def add_edge_threshold(self, from_node, to_node, weight):
-        if self.threshold is not None:
-            if weight < self.threshold:
+        if self.edge_weight_threshold is not None:
+            if weight < self.edge_weight_threshold:
                 self.brick_graph.add_edge(from_node, to_node, weight=weight)
         else:
             self.brick_graph.add_edge(from_node, to_node, weight=weight)
@@ -272,8 +278,11 @@ class BrickGraph:
         siblings = tree2.children(edge.parent)
         self.rule_one(edge, children, roots)
         if self.make_sibs:
-            if self.threshold is not None:
-                if self.log_odds(self.find_odds(edge.id) ** 2) < self.threshold:
+            if self.edge_weight_threshold is not None:
+                if (
+                    self.log_odds(self.find_odds(edge.id) ** 2)
+                    < self.edge_weight_threshold
+                ):
                     self.rule_two(edge, siblings)
             else:
                 self.rule_two(edge, siblings)

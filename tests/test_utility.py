@@ -17,7 +17,9 @@ class TestDummyBricks(unittest.TestCase):
 
     def test_add_dummy_bricks(self):
         ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
-        bts = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=True)
+        bts = ldgm.brick_ts(
+            ts, recombination_freq_threshold=None, add_dummy_bricks=True
+        )
         assert bts.num_nodes == ts.num_nodes + ts.num_samples
 
 
@@ -53,7 +55,7 @@ class TestRemoveNodes(unittest.TestCase):
         remove_nodes() should fail if an undirected graph is passed
         """
         ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
-        reduced = ldgm.reduce(ts, path_threshold=100)
+        reduced = ldgm.reduce(ts, path_weight_threshold=100)
         with pytest.raises(ValueError):
             ldgm.utility.remove_node(reduced[0], 0, path_threshold=100)
 
@@ -65,7 +67,7 @@ class TestCheckBricked(unittest.TestCase):
 
     def test_check_bricked(self):
         ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
-        bricked = ldgm.brick_ts(ts, threshold=None)
+        bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         assert ldgm.utility.check_bricked(bricked)
 
 
@@ -76,7 +78,7 @@ class TestReturnSiteInfo(unittest.TestCase):
 
     def test_return_site_info(self):
         ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
-        bricked = ldgm.brick_ts(ts, threshold=None)
+        bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         with pytest.raises(KeyError):
             ldgm.return_site_info(bricked, site_metadata_id="ID")
         results = ldgm.return_site_info(bricked)
@@ -86,7 +88,7 @@ class TestReturnSiteInfo(unittest.TestCase):
 
     def test_return_site_info_metadata(self):
         ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
-        bricked = ldgm.brick_ts(ts, threshold=None)
+        bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         tables = bricked.dump_tables()
         sites_table = tables.sites.copy()
         tables.sites.clear()
@@ -122,7 +124,7 @@ class TestReturnSiteInfo(unittest.TestCase):
             mutation_rate=1,
             random_seed=3,
         )
-        bricked = ldgm.brick_ts(ts, threshold=None)
+        bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         results = ldgm.return_site_info(bricked, sample_sets=[[0, 1], [2, 3]])
         assert np.array_equal(results["index"], np.array([0, 1, 2, 3, 3, 3, 4]))
         assert np.array_equal(results["anc_alleles"], np.full(bricked.num_sites, "0"))
