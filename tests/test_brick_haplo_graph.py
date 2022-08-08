@@ -7,6 +7,7 @@ import unittest
 import ldgm
 import numpy as np
 import pytest
+import msprime
 import tskit
 
 from . import utility_functions
@@ -14,18 +15,20 @@ from . import utility_functions
 
 class TestExampleTrees(unittest.TestCase):
     def verify(self, ts):
-        bts = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        g = ldgm.brick_graph(bts)
+        bts = ldgm.brick_ts(
+            ts, recombination_freq_threshold=None, add_dummy_bricks=False
+        )
+        g = ldgm.brick_haplo_graph(bts)
         self.check_rule_0(bts, g)
         self.check_rule_1(bts, g)
         self.check_out_nodes(g)
 
-    def check_rule_0(self, brick_ts, brick_graph):
+    def check_rule_0(self, brick_ts, brick_haplo_graph):
         """
         Check each brick is connected to its child haplotype
         With a weight equal to log(1).
         """
-        graphical_model_nodes = brick_graph.nodes()
+        graphical_model_nodes = brick_haplo_graph.nodes()
         unlabeled_bricks = []
 
         bricks_to_muts = ldgm.utility.get_mut_edges(brick_ts)
@@ -60,7 +63,7 @@ class TestExampleTrees(unittest.TestCase):
         if node_type == "haplo after":
             return brick_id * 8 + 6
 
-    def check_rule_1(self, brick_ts, brick_graph):
+    def check_rule_1(self, brick_ts, brick_haplo_graph):
         """
         Check that parent child bricks are connected
         Up after node of child should be connected to up after of parent
@@ -68,7 +71,7 @@ class TestExampleTrees(unittest.TestCase):
         Up before of child to up before of parent (if child is unlabeled)
         Up before of child to up after of parent (if child is labeled)
         """
-        graphical_model_edges = brick_graph.edges()
+        graphical_model_edges = brick_haplo_graph.edges()
         unlabeled_bricks = []
 
         bricks_to_muts = ldgm.utility.get_mut_edges(brick_ts)
@@ -147,11 +150,11 @@ class TestExampleTrees(unittest.TestCase):
                             self.return_node(brick_parent, "up_before"),
                         ) in graphical_model_edges
 
-    def check_out_nodes(self, brick_graph):
+    def check_out_nodes(self, brick_haplo_graph):
         # Check that no edge goes into an out node
-        nodes = np.array(list(brick_graph.nodes()))
+        nodes = np.array(list(brick_haplo_graph.nodes()))
         l_out = nodes[nodes % 8 == 4]
-        for edge in brick_graph.edges():
+        for edge in brick_haplo_graph.edges():
             assert edge[1] not in l_out
 
     def test_examples(self):
@@ -175,10 +178,11 @@ class TestExampleTrees(unittest.TestCase):
 
     def test_triangle_brickgraph(self):
         ts = utility_functions.triangle_example()
-        brick_graph_wo_sibs = ldgm.brick_graph(ts, make_sibs=False)
-        brick_graph_w_sibs = ldgm.brick_graph(ts, make_sibs=True)
-        edges_wo_sibs = list(brick_graph_wo_sibs.edges())
-        edges_w_sibs = list(brick_graph_w_sibs.edges())
+        bts = ldgm.brick_ts(ts)
+        brick_haplo_graph_wo_sibs = ldgm.brick_haplo_graph(bts, make_sibs=False)
+        brick_haplo_graph_w_sibs = ldgm.brick_haplo_graph(bts, make_sibs=True)
+        edges_wo_sibs = list(brick_haplo_graph_wo_sibs.edges())
+        edges_w_sibs = list(brick_haplo_graph_w_sibs.edges())
         for name, edges in {"nosibs": edges_wo_sibs, "sibs": edges_w_sibs}.items():
             # Rule 0 labeled bricks
             assert ((8 * 0) + 2, (8 * 0) + 7) in edges
@@ -334,15 +338,19 @@ class TestDummyBricks(unittest.TestCase):
     @pytest.mark.skip
     def test_dummy_example_one(self):
         ts = self.dummy_brick_test_one()
-        bts_no_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        brick_graph_no_dummy = ldgm.brick_graph(bts_no_dummy)
-        reduced_graph_no_dummy, _ = ldgm.reduce_graph(
-            brick_graph_no_dummy, bts_no_dummy, threshold=100
+        bts_no_dummy = ldgm.brick_ts(
+            ts, recombination_freq_threshold=None, add_dummy_bricks=False
         )
-        bts_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=True)
-        brick_graph_dummy = ldgm.brick_graph(bts_dummy)
+        brick_haplo_graph_no_dummy = ldgm.brick_haplo_graph(bts_no_dummy)
+        reduced_graph_no_dummy, _ = ldgm.reduce_graph(
+            brick_haplo_graph_no_dummy, bts_no_dummy, threshold=100
+        )
+        bts_dummy = ldgm.brick_ts(
+            ts, recombination_freq_threshold=None, add_dummy_bricks=True
+        )
+        brick_haplo_graph_dummy = ldgm.brick_haplo_graph(bts_dummy)
         reduced_graph_dummy, _ = ldgm.reduce_graph(
-            brick_graph_dummy, bts_dummy, threshold=100
+            brick_haplo_graph_dummy, bts_dummy, threshold=100
         )
         assert reduced_graph_no_dummy.number_of_edges() == 0
         assert reduced_graph_dummy.number_of_edges() == 1
@@ -351,17 +359,57 @@ class TestDummyBricks(unittest.TestCase):
     @pytest.mark.skip
     def test_dummy_example_two(self):
         ts = self.dummy_brick_test_two()
-        bts_no_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=False)
-        brick_graph_no_dummy = ldgm.brick_graph(bts_no_dummy)
-        reduced_graph_no_dummy, _ = ldgm.reduce_graph(
-            brick_graph_no_dummy, bts_no_dummy, threshold=100
+        bts_no_dummy = ldgm.brick_ts(
+            ts, recombination_freq_threshold=None, add_dummy_bricks=False
         )
-        bts_dummy = ldgm.brick_ts(ts, threshold=None, add_dummy_bricks=True)
-        brick_graph_dummy = ldgm.brick_graph(bts_dummy)
+        brick_haplo_graph_no_dummy = ldgm.brick_haplo_graph(bts_no_dummy)
+        reduced_graph_no_dummy, _ = ldgm.reduce_graph(
+            brick_haplo_graph_no_dummy, bts_no_dummy, threshold=100
+        )
+        bts_dummy = ldgm.brick_ts(
+            ts, recombination_freq_threshold=None, add_dummy_bricks=True
+        )
+        brick_haplo_graph_dummy = ldgm.brick_haplo_graph(bts_dummy)
         reduced_graph_dummy, _ = ldgm.reduce_graph(
-            brick_graph_dummy, bts_dummy, threshold=100
+            brick_haplo_graph_dummy, bts_dummy, threshold=100
         )
         assert reduced_graph_no_dummy.number_of_edges() == 1
         assert reduced_graph_dummy.number_of_edges() == 2
         assert (0, 1) in reduced_graph_no_dummy.edges()
         assert (0, 2) in reduced_graph_dummy.edges()
+
+
+class TestEdgeWeightThreshold(unittest.TestCase):
+    """
+    Test that no edges larger than the given edge weight threshold
+    end up in the brick haplo graph.
+    """
+
+    def test_edge_weight_threshold(self):
+        ts = msprime.simulate(
+            100,
+            mutation_rate=1e-8,
+            recombination_rate=1e-8,
+            Ne=10000,
+            length=1e5,
+            random_seed=1,
+        )
+        bts = ldgm.brick_ts(ts)
+        brick_haplo_graph_2 = ldgm.brick_haplo_graph(bts, edge_weight_threshold=2)
+        edge_weights_2 = [
+            brick_haplo_graph_2.get_edge_data(u, v)["weight"]
+            for u, v in brick_haplo_graph_2.edges()
+        ]
+        assert np.max(edge_weights_2) < 2
+        brick_haplo_graph_4 = ldgm.brick_haplo_graph(bts, edge_weight_threshold=4)
+        edge_weights_4 = [
+            brick_haplo_graph_4.get_edge_data(u, v)["weight"]
+            for u, v in brick_haplo_graph_4.edges()
+        ]
+        assert np.max(edge_weights_4) < 4
+        brick_haplo_graph_8 = ldgm.brick_haplo_graph(bts, edge_weight_threshold=8)
+        edge_weights_8 = [
+            brick_haplo_graph_8.get_edge_data(u, v)["weight"]
+            for u, v in brick_haplo_graph_8.edges()
+        ]
+        assert np.max(edge_weights_8) < 8
