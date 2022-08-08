@@ -4,6 +4,9 @@ setuptools_scm
 sphinx-argparse
 sphinx_rtd_theme
 sphinx_issues
+sphinxcontrib-matlabdomain
+sphinxcontrib-fulltoc
+sphinx-copybutton
 tskit
 tqdm
 numpy
