@@ -30,6 +30,7 @@ else
     [A, p] = chol(P(s,s));
     
     if nargout == 1
+        k = length(idcs);
         A = A(end-k+1:end, end-k+1:end);
     end
         
