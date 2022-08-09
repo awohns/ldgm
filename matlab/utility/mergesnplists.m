@@ -1,15 +1,9 @@
-function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = mergesnplists(snplists,sumstats)
+function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = mergesnplists(snplists,sumstats,P)
 %mergesnplists merges (1) a cell array of .snplist tables, one for each LD block,
 %with (2) a table of summary statistics containing RSIDs.
 % 
 % Input arguments:
 % snplists: cell array where each cell contains a snplist table.
-%  Optionally, include a logical column named 'include' in the snplist
-%  tables, and any SNPs with include==0 will be ingored. In particular, if
-%  working with LDGM precision matrices, there will usually be a lot of
-%  indices in the SNP list whos associated row/column of the precision
-%  matrix is empty, because that SNP was low frequency in that population;
-%  to discard these SNPs, set snplist.include  = any(P(:,snplist.index + 1))';
 % 
 % sumstats: summary statistics table with mandatory column name
 % (non-case-sensitive) SNP or RSID, to be used for merging.
@@ -17,11 +11,16 @@ function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = 
 %   or anc_allele/deriv_allele. If these columns are
 %   specified, they will be merged with the anc_allele/deriv_allele columns
 %   of snplists.
+%
+% P (optional): cell array of LDGM precision matrices. Any indices whose
+%  corresponding rows/columns in P are empty will be ingored.
+%  Alternatively, specify a logical row vector.
 % 
 % Ouput arguments:
 % whichIndices: cell array of indices, a subset of the 'index' column of each
 % snplist. Indexes which row/column of LDGMs have a corresponding SNP in
 % the sumstats table.
+% 
 % mergedSumstats: cell array of sumstats tables, each containing a subset
 % of the rows of the original sumstats table, that match the indices of
 % each LD block. Note: when multiple SNPs correspond to the same row/column
@@ -82,12 +81,16 @@ whichIndices = cell(size(snplists));
 representatives = cell(size(snplists));
 for ii = 1:noBlocks
     [whichIndices{ii}, representatives{ii}] = ...
-        unique(snplists{ii}.index(whichSNPs{ii}),'stable');
+        unique(snplists{ii}.index(whichSNPs{ii}) + 1,'stable');
+    
+    % Get rid of indices whos corresponding columns of P are empty
+    if nargin > 2
+        include_indices = find(any(P{ii}));
+        [whichIndices{ii}, include_indices] = intersect(whichIndices{ii},include_indices,'stable');
+        representatives{ii} = representatives{ii}(include_indices);
+    end
     mergedSumstats{ii} = mergedSumstats{ii}(representatives{ii},:);
 end
-
-% convert zero to one indexing
-whichIndices = cellfun(@(x){x+1},whichIndices);
 
 % which sumstats SNPs had a matching SNP in each LD block
 sumstats_SNPs_in_snplists = cellfun(@(i){sumstats_idx(i)}, blocks);
