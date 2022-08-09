@@ -81,12 +81,12 @@ whichIndices = cell(size(snplists));
 representatives = cell(size(snplists));
 for ii = 1:noBlocks
     [whichIndices{ii}, representatives{ii}] = ...
-        unique(snplists{ii}.index(whichSNPs{ii}) + 1,'stable');
+        unique(snplists{ii}.index(whichSNPs{ii}) + 1);
     
     % Get rid of indices whos corresponding columns of P are empty
     if nargin > 2
         include_indices = find(any(P{ii}));
-        [whichIndices{ii}, include_indices] = intersect(whichIndices{ii},include_indices,'stable');
+        [whichIndices{ii}, include_indices] = intersect(whichIndices{ii},include_indices);
         representatives{ii} = representatives{ii}(include_indices);
     end
     mergedSumstats{ii} = mergedSumstats{ii}(representatives{ii},:);

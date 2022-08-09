@@ -1,5 +1,5 @@
 function [betaExpectationPerSD, betaExpectationPerAllele] =...
-    BLUPxldgm(P, whichIndices, mergedSumstats, sampleSize, betaCov, alpha_param)
+    BLUPxldgm(P, whichIndices, mergedSumstats, betaCov, sampleSize, alpha_param)
 % BLUPx computes the cross-popn best linear unbiased predictor, E(beta|GWAS, gaussian
 % prior).
 % 
@@ -19,7 +19,9 @@ function [betaExpectationPerSD, betaExpectationPerAllele] =...
 % standard error (beta, se). Optionally, if they report an allele frequency
 % (AF) and alpha_param is specified, an AF-dependent prior will be used.
 % 
-% sampleSize: GWAS sample size for each population, as a vector.
+% sampleSize: GWAS sample size for each population, as a vector. If not
+% specified, BLUPxldgm will look for a column of the summary statistics
+% file called 'N' and use that if it is found.
 % 
 % betaCov: covariance matrix for the per-allele effect size of a SNP across 
 % popns, which is assumed to be i.i.d.
@@ -42,6 +44,17 @@ assert(all(has_Zscore),...
 
 [noBlocks, noPopns] = size(P);
 assert(all(size(betaCov) == [noPopns, noPopns]), 'betaCov should be a square matrix of size noPopns')
+
+% Get sample size from sumstats if necessary
+if nargin < 5
+    for ii = 1:noBlocks
+        for jj = 1:noPopns
+            assert(any(strcmpi(mergedSumstats{ii,jj}.Properties.VariableNames,'N')), 'Please specify sample size, or alternatively include a column named N in the merged sumstats');
+            sampleSize(ii,jj) = mean(mergedSumstats{ii,jj}.N);
+        end
+    end
+    sampleSize = mean(sampleSize);
+end
 assert(all(size(sampleSize) == [1 noPopns]), 'sampleSize should be a row vector of size noPopns')
 
 % Get rid of empty rows/columns of precision matrices

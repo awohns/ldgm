@@ -16,10 +16,10 @@ file=fopen(filename);
 data=textscan(file,strformat);
 
 % SNP indices of entries of sparse matrix
-ii = double([data{1}+1-one_indexed; data{2}+1-one_indexed]);
-jj = double([data{2}+1-one_indexed; data{1}+1-one_indexed]);
-weights = [data{3}; data{3}];
-assert(max(ii(:)) <= height(snplist));
+ii = double(data{1}+1-one_indexed);
+jj = double(data{2}+1-one_indexed);
+weights = data{3};
+assert(max(max(ii(:)),max(jj(:))) <= height(snplist));
 
 % Convert from SNP indices to row/col indices
 ii = snplist.index(ii);
