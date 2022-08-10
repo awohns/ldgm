@@ -58,7 +58,8 @@ class TestMakeLdgm(unittest.TestCase):
         """
         ts = utility_functions.single_tree_ts_n2_2_mutations()
         bts = ldgm.brick_ts(
-            ts, recombination_freq_threshold=None, add_dummy_bricks=False
+            ts,
+            recombination_freq_threshold=None,
         )
         brick_haplo_graph = ldgm.brick_haplo_graph(bts)
         snp_grapher = ldgm.snp_graph.SNP_Graph(

@@ -4,17 +4,12 @@ Utility functions
 import collections
 import itertools
 import json
-import math
 import pandas as pd
 
 import numpy as np
 import tskit
 
 from . import provenance
-
-
-def softmin(val1, val2):
-    return -2 * np.log(math.e ** (-0.5 * val1) + math.e ** (-0.5 * val2))
 
 
 def get_mut_edges(ts):
@@ -88,92 +83,7 @@ def interval_while_leaf(ts):
     return uninterrupted_leaf_spans
 
 
-def add_dummy_bricks(bts, mode="samples", epsilon="adaptive"):
-    """
-    Add a dummy bricks to the tree sequence, allowing each sample or leaf node
-    (depending on mode) to be the *parent* node of a brick.
-    Dummy nodes are *not* marked as samples.
-    Convert from dummy node ids to previous ids by subtracting the number of
-    leaves or samples
-    (depending on mode used).
-    """
-    # Check that the first (num_samples) nodes are all samples
-    # for i in range(bts.num_samples):
-    #    assert i in bts.samples()
-    if epsilon == "adaptive":
-        time = bts.tables.nodes.time
-        gaps = time[bts.tables.edges.parent] - time[bts.tables.edges.child]
-        epsilon = np.min(np.unique(gaps)) * 0.1
-        if bts.num_mutations > 0:
-            if not np.isnan(np.min(bts.tables.mutations.time)):
-                epsilon = np.min(
-                    [np.min(np.unique(gaps)) * 0.1, np.min(bts.tables.mutations.time)]
-                )
-    node_mapping = {}
-    tables = bts.dump_tables()
-
-    tables.nodes.clear()
-    if mode == "samples":
-        targets = bts.samples()
-    elif mode == "leaves":
-        targets = set()
-        for tree in bts.trees():
-            for leaf in tree.leaves():
-                if tree.parent(leaf) != -1:
-                    targets.add(leaf)
-
-    # Add all the nodes in
-    for node in bts.nodes():
-        if node.id not in targets:
-            tables.nodes.add_row(flags=0, time=node.time)
-        else:
-            # Add target
-            tables.nodes.add_row(flags=0, time=node.time + epsilon)
-    # adding dummy nodes
-    for target in targets:
-        node_mapping[target] = tables.nodes.add_row(
-            flags=bts.node(target).flags, time=bts.node(target).time
-        )
-    tables.edges.clear()
-    if mode == "leaves":
-        # Then we add bricks in
-        leaf_spans = interval_while_leaf(bts)
-        for dummy, intervals in leaf_spans.items():
-            for interval in intervals:
-                tables.edges.add_row(
-                    left=interval[0],
-                    right=interval[1],
-                    parent=dummy,
-                    child=node_mapping[dummy],
-                )
-    elif mode == "samples":
-        sequence_length = bts.get_sequence_length()
-        for target in targets:
-            tables.edges.add_row(
-                left=0, right=sequence_length, parent=target, child=node_mapping[target]
-            )
-    for edge in bts.edges():
-        tables.edges.add_row(
-            left=edge.left,
-            right=edge.right,
-            parent=edge.parent,
-            child=edge.child,
-        )
-    # Fix the mutation nodes
-    tables.mutations.clear()
-    for mut in bts.mutations():
-        tables.mutations.add_row(
-            site=mut.site,
-            node=mut.node,
-            derived_state=mut.derived_state,
-            time=mut.time,
-        )
-    # Then make a new brick tree sequence
-    tables.sort()
-    return tables.tree_sequence()
-
-
-def remove_node(g, node, path_threshold, use_softmin=False):
+def remove_node(g, node, path_threshold):
     if g.is_directed():
         sources = [source for source, _ in g.in_edges(node)]
         targets = [target for _, target in g.out_edges(node)]
@@ -189,14 +99,9 @@ def remove_node(g, node, path_threshold, use_softmin=False):
                 + g.get_edge_data(node, target)["weight"]
             )
             if g.has_edge(source, target):
-                if use_softmin:
-                    combined_weight = softmin(
-                        g.get_edge_data(source, target)["weight"], combined_weight
-                    )
-                else:
-                    combined_weight = np.minimum(
-                        g.get_edge_data(source, target)["weight"], combined_weight
-                    )
+                combined_weight = np.minimum(
+                    g.get_edge_data(source, target)["weight"], combined_weight
+                )
             if combined_weight <= path_threshold:
                 new_edges_no_self.append((source, target, combined_weight))
     g.add_weighted_edges_from(new_edges_no_self)

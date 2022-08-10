@@ -10,9 +10,7 @@ from . import reduction
 from . import utility
 
 
-def brick_ts(
-    ts, recombination_freq_threshold=None, add_dummy_bricks=False, progress=True
-):
+def brick_ts(ts, recombination_freq_threshold=None, progress=True):
     """
     Take an input tree sequence and bifurcate edges to create "bricks" that
     have the same set of descendants at every position.
@@ -27,10 +25,6 @@ def brick_ts(
         the edge's child node is >1% in the right hand marginal tree.
         If None, all edges with differing numbers of descendants to the left
         and right of a recombination event are bifurcated. Default: None
-    :param bool add_dummy_bricks: If True, adds "dummy" bricks to the tree sequence.
-        Dummy bricks make each sample node the *parent* node of a brick. Dummy nodes
-        are *not* marked as samples. Convert from dummy node ids to previous ids by
-        subtracting the number of samples (depending on mode used). Default: False.
     :param bool progress: Whether to display a progress bar. Default: False
     :return: A bricked version of the input tree sequence
     :rtype: tskit.TreeSequence
@@ -39,7 +33,6 @@ def brick_ts(
     brick = bricks.Bricks(
         ts,
         recombination_freq_threshold=recombination_freq_threshold,
-        add_dummy_bricks=add_dummy_bricks,
         progress=progress,
     )
     bricked = brick.naive_split_edges()
@@ -140,7 +133,6 @@ def make_ldgm(
     ts,
     path_weight_threshold,
     recombination_freq_threshold=None,
-    use_softmin=False,
     num_processes=1,
     chunksize=100,
     progress=False,
@@ -167,9 +159,6 @@ def make_ldgm(
         the edge's child node is >1% in the right hand marginal tree.
         If None, all edges with differing numbers of descendants to the left
         and right of a recombination event are bifurcated. Default: None
-    :param bool use_softmin: If True, use the softmin function to combine
-        path weights when removing nodes. If False, use the minimum of the path
-        weights. Default: False
     :param int num_processes: The number of threads to use. Default: 1
     :param int chunksize: If using multiple threads, the algorithm will chop
         the dijkstra search step (the rate-limiting step of the algorithm)
@@ -221,7 +210,9 @@ def make_ldgm(
     for node in tqdm(nodes, total=len(nodes), desc="Removing nodes"):
         if node < 0:
             H_12_reduced = utility.remove_node(
-                H_12_reduced, node, path_weight_threshold, use_softmin=use_softmin
+                H_12_reduced,
+                node,
+                path_weight_threshold,
             )
     H_12_reduced = H_12_reduced.to_undirected()
 
