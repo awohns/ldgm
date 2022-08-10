@@ -1,13 +1,52 @@
-function [alphaHat, beta_perallele, beta_persd, componentVariance] = ...
+function [sumstats, componentVariance] = ...
     simulate_sumstats_populations(sampleSize, alleleFrequency, varargin)
 % Simulates summary statistics from specified prior distribution for
-% multiple populations. 
-% Input arguments: see below.
+% one or more populations.
+% 
+% Required input arguments:
+% sampleSize: sample size for each population as a vector
+% 
+% alleleFrequency: allele frequency for each LD block and each population as
+% a number-of-LD blocks by number-of-populations cell array
+% 
+% Optional input arguments as name-value pairs:
+% 
+% SNPs: SNP identifiers (eg, RSIDs) for each LD block and each population,
+% as a number-of-blocks by number-of-populations cell array. These can be
+% redundant across blocks; they are joined across populations.
+% 
+% precisionMatrices: precision matrix for each LD block and each population
+% as a number-of-LD blocks by number-of-populations cell array. Specify
+% either this or correlationMatrices.
+% 
+% correlationMatrices: correlation matrix for each LD block and each population
+% as a number-of-LD blocks by number-of-populations cell array. Specify
+% either this or precisionMatrices
+% 
+% heritability: total heritability for each population, either as a scalar, a vector, or
+% a square matrix. If a matrix, it specifies both the heritability for each
+% population (along its diagonal) and the genetic correlations (off the
+% diagonal, i.e. with corrcof(heritability) == r_pop). If a vector, the
+% cross-population genetic correlations will be (almost) 1. If a scalar,
+% the cross-population genetic correlations will be (almost) 1, and the
+% heritability will be the same for each population.
+% 
+% componentVariance: per-allele effect-size covariance matrix for each 
+% mixture component, as a number-of-populations by number-of-populations by
+% number-of-components array. These will be rescaled to match the total
+% heritability.
+% 
+% componentWeight: mixture weight for each heritability component
+% 
 % Output arguments: 
-% alphaHat: sample correlation between the trait and each SNP in each
-% population, as a number-of-LD-blocks by number-of-populations cell array
-% beta_perallele: per-allele effect size of each SNP in each population
-% beta_persd: per-s.d. effect size of each SNP in each population
+% sumstats: cell array of tables, one per LD block, with the following
+% columns:
+%   Z_deriv_allele: Z scores
+%   AF: allele frequencies
+%   N: sample size
+%   true_beta_perallele: true per-allele causal effect sizes
+%   true_beta_perSD: true normalized causal effect sizes.
+% 
 % componentVariance: per-allele effect-size covariance matrix across
 % populations for each variance component. This is normalized to the
 % desired heritability for each population.
@@ -172,5 +211,19 @@ for block = 1:noBlocks
         end
     end
 end
+
+% Store output in a table
+sumstats = cell(noBlocks,noPops);
+for block = 1:noBlocks
+    for pop = 1:noPops
+        sumstats{block,pop} = table('size',[length(alphaHat{block,pop}),0]);
+        sumstats{block,pop}.Z_deriv_allele = alphaHat{block,pop} * sqrt(sampleSize(pop));
+        sumstats{block,pop}.AF = alleleFrequency{block,pop};
+        sumstats{block,pop}.N = sampleSize(pop) * ones(size(alphaHat{block,pop}));
+        sumstats{block,pop}.true_beta_perallele = beta_perallele{block,pop};
+        sumstats{block,pop}.true_beta_perSD = beta_persd{block,pop};    
+    end
+end
+
 
 end

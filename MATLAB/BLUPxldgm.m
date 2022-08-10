@@ -1,7 +1,7 @@
 function [betaExpectationPerSD, betaExpectationPerAllele] =...
     BLUPxldgm(P, whichIndices, mergedSumstats, betaCov, sampleSize, alpha_param)
-% BLUPx computes the cross-popn best linear unbiased predictor, E(beta|GWAS, gaussian
-% prior).
+% BLUPx computes the best linear unbiased predictor, E(beta|GWAS), under
+% a Gaussian model. It inputs data from one or more ancestry groups.
 % 
 % Input arguments:
 % P: LDGM precision matrices, as a number-of-LD-blocks by number-of-popns cell
@@ -10,21 +10,27 @@ function [betaExpectationPerSD, betaExpectationPerAllele] =...
 % 
 % whichIndices: output from mergesnplists, encoding which indices
 % (rows/columns of the LDGM precision matrices) have corresponding SNPs in
-% each population. Should be a number-of-blocks by number-of-popns cell array. 
+% each population. Should be a number-of-blocks by number-of-popns cell array.
+% If no SNPs are missinig (e.g., in simulations), specify cells as
+% whichIndices{jj} = true(length(P{jj}),1);
 % 
 % mergedSumstats: merged summary statistics tables for each LD block -
 % population pair, output from mergesnplists. Each table should have height
 % equal to the length of corresponding cell of whichIndices. Tables are
-% expected to report either a Z score (column name Z) or an effect size and
-% standard error (beta, se). Optionally, if they report an allele frequency
-% (AF) and alpha_param is specified, an AF-dependent prior will be used.
-% 
-% sampleSize: GWAS sample size for each population, as a vector. If not
-% specified, BLUPxldgm will look for a column of the summary statistics
-% file called 'N' and use that if it is found.
+% expected to report a Z score with column name Z_deriv_allele.
+% Optionally, if they report an allele frequency with column name AF,
+% then an AF-dependent prior can be used
 % 
 % betaCov: covariance matrix for the per-allele effect size of a SNP across 
 % popns, which is assumed to be i.i.d.
+% 
+% sampleSize (optional): GWAS sample size for each population, as a vector. 
+% If not specified, BLUPxldgm will look for a column of the summary statistics
+% file called 'N' and use that if it is found.
+% 
+% alpha_param (optional): frequency-dependent architecture parameter;
+% models per-allele effect size variance of each SNP as 
+% var(beta) == betaCov * heterozygosity ^ alpha. Default: 0.
 % 
 % Output arguments:
 % betaExpectationPerSD: expected value of beta for each popn, in per-s.d.
@@ -32,6 +38,7 @@ function [betaExpectationPerSD, betaExpectationPerAllele] =...
 % arguments. Values are reported for every index in the precision matrices,
 % but when some of these indices are missing summary statistics or
 % precision matrix entries, beta will be zero in those positions.
+% 
 % betaExpectationPerAllele: same as betaExpectationPerSD, but in per-allele
 % instead of per-s.d. units. This can only be reported if AF is specified
 % in the sumstats tables.
