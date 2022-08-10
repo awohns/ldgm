@@ -46,9 +46,9 @@ class TestNumNodes(unittest.TestCase):
         assert max_haplotype <= bricked.num_nodes
 
 
-class TestReduce(unittest.TestCase):
+class TestMakeLdgm(unittest.TestCase):
     """
-    Test reduce works on a simple example
+    Test ldgm.make_ldgm() works on a simple example
     """
 
     def two_labeled_nodes(self):
@@ -87,7 +87,7 @@ class TestExamples(unittest.TestCase):
 
     def test_fig1(self, num_processes=1):
         ts = utility_functions.figure_one_example()
-        reduced, _ = ldgm.reduce(
+        reduced, _ = ldgm.make_ldgm(
             ts, path_weight_threshold=100, num_processes=num_processes
         )
         assert nx.is_connected(reduced)
@@ -96,7 +96,7 @@ class TestExamples(unittest.TestCase):
 
     def test_supplementary(self, num_processes=1):
         ts = utility_functions.supplementary_example()
-        reduced, _ = ldgm.reduce(
+        reduced, _ = ldgm.make_ldgm(
             ts, path_weight_threshold=100, num_processes=num_processes
         )
         edges = reduced.edges()
@@ -111,7 +111,7 @@ class TestExamples(unittest.TestCase):
 
     def test_triangle(self, num_processes=1):
         ts = utility_functions.triangle_example()
-        reduced, _ = ldgm.reduce(
+        reduced, _ = ldgm.make_ldgm(
             ts, path_weight_threshold=100, num_processes=num_processes
         )
         assert nx.is_connected(reduced)

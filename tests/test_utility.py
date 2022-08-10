@@ -71,22 +71,22 @@ class TestCheckBricked(unittest.TestCase):
         assert ldgm.utility.check_bricked(bricked)
 
 
-class TestReturnSiteInfo(unittest.TestCase):
+class TestMakeSnpList(unittest.TestCase):
     """
-    Test the return_site_info() function.
+    Test the make_snplist() function.
     """
 
-    def test_return_site_info(self):
+    def test_make_snplist(self):
         ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
         bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         with pytest.raises(KeyError):
-            ldgm.return_site_info(bricked, site_metadata_id="ID")
-        results = ldgm.return_site_info(bricked)
+            ldgm.make_snplist(bricked, site_metadata_id="ID")
+        results = ldgm.make_snplist(bricked)
         assert np.array_equal(results["index"], np.array([0, 0, 1, 2, 0, 3, 4, 5, 6]))
         assert np.array_equal(results["anc_alleles"], np.full(bricked.num_sites, "0"))
         assert np.array_equal(results["deriv_alleles"], np.full(bricked.num_sites, "1"))
 
-    def test_return_site_info_metadata(self):
+    def test_make_snplist_metadata(self):
         ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
         bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         tables = bricked.dump_tables()
@@ -100,8 +100,8 @@ class TestReturnSiteInfo(unittest.TestCase):
             )
         bricked_w_ids = tables.tree_sequence()
         with pytest.raises(KeyError):
-            ldgm.return_site_info(bricked_w_ids, site_metadata_id="wrong_ID")
-        results = ldgm.return_site_info(bricked_w_ids, site_metadata_id="ID")
+            ldgm.make_snplist(bricked_w_ids, site_metadata_id="wrong_ID")
+        results = ldgm.make_snplist(bricked_w_ids, site_metadata_id="ID")
         assert np.array_equal(results["index"], np.array([0, 0, 1, 2, 0, 3, 4, 5, 6]))
         assert np.array_equal(
             results["site_ids"], np.full(bricked_w_ids.num_sites, "an_id")
@@ -125,13 +125,17 @@ class TestReturnSiteInfo(unittest.TestCase):
             random_seed=3,
         )
         bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
-        results = ldgm.return_site_info(bricked, sample_sets=[[0, 1], [2, 3]])
+        results = ldgm.return_site_info(
+            bricked, population_dict={"pop0": [0, 1], "pop1": [2, 3]}
+        )
         assert np.array_equal(results["index"], np.array([0, 1, 2, 3, 3, 3, 4]))
         assert np.array_equal(results["anc_alleles"], np.full(bricked.num_sites, "0"))
         assert np.array_equal(results["deriv_alleles"], np.full(bricked.num_sites, "1"))
         assert np.array_equal(
-            results["site_frequencies"],
-            np.array(
-                [[1, 0.5], [0, 0.5], [1, 0.5], [0, 0.5], [0, 0.5], [0, 0.5], [0, 0.5]]
-            ),
+            results["pop0"],
+            np.array([1, 0, 1, 0, 0, 0, 0]),
+        )
+        assert np.array_equal(
+            results["pop1"],
+            np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
         )
