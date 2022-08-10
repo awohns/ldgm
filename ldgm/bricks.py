@@ -14,11 +14,9 @@ class Bricks:
         self,
         ts,
         recombination_freq_threshold=None,
-        add_dummy_bricks=True,
         progress=True,
     ):
         self.ts = ts
-        self.add_dummy_bricks = add_dummy_bricks
         if recombination_freq_threshold is None:
             rec_threshold = 0
         self.rec_threshold = rec_threshold
@@ -141,6 +139,4 @@ class Bricks:
             record=json.dumps(utility.get_provenance_dict({"command": "brick_ts"}))
         )
         new_ts = tables.tree_sequence()
-        if self.add_dummy_bricks:
-            new_ts = utility.add_dummy_bricks(new_ts)
         return new_ts

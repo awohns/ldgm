@@ -10,19 +10,6 @@ import numpy as np
 import json
 
 
-class TestDummyBricks(unittest.TestCase):
-    """
-    Tests adding dummy bricks
-    """
-
-    def test_add_dummy_bricks(self):
-        ts = msprime.simulate(10, mutation_rate=1, random_seed=1)
-        bts = ldgm.brick_ts(
-            ts, recombination_freq_threshold=None, add_dummy_bricks=True
-        )
-        assert bts.num_nodes == ts.num_nodes + ts.num_samples
-
-
 class TestPruneSnps(unittest.TestCase):
     """
     Test that after pruning SNPs, no SNPs below the given frequency remain
