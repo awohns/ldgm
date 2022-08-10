@@ -18,8 +18,8 @@ class Bricks:
     ):
         self.ts = ts
         if recombination_freq_threshold is None:
-            rec_threshold = 0
-        self.rec_threshold = rec_threshold
+            recombination_freq_threshold = 0
+        self.rec_threshold = recombination_freq_threshold
         self.progress = progress
 
     def bifurcate_edge(self, edge_child, interval, tables, current_edges):
