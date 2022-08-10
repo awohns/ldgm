@@ -33,7 +33,7 @@ class TestNumNodes(unittest.TestCase):
         bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
         number_of_labeled_bricks = len(ldgm.utility.get_mut_edges(bricked).keys())
         assert (
-            ldgm.reduce(ts, path_weight_threshold=100)[0].number_of_nodes()
+            ldgm.make_ldgm(ts, path_weight_threshold=100)[0].number_of_nodes()
             == number_of_labeled_bricks
         )
         bricked_graph = ldgm.brick_haplo_graph(bricked)
@@ -77,7 +77,7 @@ class TestMakeLdgm(unittest.TestCase):
 
         ts = msprime.simulate(10)
         with pytest.raises(ValueError):
-            ldgm.reduce(ts, path_weight_threshold=100)
+            ldgm.make_ldgm(ts, path_weight_threshold=100)
 
 
 class TestExamples(unittest.TestCase):
@@ -131,10 +131,10 @@ class TestExamples(unittest.TestCase):
             length=1e4,
             random_seed=1,
         )
-        singlethreaded, _ = ldgm.reduce(
+        singlethreaded, _ = ldgm.make_ldgm(
             example_ts, path_weight_threshold=100, num_processes=1
         )
-        multithreaded, _ = ldgm.reduce(
+        multithreaded, _ = ldgm.make_ldgm(
             example_ts, path_weight_threshold=100, num_processes=5
         )
         assert nx.is_isomorphic(singlethreaded, multithreaded)
@@ -154,17 +154,17 @@ class TestPathWeightThreshold(unittest.TestCase):
             length=1e4,
             random_seed=1,
         )
-        reduced_2, _ = ldgm.reduce(example_ts, path_weight_threshold=2)
+        reduced_2, _ = ldgm.make_ldgm(example_ts, path_weight_threshold=2)
         edge_weights_2 = [
             reduced_2.get_edge_data(u, v)["weight"] for u, v in reduced_2.edges()
         ]
         assert np.max(edge_weights_2) < 2
-        reduced_4, _ = ldgm.reduce(example_ts, path_weight_threshold=4)
+        reduced_4, _ = ldgm.make_ldgm(example_ts, path_weight_threshold=4)
         edge_weights_4 = [
             reduced_4.get_edge_data(u, v)["weight"] for u, v in reduced_4.edges()
         ]
         assert np.max(edge_weights_4) < 4
-        reduced_8, _ = ldgm.reduce(example_ts, path_weight_threshold=8)
+        reduced_8, _ = ldgm.make_ldgm(example_ts, path_weight_threshold=8)
         edge_weights_8 = [
             reduced_8.get_edge_data(u, v)["weight"] for u, v in reduced_8.edges()
         ]
