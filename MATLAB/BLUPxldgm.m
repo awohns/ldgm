@@ -64,14 +64,12 @@ if nargin < 5
 end
 assert(all(size(sampleSize) == [1 noPopns]), 'sampleSize should be a row vector of size noPopns')
 
-% Get rid of empty rows/columns of precision matrices
-nonempty = cell(size(P));
+% Convert whichIndices to indices if needed
 for block = 1:noBlocks
     for popn = 1:noPopns
-        nonempty{block,popn} = find(diag(P{block,popn}...
-            (whichIndices{block,popn},whichIndices{block,popn})));
-        mergedSumstats{block,popn} = mergedSumstats{block,popn}(nonempty{block,popn},:);
-        whichIndices{block,popn} = whichIndices{block,popn}(nonempty{block,popn});
+        if islogical(whichIndices{block,popn})
+            whichIndices{block,popn} = find(whichIndices{block,popn});
+        end
     end
 end
 noSNPs = cellfun(@length, whichIndices);
@@ -104,10 +102,9 @@ else
     SD = cell(size(P));
     for block = 1:noBlocks
         for popn = 1:noPopns
-            AF = mergedSumstats{block,popn}(:,AF_col);
+            AF = table2array(mergedSumstats{block,popn}(:,AF_col));
             assert(all(min(AF,1-AF) < 1));
-            SD{block,popn} = assignto((2*AF.*(1-AF)) .^ ((alpha_param+1)/2),...
-                whichIndices{block,popn});
+            SD{block,popn} = (2*AF.*(1-AF)) .^ ((alpha_param+1)/2);
         end
     end
 end
@@ -146,17 +143,27 @@ x = precisionDivide(cellfun(@(p,s){p+s},PCat,Sigma),...
 betaExpectationCat = cellfun(@(s,v,idx)full(s(idx,idx)*v),Sigma,x,whichIndicesCat,...
     'UniformOutput',false);%precisionMultiply(Sigma, x, whichSNPsCat);
 
-% Un-concatenate populations
 betaExpectationPerSD = cell(size(alphaHat));
+betaExpectationPerAllele = betaExpectationPerSD;
 for block = 1:noBlocks
+    % Un-concatenate populations
     betaExpectationPerSD(block,:) = mat2cell(betaExpectationCat{block}, noSNPs(block,:));
+    
+    % Assign to whichIndices
+    for popn = 1:noPopns
+        % per-allele effect sizes
+        if nargout > 1
+            betaExpectationPerAllele{block,popn} = assignto(...
+                betaExpectationPerSD{block,popn} ./ SD{block,popn}, whichIndices{block,popn},...
+                length(P{block,popn}));
+        end
+        betaExpectationPerSD{block,popn} = assignto(...
+            betaExpectationPerSD{block,popn}, whichIndices{block,popn},...
+            length(P{block,popn}));
+    end
 end
 
-% per-allele effect sizes
-if nargout > 1
-    betaExpectationPerAllele = cellfun( @(beta,sd)beta./sd, ...
-        betaExpectationPerSD, SD,'UniformOutput',false);
-end
+
 
 
 end

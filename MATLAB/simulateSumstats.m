@@ -1,5 +1,5 @@
-function [sumstats, componentVariance] = ...
-    simulate_sumstats_populations(sampleSize, alleleFrequency, varargin)
+function [sumstats, whichIndices, componentVariance, true_beta_perallele, true_beta_perSD] = ...
+    simulateSumstats(sampleSize, alleleFrequency, varargin)
 % Simulates summary statistics from specified prior distribution for
 % one or more populations.
 % 
@@ -10,10 +10,6 @@ function [sumstats, componentVariance] = ...
 % a number-of-LD blocks by number-of-populations cell array
 % 
 % Optional input arguments as name-value pairs:
-% 
-% SNPs: SNP identifiers (eg, RSIDs) for each LD block and each population,
-% as a number-of-blocks by number-of-populations cell array. These can be
-% redundant across blocks; they are joined across populations.
 % 
 % precisionMatrices: precision matrix for each LD block and each population
 % as a number-of-LD blocks by number-of-populations cell array. Specify
@@ -38,18 +34,29 @@ function [sumstats, componentVariance] = ...
 % 
 % componentWeight: mixture weight for each heritability component
 % 
+% missingness: fraction of SNPs that are missing, in addition to those for
+% which precision matrix already has a zero diagonal element
+% 
 % Output arguments: 
 % sumstats: cell array of tables, one per LD block, with the following
 % columns:
 %   Z_deriv_allele: Z scores
 %   AF: allele frequencies
 %   N: sample size
-%   true_beta_perallele: true per-allele causal effect sizes
-%   true_beta_perSD: true normalized causal effect sizes.
+% 
+% whichIndices: number-of-blocks by number-of-populations cell array of
+% indices for which sumstats are reported. If missingness input is zero
+% (default), this is simply the indices for which the precision matrix is
+% nonmissing.
 % 
 % componentVariance: per-allele effect-size covariance matrix across
 % populations for each variance component. This is normalized to the
 % desired heritability for each population.
+% 
+% true_beta_perallele: true per-allele effect size of each variant,
+% including those that are missing in the summary statistics
+% 
+% true_beta_perSD: same as true_beta_perallele, but in per-SD units
 
 p=inputParser;
 
@@ -59,11 +66,6 @@ addRequired(p, 'sampleSize', @isnumeric);
 % allele frequency for each LD block and each population as a number-of-LD
 % blocks by number-of-populations cell array
 addRequired(p, 'alleleFrequency', @iscell);
-
-% SNP identifiers (eg, RSIDs) for each LD block and each population, as a
-% number-of-blocks by number-of-populations cell array. These can be
-% redundant across blocks; they are joined across populations.
-addParameter(p, 'SNPs', {}, @iscell);
 
 % precision matrix for each LD block and each population as a number-of-LD
 % blocks by number-of-populations cell array
@@ -91,6 +93,10 @@ addParameter(p, 'componentVariance', [], @isnumeric);
 % mixture weight for each heritability component
 addParameter(p, 'componentWeight', [], @isvector);
 
+% fraction of missing SNPs
+addParameter(p, 'missingness', 0, @isscalar);
+
+
 % turns p.Results.x into just x
 parse(p, sampleSize, alleleFrequency, varargin{:});
 fields = fieldnames(p.Results);
@@ -115,20 +121,6 @@ if isvector(heritability)
     h = sqrt(heritability);
     M = (1-1e-6) * ones(noPops) + 1e-6 * eye(noPops);
     heritability = h' .* M .* h;
-end
-
-if isempty(SNPs)
-    assert(all(min(noSNPs,[],2) == max(noSNPs,[],2)),...
-        'If SNP identifiers not specified, the number of SNPs in each LD block must be the same across populations');
-    SNPs = arrayfun(@(n){1:n},noSNPs);
-else
-    assert(all(cellfun(@iscolumn,SNPs), 'all'), 'Specify SNPs as a cell array of column vectors')
-    for ii = 1:noBlocks
-        allSNPs = unique(vertcat(SNPs{ii,:}));
-        for pop = 1:noPops
-            [~, ~, SNPs{ii,pop}] = intersect(SNPs{ii,pop}, allSNPs, 'stable');
-        end
-    end
 end
 
 if ~isempty(precisionMatrices)
@@ -168,18 +160,17 @@ end
 
 % Simulate summary statistics for each LD block
 for block = 1:noBlocks
-    totalNoSNPs = max(vertcat(SNPs{block,:}));
-    whichCpt = randsample(1:length(componentWeight),totalNoSNPs,true,componentWeight);
-    beta = zeros(totalNoSNPs,noPops);
+    whichCpt = randsample(1:length(componentWeight),noSNPs(block),true,componentWeight);
+    beta = zeros(noSNPs(block),noPops);
     for cpt = 1:noCpts
         beta(whichCpt == cpt,:) = mvnrnd(zeros(1,noPops), componentVariance(:,:,cpt), sum(whichCpt == cpt));
     end
     
     for pop = 1:noPops
-        beta_perallele{block,pop} = beta(:,pop);
+        true_beta_perallele{block,pop} = beta(:,pop);
         
         % standardized effect sizes (sd of Y per sd of X)
-        beta_persd{block,pop} = beta(SNPs{block,pop},pop) .* ...
+        true_beta_perSD{block,pop} = beta(:,pop) .* ...
             sqrt(2 * alleleFrequency{block,pop} .* (1 - alleleFrequency{block,pop}));
     end
 end
@@ -187,9 +178,9 @@ end
 % Normalize effect sizes so they add up to h2
 if ~isempty(heritability)
     for pop = 1:noPops
-        normalizer(pop) = sqrt(heritability(pop,pop)/sum(cellfun(@(x)sum(x.^2),beta_persd(:,pop))));
-        beta_perallele(:,pop) = cellfun(@(b){b*normalizer(pop)}, beta_perallele(:,pop));
-        beta_persd(:,pop) = cellfun(@(b){b*normalizer(pop)}, beta_persd(:,pop));
+        normalizer(pop) = sqrt(heritability(pop,pop)/sum(cellfun(@(x)sum(x.^2),true_beta_perSD(:,pop))));
+        true_beta_perallele(:,pop) = cellfun(@(b){b*normalizer(pop)}, true_beta_perallele(:,pop));
+        true_beta_perSD(:,pop) = cellfun(@(b){b*normalizer(pop)}, true_beta_perSD(:,pop));
         
     end
     % normalize variance component matrices as well
@@ -199,15 +190,34 @@ if ~isempty(heritability)
 end
 
 % Sample summary statistics
+Z = cell(size(alleleFrequency));
+whichIndices = Z;
 for block = 1:noBlocks
     for pop = 1:noPops
-        % marginal effect size estimates (i.e., sample correlations)
+        
+        
         if ~isempty(precisionMatrices)
-            alphaHat{block,pop} = precisionMatrices{block,pop} \ beta_persd{block,pop}...
-                + chol(precisionMatrices{block,pop}) \ randn(noSNPs(block,pop),1) / sqrt(sampleSize(pop));
+            % SNPs not missing in precision matrix
+            incl = diag(precisionMatrices{block,pop}) ~= 0;
+            whichIndices{block,pop} = find(incl);
+            Z{block,pop} = precisionMatrices{block,pop}(incl,incl)...
+                \ true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop))...
+                + chol(precisionMatrices{block,pop}(incl,incl)) \...
+                randn(sum(incl),1);
         else
-            alphaHat{block,pop} = correlationMatrices{block,pop} * beta_persd{block,pop}...
-                + chol(correlationMatrices{block,pop})' * randn(noSNPs(block,pop),1)  / sqrt(sampleSize(pop));
+            incl = diag(correlationMatrices{block,pop}) ~= 0;
+            whichIndices{block,pop} = find(incl);
+            Z{block,pop} = correlationMatrices{block,pop}(incl,incl) *...
+                true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop))...
+                + chol(correlationMatrices{block,pop}(incl,incl))' *...
+                randn(sum(incl),1);
+        end
+        
+        % Additional SNPs missing at random
+        if missingness > 0
+            incl = rand(sum(incl),1) > missingness;
+            Z{block,pop} = Z{block,pop}(incl);
+            whichIndices{block,pop} = whichIndices{block,pop}(incl);
         end
     end
 end
@@ -216,12 +226,10 @@ end
 sumstats = cell(noBlocks,noPops);
 for block = 1:noBlocks
     for pop = 1:noPops
-        sumstats{block,pop} = table('size',[length(alphaHat{block,pop}),0]);
-        sumstats{block,pop}.Z_deriv_allele = alphaHat{block,pop} * sqrt(sampleSize(pop));
-        sumstats{block,pop}.AF = alleleFrequency{block,pop};
-        sumstats{block,pop}.N = sampleSize(pop) * ones(size(alphaHat{block,pop}));
-        sumstats{block,pop}.true_beta_perallele = beta_perallele{block,pop};
-        sumstats{block,pop}.true_beta_perSD = beta_persd{block,pop};    
+        sumstats{block,pop} = table('size',[length(Z{block,pop}),0]);
+        sumstats{block,pop}.Z_deriv_allele = Z{block,pop};
+        sumstats{block,pop}.AF = alleleFrequency{block,pop}(whichIndices{block,pop});
+        sumstats{block,pop}.N = sampleSize(pop) * ones(size(Z{block,pop}));
     end
 end
 

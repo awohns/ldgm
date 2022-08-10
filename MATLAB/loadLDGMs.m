@@ -35,7 +35,7 @@ for ii = 1:length(popn_names)
     for jj = 1:length(snplist_files)
         matrices{jj,ii} = readedgelist([snplist_files(jj).folder, '/', ...
             extractBefore(snplist_files(jj).name,'snplist'), ...
-            popn_names{jj}, '.edgelist'], max(snplists{jj}.index)+1);
+            popn_names{ii}, '.edgelist'], max(snplists{jj}.index)+1);
     end
 end
 
