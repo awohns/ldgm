@@ -139,3 +139,28 @@ class TestMakeSnpList(unittest.TestCase):
             results["pop1"],
             np.array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
         )
+
+    def test_three_population_frequencies(self):
+        ts = msprime.simulate(
+            population_configurations=[
+                msprime.PopulationConfiguration(2),
+                msprime.PopulationConfiguration(2),
+                msprime.PopulationConfiguration(3),
+            ],
+            migration_matrix=[[0, 0.5, 0.5], [0.5, 0, 0.5], [0.5, 0.5, 0]],
+            recombination_rate=0.1,
+            mutation_rate=0.1,
+            random_seed=3,
+        )
+        bricked = ldgm.brick_ts(ts, recombination_freq_threshold=None)
+        results = ldgm.make_snplist(
+            bricked, population_dict={"pop0": [0, 1], "pop1": [2, 3], "pop2": [4, 5, 6]}
+        )
+        assert np.array_equal(results["index"], np.array([0, 0, 1, 0, 2, 3, 4]))
+        assert np.array_equal(results["anc_alleles"], np.full(bricked.num_sites, "0"))
+        assert np.array_equal(results["deriv_alleles"], np.full(bricked.num_sites, "1"))
+        assert np.array_equal(
+            results["pop0"], np.array([0.5, 0.5, 0, 0.5, 0, 0.5, 0.5])
+        )
+        assert np.array_equal(results["pop1"], np.array([0, 0, 0.5, 0, 0, 0, 0]))
+        assert np.array_equal(results["pop2"], np.array([0, 0, 0, 0, 2 / 3, 1 / 3, 0]))
