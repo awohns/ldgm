@@ -5,6 +5,7 @@ import collections
 import itertools
 import json
 import math
+import pandas as pd
 
 import numpy as np
 import tskit
@@ -255,7 +256,7 @@ def identify_bricks(bricked_ts):
     return identified_bricks
 
 
-def return_site_info(bricked_ts, site_metadata_id=None, sample_sets=None):
+def make_snplist(bricked_ts, site_metadata_id=None, population_dict=None):
     """
     Return list of SNPs in the tree sequence.
     """
@@ -293,20 +294,16 @@ def return_site_info(bricked_ts, site_metadata_id=None, sample_sets=None):
     return_lists["deriv_alleles"] = deriv_alleles
     assert len(anc_alleles) == len(deriv_alleles) == bricked_ts.num_sites
 
-    if sample_sets is not None:
-        site_frequencies = np.full(
-            (bricked_ts.num_sites, len(sample_sets)), -1, dtype=float
-        )
-        for sample_set_id, sample_set in enumerate(sample_sets):
+    if population_dict is not None:
+        for sample_set_id, (pop_id, sample_set) in enumerate(population_dict.items()):
+            return_lists[pop_id] = np.full(bricked_ts.num_sites, -1, dtype=float)
             num_samples = len(sample_set)
             for tree in bricked_ts.trees(tracked_samples=sample_set):
                 for site in tree.sites():
                     assert len(site.mutations) == 1
                     for mutation in site.mutations:
-                        site_frequencies[site.id, sample_set_id] = (
+                        return_lists[pop_id][site.id] = (
                             tree.num_tracked_samples(mutation.node) / num_samples
                         )
-        assert np.sum(site_frequencies == -1) == 0
-        return_lists["site_frequencies"] = site_frequencies
-
-    return return_lists
+            assert np.sum(return_lists[pop_id] == -1) == 0
+    return pd.DataFrame(return_lists, columns=list(return_lists.keys()))

@@ -40,7 +40,7 @@ class TestEndToEnd:
             full_cmd = "reduce " + str(input_filename) + f" {output_filename} " + " 4"
             cli.ldgm_main(full_cmd.split())
             output_network = nx.read_weighted_edgelist(output_filename, nodetype=int)
-        snp_graph, bts = ldgm.reduce(input_ts, 4)
+        snp_graph, bts = ldgm.make_ldgm(input_ts, 4)
         em = nx.algorithms.isomorphism.numerical_edge_match("weight", 1)
         print(output_network.edges(), snp_graph.edges())
         assert nx.is_isomorphic(output_network, snp_graph, edge_match=em)

@@ -136,7 +136,7 @@ def reduce_graph(
     return reduced_graph
 
 
-def reduce(
+def make_ldgm(
     ts,
     path_weight_threshold,
     recombination_freq_threshold=None,
@@ -232,7 +232,7 @@ def prune_sites(ts, threshold):
     return utility.prune_sites(ts, threshold)
 
 
-def return_site_info(ts, site_metadata_id=None, sample_sets=None):
+def make_snplist(ts, site_metadata_id=None, population_dict=None):
     """
     Returns information on variant sites in the input
         :class:`tskit.TreeSequence`.
@@ -243,10 +243,10 @@ def return_site_info(ts, site_metadata_id=None, sample_sets=None):
         run on the tree sequence.
     :param string site_metadata_id: The site ID field in the JSON-encoded
         site metadata. If None, does not return site IDs. Default: None.
-    :param list sample_sets: A list of :math:`s` lists of node IDs, where
-        :math:`s` is the number of sample sets for which you wish to
-        compute allele frequencies. If None, does not return
-        site frequencies. Default: None.
+    :param list population_dict: A dictionary where keys are population
+        ids and values are lists of nodes in each population. This defines
+        populations from which allele frequencies are computed. If None,
+        does not return site frequencies. Default: None.
     :return: A dictionary containing the following key, value pairs:
         key: "index", value: a numpy.ndarray of the IDs of the
         node in the LDGM to which each site belongs. When multiple
@@ -260,10 +260,10 @@ def return_site_info(ts, site_metadata_id=None, sample_sets=None):
         of each site.
         key: "site_frequencies", value: a mxp numpy.ndarray, where :math:`m`
         is the number of sites in the input tree sequence and :math:`s` is
-        the number of sample sets passed to the `sample_sets` parameter.
-        Only returned if `sample_sets` is specified.
+        the number of sample sets passed to the `population_dict` parameter.
+        Only returned if `population_dict` is specified.
     :rtype: dict
     """
-    return utility.return_site_info(
-        ts, site_metadata_id=site_metadata_id, sample_sets=sample_sets
+    return utility.make_snplist(
+        ts, site_metadata_id=site_metadata_id, population_dict=population_dict
     )

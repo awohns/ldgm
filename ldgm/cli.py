@@ -69,17 +69,17 @@ def ldgm_cli_parser():
     parser.add_argument(
         "-v", "--verbosity", type=int, default=0, help="How much verbosity to output."
     )
-    parser.set_defaults(runner=run_reduce)
+    parser.set_defaults(runner=run_make_ldgm)
 
     return top_parser
 
 
-def run_reduce(args):
+def run_make_ldgm(args):
     try:
         ts = tskit.load(args.tree_sequence)
     except tskit.FileFormatError as ffe:
         error_exit(f"Error loading '{args.tree_sequence}: {ffe}")
-    snp_graph, id_to_muts = ldgm.reduce(ts, args.path_threshold)
+    snp_graph, id_to_muts = ldgm.make_ldgm(ts, args.path_threshold)
     nx.readwrite.edgelist.write_weighted_edgelist(snp_graph, args.output)
 
 
