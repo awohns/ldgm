@@ -1,4 +1,4 @@
-function newFilename = convertEdgelist(filename, snplist, one_indexed)
+function newFile = convertEdgelist(filename, snplist, one_indexed, newFile)
 % Converts a .adjlist file to a .edgelist file
 
 if isstr(snplist)
@@ -10,7 +10,6 @@ end
 
 noDigits = 6;
 assert(strcmp(filename(end-7:end),'.adjlist'))
-newFilename = [filename(1:end-8),'.edgelist'];
 strformat = "%d %d {'weight': %f}";
 file=fopen(filename);
 data=textscan(file,strformat);
@@ -28,7 +27,10 @@ jj = snplist.index(jj);
 % Upper-triangular
 incl = ii <= jj;
 
+if nargin < 4
+    newFile = [filename(1:end-8),'.edgelist'];
+end
 writematrix([ii(incl), jj(incl), round(weights(incl), noDigits)],...
-    newFilename, 'filetype','text');
+    newFile, 'filetype','text');
 
 end

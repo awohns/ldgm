@@ -117,7 +117,7 @@ for block = 1:noBlocks
     betaHatCat{block} = vertcat(betaHat{block, :});
     Pblocks = cellfun(@(x,y)y/x, num2cell(sampleSize), P(block,:),'UniformOutput',false);
     PCat{block} = blkdiag(Pblocks{:});
-    temp = cellfun(@(ii,X){unfind(ii,length(X))},whichIndices(block,:),P);
+    temp = cellfun(@(ii,X){unfind(ii,length(X))},whichIndices(block,:),P(block,:));
     whichIndicesCat{block} = find(vertcat(temp{:}));
 end
 

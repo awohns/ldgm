@@ -18,7 +18,7 @@ for ii = 1:length(popn_names)
     for jj = 1:noFiles
         assert(isfile([snplist_files(jj).folder, '/', ...
             extractBefore(snplist_files(jj).name,'snplist'), ...
-            popn_names{jj}, '.edgelist']), 'edglist file not found: please put edgelist and snplist files in the same directory, and ensure that there is an edgelist file for every snplist-population pair')
+            popn_names{ii}, '.edgelist']), 'edglist file not found: please put edgelist and snplist files in the same directory, and ensure that there is an edgelist file for every snplist-population pair')
     end
 end
 

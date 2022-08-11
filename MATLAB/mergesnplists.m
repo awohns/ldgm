@@ -8,8 +8,8 @@ function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = 
 % sumstats: summary statistics table with mandatory column name
 % (non-case-sensitive) SNP or RSID, to be used for merging.
 %   Optionally, sumstats can also contain columns named A1/A2
-%   or anc_allele/deriv_allele. If these columns are
-%   specified, they will be merged with the anc_allele/deriv_allele columns
+%   or anc_alleles/deriv_alleles. If these columns are
+%   specified, they will be merged with the anc_alleles/deriv_alleles columns
 %   of snplists.
 %
 % P (optional): cell array of LDGM precision matrices. Any indices whose
@@ -50,7 +50,7 @@ assert(sum(snpcolumn) == 1, ...
 
 concatenated_snplists = vertcat(snplists{:});
 
-[~, ldgm_idx, sumstats_idx] = intersect(concatenated_snplists.rsid,...
+[~, ldgm_idx, sumstats_idx] = intersect(concatenated_snplists.site_ids,...
     table2cell(sumstats(:,snpcolumn)), 'stable');
 
 % Subset sumstats to matching SNPs
@@ -58,7 +58,7 @@ sumstats = sumstats(sumstats_idx,:);
 
 % Indices to recover LD blocks from concatenated list
 blocksizes = cellfun(@height,snplists);
-cumulative_blocksizes = [0,cumsum(blocksizes)];
+cumulative_blocksizes = [0;cumsum(blocksizes)];
 blocks = arrayfun(@(i,j){i+1:j}, cumulative_blocksizes(1:end-1), cumulative_blocksizes(2:end));
 
 % Which SNPs in the snplists have a corresponding entry in the
@@ -69,7 +69,7 @@ whichSNPs = cellfun(@(i){whichSNPs(i)}, blocks);
 
 % Indices to recover merged LD blocks from concatenated list
 blocksizes = cellfun(@sum,whichSNPs);
-cumulative_blocksizes = [0,cumsum(blocksizes)];
+cumulative_blocksizes = [0;cumsum(blocksizes)];
 blocks = arrayfun(@(i,j){i+1:j}, cumulative_blocksizes(1:end-1), cumulative_blocksizes(2:end));
 
 % Sumstats tables merged with each snplist
@@ -98,11 +98,11 @@ sumstats_SNPs_in_snplists = cellfun(@(i){sumstats_idx(i)}, blocks);
 % phasing alleles
 a1column = strcmpi(sumstats_colnames,'A1');
 if sum(a1column) == 0
-    a1column = strcmpi(sumstats_colnames,'anc_allele');
+    a1column = strcmpi(sumstats_colnames,'anc_alleles');
 end
 a2column = strcmpi(sumstats_colnames,'A2');
 if sum(a2column) == 0
-    a2column = strcmpi(sumstats_colnames,'deriv_allele');
+    a2column = strcmpi(sumstats_colnames,'deriv_alleles');
 end
 if sum(a1column)==1 && sum(a2column) == 1
     for ii = 1:noBlocks
@@ -113,8 +113,8 @@ if sum(a1column)==1 && sum(a2column) == 1
         % +1 for matching alleles, -1 for anti-matching, 0 for mismatching
         phase = mergealleles(table2cell(mergedSumstats{ii}(:,a1column)), ...
             table2cell(mergedSumstats{ii}(:,a2column)), ...
-            snplists{ii}.anc_allele(idx),...
-            snplists{ii}.deriv_allele(idx));
+            snplists{ii}.anc_alleles(idx),...
+            snplists{ii}.deriv_alleles(idx));
                 
         % assign phase field to merged sumstats
         mergedSumstats{ii}.phase = phase;
@@ -137,8 +137,8 @@ if sum(a1column)==1 && sum(a2column) == 1
         end
         
         % get rid of mismatched alleles
-        if mean(phase==0) > 0.1
-            warning('In block %d, >0.1 of putatively matching SNPs had mismatched alleles (perhaps due to strandedness?)',ii)
+        if mean(phase==0) > 0.5
+            warning('In block %d, more than half of putatively matching SNPs had mismatched alleles (perhaps due to strandedness?)',ii)
         end
         mergedSumstats{ii} = mergedSumstats{ii}(phase~=0, :);
         whichIndices{ii} = whichIndices{ii}(phase~=0, :);
