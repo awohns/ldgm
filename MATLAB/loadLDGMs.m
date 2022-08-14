@@ -1,8 +1,8 @@
 function [matrices, snplists] = loadLDGMs(filepath,popn_names)
 %loadLDGMs reads LDGMs or LDGM precision matrices from
 %specified file or directory, together with corresponding SNP lists
-% It expects to find .edgelist files named [filepath, popn_name{j}, '.edgelist']
-% and .snplist files named [filepath, '.snplist']. If you
+% It expects to find .edgelist files named [filepath, '*', popn_name{j}, '.edgelist']
+% and .snplist files named [filepath, '*', '.snplist']. If you
 % are loading data for multiple populations, specify the population names
 % as a cell array of strings, e.g. {'AFR','EUR'}; otherwise, specify it
 % just as a string.

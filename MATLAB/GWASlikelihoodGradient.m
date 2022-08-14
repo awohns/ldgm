@@ -4,6 +4,10 @@ function [grad] = GWASlikelihoodGradient(alphaHat, sigmasq, P, nn, delSigmaDelA,
 %                   beta ~ MVN(mu,diag(sigmasq))
 %                   alphaHat|beta ~ MVN(R*beta, R/nn)
 %                   inv(R) = P.
+% 
+% This function requires the sparseinv() function from suitesparse:
+% https://people.engr.tamu.edu/davis/suitesparse.html
+% 
 % The GWAS SNPs in alphahat should be a subset of those in P, and in the
 % same order; boolean vector whichSNPs should be true for rows/columns of P
 % corresponding to one of these SNPs, false elsewhere.

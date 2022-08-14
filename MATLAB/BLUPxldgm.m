@@ -1,44 +1,44 @@
-function [betaExpectationPerSD, betaExpectationPerAllele] =...
+function [betaExpectationPerAllele, betaExpectationPerSD] =...
     BLUPxldgm(P, whichIndices, mergedSumstats, betaCov, sampleSize, alpha_param)
 % BLUPx computes the best linear unbiased predictor, E(beta|GWAS), under
 % a Gaussian model. It inputs data from one or more ancestry groups.
-% 
+%
 % Input arguments:
 % P: LDGM precision matrices, as a number-of-LD-blocks by number-of-popns cell
 % array with each cell containing a precision matrix; should be the same
 % size across populations
-% 
+%
 % whichIndices: output from mergesnplists, encoding which indices
 % (rows/columns of the LDGM precision matrices) have corresponding SNPs in
 % each population. Should be a number-of-blocks by number-of-popns cell array.
 % If no SNPs are missinig (e.g., in simulations), specify cells as
 % whichIndices{jj} = true(length(P{jj}),1);
-% 
+%
 % mergedSumstats: merged summary statistics tables for each LD block -
 % population pair, output from mergesnplists. Each table should have height
 % equal to the length of corresponding cell of whichIndices. Tables are
 % expected to report a Z score with column name Z_deriv_allele.
 % Optionally, if they report an allele frequency with column name AF,
 % then an AF-dependent prior can be used
-% 
-% betaCov: covariance matrix for the per-allele effect size of a SNP across 
+%
+% betaCov: covariance matrix for the per-allele effect size of a SNP across
 % popns, which is assumed to be i.i.d.
-% 
-% sampleSize (optional): GWAS sample size for each population, as a vector. 
+%
+% sampleSize (optional): GWAS sample size for each population, as a vector.
 % If not specified, BLUPxldgm will look for a column of the summary statistics
 % file called 'N' and use that if it is found.
-% 
+%
 % alpha_param (optional): frequency-dependent architecture parameter;
-% models per-allele effect size variance of each SNP as 
+% models per-allele effect size variance of each SNP as
 % var(beta) == betaCov * heterozygosity ^ alpha. Default: 0.
-% 
+%
 % Output arguments:
 % betaExpectationPerSD: expected value of beta for each popn, in per-s.d.
 % (standardized) units,  as a cell array of the same size as input
 % arguments. Values are reported for every index in the precision matrices,
 % but when some of these indices are missing summary statistics or
 % precision matrix entries, beta will be zero in those positions.
-% 
+%
 % betaExpectationPerAllele: same as betaExpectationPerSD, but in per-allele
 % instead of per-s.d. units. This can only be reported if AF is specified
 % in the sumstats tables.
@@ -46,7 +46,7 @@ function [betaExpectationPerSD, betaExpectationPerAllele] =...
 assert(all(size(P) == size(whichIndices)), 'Input cell arrays should agree in size')
 assert(all(size(P) == size(mergedSumstats)), 'Input cell arrays should agree in size')
 has_Zscore = cellfun(@(T)any(strcmp(T.Properties.VariableNames,'Z_deriv_allele')),mergedSumstats);
-assert(all(has_Zscore),...
+assert(all(has_Zscore,'all'),...
     'mergedSumstats should have a field called Z_deriv_allele. Please use the mergesnplists function.')
 
 [noBlocks, noPopns] = size(P);
@@ -87,15 +87,15 @@ betaHat = precisionMultiply(P,alphaHat,whichIndices);
 
 % effect-size s.d. for each SNP in each population, in standardized
 % (per-sd-of-genotype) units. alpha_param is the AF-dependent architecture parameter
-% of e.g. Schoech et al. 2019. For a SNP that is missing in a population, 
+% of e.g. Schoech et al. 2019. For a SNP that is missing in a population,
 % its effect-size s.d. is zero.
 AF_col = strcmpi(column_names, 'AF');
 if ~any(AF_col)
     SD = cellfun(@double,whichIndices,'uniformoutput',0);
 else
     if nargin < 6
-         % default no AF-dependent architecture (constant per-allele effect
-         % size variance)
+        % default no AF-dependent architecture (constant per-allele effect
+        % size variance)
         alpha_param = 0;
     end
     % assign sqrt(2pq) (if alpha_param==0) to nonmissing SNPs
@@ -133,7 +133,7 @@ for block = 1:noBlocks
                 noSNPs(block,ii),noSNPs(block,jj));
         end
     end
-    Sigma{block} = zeros(size(PCat{block}));
+    Sigma{block} = sparse(length(PCat{block}),length(PCat{block}));
     Sigma{block}(whichIndicesCat{block},whichIndicesCat{block}) = cell2mat(S);
 end
 
@@ -148,15 +148,14 @@ betaExpectationPerAllele = betaExpectationPerSD;
 for block = 1:noBlocks
     % Un-concatenate populations
     betaExpectationPerSD(block,:) = mat2cell(betaExpectationCat{block}, noSNPs(block,:));
-    
+
     % Assign to whichIndices
     for popn = 1:noPopns
         % per-allele effect sizes
-        if nargout > 1
-            betaExpectationPerAllele{block,popn} = assignto(...
-                betaExpectationPerSD{block,popn} ./ SD{block,popn}, whichIndices{block,popn},...
-                length(P{block,popn}));
-        end
+        betaExpectationPerAllele{block,popn} = assignto(...
+            betaExpectationPerSD{block,popn} ./ SD{block,popn}, whichIndices{block,popn},...
+            length(P{block,popn}));
+
         betaExpectationPerSD{block,popn} = assignto(...
             betaExpectationPerSD{block,popn}, whichIndices{block,popn},...
             length(P{block,popn}));

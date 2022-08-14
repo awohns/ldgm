@@ -4,6 +4,7 @@ function [logLikelihood, logLikelihoodBlocks] = GWASlikelihood(Z_deriv_allele,si
 %                   beta ~ MVN(mu,diag(sigmasq))
 %                   Z|beta ~ MVN(sqrt(nn)*R*beta, R)
 %                   inv(R) = P.
+% 
 % The GWAS SNPs in Z_deriv_allele should be a subset of those in P, and in the
 % same order; whichIndices should be true for rows/columns of P
 % corresponding to one of these SNPs, false elsewhere (or specify indices
