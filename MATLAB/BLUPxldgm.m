@@ -6,7 +6,9 @@ function [betaExpectationPerAllele, betaExpectationPerSD] =...
 % Input arguments:
 % P: LDGM precision matrices, as a number-of-LD-blocks by number-of-popns cell
 % array with each cell containing a precision matrix; should be the same
-% size across populations
+% size across populations. For SNPs that are missing from the summary
+% statistics in some of the populations, P can be padded with zeros in the
+% appropriate entries
 %
 % whichIndices: output from mergesnplists, encoding which indices
 % (rows/columns of the LDGM precision matrices) have corresponding SNPs in
