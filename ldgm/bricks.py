@@ -20,8 +20,8 @@ class Bricks:
         self.ts = ts
         self.add_dummy_bricks = add_dummy_bricks
         if recombination_freq_threshold is None:
-            rec_threshold = 0
-        self.rec_threshold = rec_threshold
+            recombination_freq_threshold = 0
+        self.rec_threshold = recombination_freq_threshold
         self.progress = progress
 
     def bifurcate_edge(self, edge_child, interval, tables, current_edges):
@@ -92,10 +92,8 @@ class Bricks:
                 if mode == "leaf":
                     right = edge.parent
                     left = prev_tree.parent(edge.child)
-                    if (
-                        tree.num_samples(edge.child) / ts.num_samples
-                        > self.rec_threshold
-                    ):
+
+                    if (tree.num_samples(edge.child) / ts.num_samples) > self.rec_threshold:
                         while right != left and right != -1 and left != -1:
                             tr = tree.get_time(right)
                             tl = prev_tree.get_time(left)

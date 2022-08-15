@@ -164,7 +164,7 @@ def make_ldgm(
         `recombination_freq_threshold` is 0.01, an edge with a different number of
         descendant samples to the left and right of a recombination event (marginal
         tree change) is bifurcated to create two bricks *if* the frequency of
-        the edge's child node is >1% in the right hand marginal tree.
+        the edge's child node is greater than 1% in the right hand marginal tree.
         If None, all edges with differing numbers of descendants to the left
         and right of a recombination event are bifurcated. Default: None
     :param bool use_softmin: If True, use the softmin function to combine
