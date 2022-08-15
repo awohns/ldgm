@@ -17,7 +17,11 @@ class TestBrickTreeSequence(unittest.TestCase):
             bricks.naive_split_edges(mode="wrong")
 
     def test_no_bricks_added(self):
-        for ts in [utility_functions.single_tree_ts_n2(), utility_functions.two_tree_ts(), utility_functions.two_tree_ts_with_unary_n3()]:
+        for ts in [
+            utility_functions.single_tree_ts_n2(),
+            utility_functions.two_tree_ts(),
+            utility_functions.two_tree_ts_with_unary_n3(),
+        ]:
             bts = ldgm.brick_ts(ts, recombination_freq_threshold=None)
             assert ts.num_edges == bts.num_edges
             assert ts.num_nodes == bts.num_nodes
@@ -34,10 +38,10 @@ class TestBrickTreeSequence(unittest.TestCase):
         assert bts.num_edges == ts.num_edges + 4
         assert ts.num_nodes == bts.num_nodes
         # Frequency of recombination should be 1 / 5, so rec passes this threshold
-        bts = ldgm.brick_ts(ts, recombination_freq_threshold=(1/6))
+        bts = ldgm.brick_ts(ts, recombination_freq_threshold=(1 / 6))
         assert bts.num_edges == ts.num_edges + 4
         assert ts.num_nodes == bts.num_nodes
         # Frequency of recombination should be 1 / 5, so rec does not pass this threshold
-        bts = ldgm.brick_ts(ts, recombination_freq_threshold=(1/5))
+        bts = ldgm.brick_ts(ts, recombination_freq_threshold=(1 / 5))
         assert bts.num_edges == ts.num_edges
         assert ts.num_nodes == bts.num_nodes
