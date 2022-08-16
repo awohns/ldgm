@@ -212,3 +212,14 @@ def make_snplist(bricked_ts, site_metadata_id=None, population_dict=None):
                         )
             assert np.sum(return_lists[pop_id] == -1) == 0
     return pd.DataFrame(return_lists, columns=list(return_lists.keys()))
+
+
+def return_edgelist(reduced_graph):
+    """
+    Function which takes an LDGM (the output of `ldgm.reduce()` or `ldgm.reduce_graph`
+    and returns a list of edges.
+    """
+
+
+    edge_weights = [reduced_graph.get_edge_data(u, v) for (u, v) in reduced_graph.edges()]
+

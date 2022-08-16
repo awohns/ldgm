@@ -12,6 +12,12 @@ from . import utility
 
 
 def find_reach_set(params):
+    """
+    Function passed to the multiprocessing object to find the reach set of a
+    given "out" node. Takes a tuple containing the out node, the brick graph
+    the path_weight_threshold to use, and a numpy.ndarray which converts
+    the brick_haplo_id to the ldgm node ID.
+    """
     out_node = params[0]
     brick_graph = params[1]
     path_weight_threshold = params[2]
@@ -56,15 +62,15 @@ def find_reach_set(params):
                     reach_star_set.append(vertex)
                     new_edges.append(
                         (
-                            bricks_to_muts[out_node // 8][0],
-                            bricks_to_muts[brick_haplo_id][0],
+                            bricks_to_muts[out_node // 8],
+                            bricks_to_muts[brick_haplo_id],
                             weight,
                         )
                     )
                     new_edges.append(
                         (
-                            bricks_to_muts[brick_haplo_id][0],
-                            bricks_to_muts[out_node // 8][0],
+                            bricks_to_muts[brick_haplo_id],
+                            bricks_to_muts[out_node // 8],
                             weight,
                         )
                     )
@@ -75,7 +81,7 @@ def find_reach_set(params):
                 reach_star_set.append(vertex)
                 new_edges.append(
                     (
-                        bricks_to_muts[out_node // 8][0],
+                        bricks_to_muts[out_node // 8],
                         -brick_haplo_id - 1,
                         weight,
                     )
@@ -84,6 +90,30 @@ def find_reach_set(params):
 
 
 class SNP_Graph:
+    """
+    The node ID scheme is as follows:
+    The LDGM outputs a graph where the node indices correspond to the rows
+    and columns of the precision matrix inferred from the LDGM. This index
+    is found as follows. The input tree sequence has brick (edge) IDs, and
+    the brick-haplo graph has its own node index system based on these brick
+    IDs.
+    Multiple SNPs may exist on the same brick, so bricks
+    can be identified by the first site (in position order) which occurs on
+    brick.
+    The final indexing system is created by first creating a list of length
+    # of SNPs, with values equal to the ID of the brick the SNP occurs on
+    (in the aforementioned brick ID indexing system). This list is in
+    increasing position order, with a new index corresponding
+    to the first time a brick is found.
+    The following dictionaries convert between the values
+     # Dictionary with keys = brick ids, values = mutation ids
+        self.bricks_to_muts = utility.get_mut_edges(brick_ts)
+
+        # Dictionary with keys = Brick ordered id, value = mutation on brick
+        id_to_muts = {}
+        # Dictionary with keys = Brick id, values = mutation on brick
+        bricks_to_id = {}
+    """
     def __init__(
         self,
         brick_graph,
@@ -118,9 +148,11 @@ class SNP_Graph:
 
         # Dictionary with keys = mutation id, values = graph node id
         self.mut_node = np.zeros(brick_ts.num_mutations)
-        for _, val in self.bricks_to_muts.items():
+        self.brick_id_to_new_brick_id = np.zeros(np.max(list(self.bricks_to_muts.keys())))
+        for new_brick_id, (old_brick_id, val) in enumerate(self.bricks_to_muts.items()):
+            self.brick_id_to_new_brick_id[old_brick_id] = new_brick_id
             for v in val:
-                self.mut_node[v] = val[0]
+                self.mut_node[v] = new_brick_id
 
     def create_reduced_graph(self):
         nodes = np.array(list(self.brick_graph.nodes()))
@@ -130,15 +162,16 @@ class SNP_Graph:
         # Make the reduced graph and add in all the SNPs corresponding to labeled bricks
         R = nx.DiGraph()
         # NOTE: The first mutation on a brick (the lowest ID) is used as the node ID
-        # in the LDGM
-        R.add_nodes_from([self.bricks_to_muts[node // 8][0] for node in l_out])
+        # in the LDGM: NOTE 08/08 NOT ANYMORE
+        # Create a new node numbering system, where 
+        R.add_nodes_from([self.brick_id_to_new_brick_id[node // 8] for node in l_out])
 
         reach_star_sets = collections.defaultdict(list)
         l_out_zipped = zip(
             l_out,
             (self.brick_graph for _ in range(len(l_out))),
             (self.path_weight_threshold for _ in range(len(l_out))),
-            (self.bricks_to_muts for _ in range(len(l_out))),
+            (self.brick_id_to_new_brick_id for _ in range(len(l_out))),
         )
 
         if self.num_processes == 1:
@@ -155,7 +188,6 @@ class SNP_Graph:
         else:
 
             with multiprocessing.Pool(processes=self.num_processes) as pool:
-
                 for row in tqdm(
                     pool.imap_unordered(
                         find_reach_set, l_out_zipped, chunksize=self.chunksize
