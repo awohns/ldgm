@@ -90,10 +90,10 @@ class Bricks:
                 if mode == "leaf":
                     right = edge.parent
                     left = prev_tree.parent(edge.child)
+
                     if (
                         tree.num_samples(edge.child) / ts.num_samples
-                        > self.rec_threshold
-                    ):
+                    ) > self.rec_threshold:
                         while right != left and right != -1 and left != -1:
                             tr = tree.get_time(right)
                             tl = prev_tree.get_time(left)
