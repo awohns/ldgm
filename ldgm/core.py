@@ -215,8 +215,9 @@ def make_ldgm(
                 path_weight_threshold,
             )
     H_12_reduced = H_12_reduced.to_undirected()
+    H_12_reduced_relabeled = utility.convert_node_ids(H_12_reduced, bts)
 
-    return (H_12_reduced, bts)
+    return (H_12_reduced_relabeled, bts)
 
 
 def prune_sites(ts, threshold):
@@ -258,3 +259,7 @@ def make_snplist(ts, site_metadata_id=None, population_dict=None):
     return utility.make_snplist(
         ts, site_metadata_id=site_metadata_id, population_dict=population_dict
     )
+
+
+def return_edgelist(ldgm_graph):
+    return utility.return_edgelist(ldgm_graph)

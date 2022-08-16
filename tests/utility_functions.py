@@ -1083,3 +1083,64 @@ def triangle_example():
     return tskit.load_text(
         nodes=nodes, edges=edges, sites=sites, mutations=mutations, strict=False
     )
+
+
+def multiple_snps_branch():
+    r"""
+    n = 5 and 2 trees, with two mutations on a branch
+    """
+    nodes = io.StringIO(
+        """\
+    id      is_sample   time
+    0       1           0
+    1       1           0
+    2       1           0
+    3       1           0
+    4       1           0
+    5       0           1
+    6       0           1
+    7       0           2
+    8       0           2
+    9       0           3
+
+    """
+    )
+    edges = io.StringIO(
+        """\
+    left    right   parent  child
+    0       1       7       0
+    0       1       5       1
+    0       0.5     5       2
+    0.5     1       6       2
+    0       1       7       5
+    0       1       9       7,8
+    0       1       8       6
+    0       1       6       3
+    0       1       8       4
+
+    """
+    )
+    sites = io.StringIO(
+        """\
+    position    ancestral_state
+    0.1         0
+    0.15        0
+    0.8         0
+    0.9         0
+    0.95        0
+    """
+    )
+    mutations = io.StringIO(
+        """\
+    site    node    derived_state
+    0       7       1
+    1       6       1
+    2       5       1
+    3       5       1
+    4       8       1
+
+    """
+    )
+    return tskit.load_text(
+        nodes=nodes, edges=edges, sites=sites, mutations=mutations, strict=False
+    )

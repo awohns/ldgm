@@ -9,6 +9,8 @@ import pytest
 import numpy as np
 import json
 
+from . import utility_functions
+
 
 class TestPruneSnps(unittest.TestCase):
     """
@@ -151,3 +153,18 @@ class TestMakeSnpList(unittest.TestCase):
         )
         assert np.array_equal(results["pop1"], np.array([0, 0, 0.5, 0, 0, 0, 0]))
         assert np.array_equal(results["pop2"], np.array([0, 0, 0, 0, 2 / 3, 1 / 3, 0]))
+
+
+class TestReturnEdgelist(unittest.TestCase):
+    """
+    Test the return_edgelist() function.
+    """
+
+    ts = utility_functions.multiple_snps_branch()
+    reduced, _ = ldgm.make_ldgm(ts, path_weight_threshold=100)
+    edgelist = ldgm.return_edgelist(reduced)
+    assert np.array_equal(edgelist["from"], np.array([2, 2, 1, 1, 0]))
+    assert np.array_equal(edgelist["to"], np.array([3, 0, 0, 3, 3]))
+    assert np.array_equal(
+        edgelist["weight"], np.array([0.9808, 0.8109, 0.9808, 0.8109, 0.0000])
+    )

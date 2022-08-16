@@ -22,7 +22,6 @@ def find_reach_set(params):
     brick_graph = params[1]
     path_weight_threshold = params[2]
     bricks_to_muts = params[3]
-    old_to_new_bricks = params[4]
     reach_star_set = []
     new_edges = []
     removed_brick_graph = brick_graph.subgraph(
@@ -59,33 +58,31 @@ def find_reach_set(params):
                 if (brick_haplo_id * 8 + 1) not in reach_set and (
                     brick_haplo_id * 8 + 3
                 ) not in reach_set:
-                    print("HI", old_to_new_bricks[bricks_to_muts[out_node // 8]])
                     # Make connection from SNP to SNP or SNP to haplotype
                     reach_star_set.append(vertex)
                     new_edges.append(
                         (
-                            old_to_new_bricks[bricks_to_muts[out_node // 8]][0],
-                            old_to_new_bricks[bricks_to_muts[brick_haplo_id]][0],
+                            bricks_to_muts[out_node // 8][0],
+                            bricks_to_muts[brick_haplo_id][0],
                             weight,
                         )
                     )
                     new_edges.append(
                         (
-                            old_to_new_bricks[bricks_to_muts[brick_haplo_id]][0],
-                            old_to_new_bricks[bricks_to_muts[out_node // 8]][0],
+                            bricks_to_muts[brick_haplo_id][0],
+                            bricks_to_muts[out_node // 8][0],
                             weight,
                         )
                     )
         elif is_haplo:
             if vertex % 8 == 6 and (brick_haplo_id * 8 + 7) not in reach_set:
-                print("HI", old_to_new_bricks[bricks_to_muts[out_node // 8]][0])
                 # Use -brick_haplo_id - 1 to avoid haplotype and brick id
                 # collision
                 reach_star_set.append(vertex)
                 new_edges.append(
                     (
-                        old_to_new_bricks[bricks_to_muts[out_node // 8]][0],
-                        old_to_new_bricks[-brick_haplo_id - 1][0],
+                        bricks_to_muts[out_node // 8][0],
+                        -brick_haplo_id - 1,
                         weight,
                     )
                 )
@@ -116,6 +113,7 @@ class SNP_Graph:
     # Dictionary with keys = Brick id, values = mutation on brick
     bricks_to_id = {}
     """
+
     def __init__(
         self,
         brick_graph,
@@ -150,11 +148,6 @@ class SNP_Graph:
 
         # Dictionary with keys = mutation id, values = graph node id
         self.mut_node = np.zeros(brick_ts.num_mutations)
-        self.brick_id_to_new_brick_id = np.zeros(np.max(list(self.bricks_to_muts.keys())) + 1)
-        for new_brick_id, (old_brick_id, val) in enumerate(self.bricks_to_muts.items()):
-            self.brick_id_to_new_brick_id[old_brick_id] = new_brick_id
-            for v in val:
-                self.mut_node[v] = new_brick_id
 
     def create_reduced_graph(self):
         nodes = np.array(list(self.brick_graph.nodes()))
@@ -165,17 +158,15 @@ class SNP_Graph:
         R = nx.DiGraph()
         # NOTE: The first mutation on a brick (the lowest ID) is used as the node ID
         # in the LDGM: NOTE 08/08 NOT ANYMORE
-        # Create a new node numbering system, where 
-        R.add_nodes_from([self.brick_id_to_new_brick_id[node // 8] for node in l_out])
+        # Create a new node numbering system, where
+        R.add_nodes_from([self.bricks_to_muts[node // 8][0] for node in l_out])
 
         reach_star_sets = collections.defaultdict(list)
-        print(self.brick_id_to_new_brick_id)
         l_out_zipped = zip(
             l_out,
             (self.brick_graph for _ in range(len(l_out))),
             (self.path_weight_threshold for _ in range(len(l_out))),
             (self.bricks_to_muts for _ in range(len(l_out))),
-            (self.brick_id_to_new_brick_id for _ in range(len(l_out))),
         )
 
         if self.num_processes == 1:
@@ -186,7 +177,6 @@ class SNP_Graph:
             ):
                 out_node, reach_star_set, new_edges = find_reach_set(params)
                 for new_edge in new_edges:
-                    print(new_edge)
                     R.add_edge(new_edge[0], new_edge[1], weight=new_edge[2])
                 reach_star_sets[out_node] = reach_star_set
 
