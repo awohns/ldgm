@@ -349,7 +349,8 @@ end
 % LDGM file
 edgelist_file = dir([edgelist_dir,filename,'.edgelist']);
 assert(~isempty(edgelist_file),"Adjacency list file not found in [edgelist_dir,filename,'.edgelist']");
-A_weighted = readedgelist([edgelist_dir, edgelist_file.name], noIndices);
+replace_zeros = eps;
+A_weighted = readedgelist([edgelist_dir, edgelist_file.name], noIndices, replace_zeros);
 
 % Merge SNPs between LDGM and correlation matrix
 if strcmp(data_type,'correlation') || strcmp(data_type,'edgelist')
