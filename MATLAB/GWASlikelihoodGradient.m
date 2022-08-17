@@ -53,7 +53,15 @@ if iscell(P) % handle cell-array-valued inputs
     grad = cellfun(@(a,p,w)GWASlikelihoodGradient(a,s,p,nn,delSigmaDelA,w,fixedIntercept),...
         alphaHat,sigmasq,P,whichSNPs, 'UniformOutput', false);
 else
-    mm = length(P);
+    % handle missing rows/cols of P
+    if ~islogical(whichSNPs)
+        whichSNPs = unfind(whichSNPs,length(P));
+    end
+    pnz = diag(P)~=0;
+    assert(all(pnz(whichSNPs)))
+    mm = sum(pnz);
+    P = P(pnz,pnz);
+    whichSNPs = whichSNPs(pnz);
     
     % M = Sigma + P/nn is the covariance matrix of betaHat = P/P11 * alphaHat
     M = zeros(mm,1);

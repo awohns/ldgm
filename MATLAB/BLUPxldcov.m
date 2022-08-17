@@ -1,5 +1,5 @@
 function [betaExpectationPerAllele, betaExpectationPerSD] =...
-    BLUPxldcov(R, whichIndices, mergedSumstats, sampleSize, betaCov, alpha_param)
+    BLUPxldcov(R, whichIndices, mergedSumstats, betaCov, sampleSize, alpha_param)
 % BLUPx computes the cross-popn best linear unbiased predictor, E(beta|GWAS, gaussian
 % prior).
 %
@@ -83,7 +83,7 @@ else
     SD = cell(size(R));
     for block = 1:noBlocks
         for popn = 1:noPopns
-            AF = mergedSumstats{block,popn}(:,AF_col);
+            AF = table2array(mergedSumstats{block,popn}(:,AF_col));
             assert(all(min(AF,1-AF) < 1));
             SD{block,popn} = assignto((2*AF.*(1-AF)) .^ ((alpha_param+1)/2),...
                 whichIndices{block,popn});
