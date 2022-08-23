@@ -34,6 +34,8 @@ end
 % convert per-allele to per-SD units
 if nargin < 5
     warning('Allele frequencies not specified; assuming that input effect sizes are in per-SD units, which is not the recommended usage')
+    true_beta_perSD = true_beta_perallele;
+    estimated_beta_perSD = estimated_beta_perallele;
 else
     conversion_fn = @(beta_perallele, af){beta_perallele .* sqrt(2*af.*(1-af))};
     true_beta_perSD = cellfun(conversion_fn,true_beta_perallele,AF);

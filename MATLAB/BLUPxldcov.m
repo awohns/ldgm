@@ -44,16 +44,25 @@ assert(all(has_Zscore),...
 
 [noBlocks, noPopns] = size(R);
 assert(all(size(betaCov) == [noPopns, noPopns]), 'betaCov should be a square matrix of size noPopns')
+
+% Get sample size from sumstats if necessary
+if nargin < 5
+    for ii = 1:noBlocks
+        for jj = 1:noPopns
+            assert(any(strcmpi(mergedSumstats{ii,jj}.Properties.VariableNames,'N')), 'Please specify sample size, or alternatively include a column named N in the merged sumstats');
+            sampleSize(ii,jj) = mean(mergedSumstats{ii,jj}.N);
+        end
+    end
+    sampleSize = mean(sampleSize);
+end
 assert(all(size(sampleSize) == [1 noPopns]), 'sampleSize should be a row vector of size noPopns')
 
-% Get rid of empty rows/columns of precision matrices
-nonempty = cell(size(R));
+% Convert whichIndices to indices if needed
 for block = 1:noBlocks
     for popn = 1:noPopns
-        nonempty{block,popn} = find(diag(R{block,popn}...
-            (whichIndices{block,popn},whichIndices{block,popn})));
-        mergedSumstats{block,popn} = mergedSumstats{block,popn}(nonempty{block,popn},:);
-        whichIndices{block,popn} = whichIndices{block,popn}(nonempty{block,popn});
+        if islogical(whichIndices{block,popn})
+            whichIndices{block,popn} = find(whichIndices{block,popn});
+        end
     end
 end
 noSNPs = cellfun(@length, whichIndices);
@@ -85,8 +94,7 @@ else
         for popn = 1:noPopns
             AF = table2array(mergedSumstats{block,popn}(:,AF_col));
             assert(all(min(AF,1-AF) < 1));
-            SD{block,popn} = assignto((2*AF.*(1-AF)) .^ ((alpha_param+1)/2),...
-                whichIndices{block,popn});
+            SD{block,popn} = (2*AF.*(1-AF)) .^ ((alpha_param+1)/2);
         end
     end
 end
@@ -129,16 +137,24 @@ for block = 1:noBlocks
         \ nnAlphaHatCat{block};
 end
 
-% Un-concatenate populations
 betaExpectationPerSD = cell(size(alphaHat));
+betaExpectationPerAllele = betaExpectationPerSD;
 for block = 1:noBlocks
+    % Un-concatenate populations
     betaExpectationPerSD(block,:) = mat2cell(betaExpectationCat{block}, noSNPs(block,:));
+
+    % Assign to whichIndices
+    for popn = 1:noPopns
+        % per-allele effect sizes
+        betaExpectationPerAllele{block,popn} = assignto(...
+            betaExpectationPerSD{block,popn} ./ SD{block,popn}, whichIndices{block,popn},...
+            length(R{block,popn}));
+
+        betaExpectationPerSD{block,popn} = assignto(...
+            betaExpectationPerSD{block,popn}, whichIndices{block,popn},...
+            length(R{block,popn}));
+    end
 end
-
-% per-allele effect sizes
-betaExpectationPerAllele = cellfun( @(beta,sd)beta./sd, ...
-    betaExpectationPerSD, SD,'UniformOutput',false);
-
 
 
 end
