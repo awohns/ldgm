@@ -157,7 +157,7 @@ addParameter(p, 'custom_filename', '', @isstr);
 addParameter(p, 'path_distance_threshold', 4, @(x)isscalar(x) && all(x > 0,'all'));
 
 % L1 penalty parameter
-addParameter(p, 'l1_penalty', 0.05, @isscalar);
+addParameter(p, 'l1_penalty', 0.1, @isscalar);
 
 % file path containing population data for each sample in genotype matrix
 addParameter(p, 'population_data_file', '', @isstr);
