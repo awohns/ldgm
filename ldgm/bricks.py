@@ -45,11 +45,8 @@ class Bricks:
                 )
         return tables, current_edges
 
-    def naive_split_edges(self, mode="leaf"):
+    def naive_split_edges(self):
         ts = self.ts
-
-        if mode not in ["tree", "node", "leaf"]:
-            raise ValueError("Unrecognised mode")
 
         tables = ts.dump_tables()
         tables.edges.clear()  # build up a new edge table
@@ -87,46 +84,28 @@ class Bricks:
             # Bifurcate edges based on edges_in
             for edge in edges_in:
                 current_edges[edge.child] = edge
-                if mode == "leaf":
-                    right = edge.parent
-                    left = prev_tree.parent(edge.child)
+                right = edge.parent
+                left = prev_tree.parent(edge.child)
 
-                    if (
-                        tree.num_samples(edge.child) / ts.num_samples
-                    ) > self.rec_threshold:
-                        while right != left and right != -1 and left != -1:
-                            tr = tree.get_time(right)
-                            tl = prev_tree.get_time(left)
-                            if tr < tl:
-                                tables, current_edges = self.bifurcate_edge(
-                                    right, interval, tables, current_edges
-                                )
-                                right = tree.parent(right)
-                            elif tr > tl:
-                                tables, current_edges = self.bifurcate_edge(
-                                    left, interval, tables, current_edges
-                                )
-                                left = prev_tree.parent(left)
-                            else:
-                                tables, current_edges = self.bifurcate_edge(
-                                    right, interval, tables, current_edges
-                                )
-                                right = tree.parent(right)
-                elif mode == "node":
-                    parent = edge.parent
-                    while parent != tree.root:
-                        tables, current_edges = self.bifurcate_edge(
-                            parent, interval, tables, current_edges
-                        )
-                        parent = tree.parent(parent)
-
-            if mode == "tree":
-                cur_current_edges = current_edges.copy()
-                for edge_child, edge in cur_current_edges.items():
-                    if edge.left != interval[0]:
-                        tables, current_edges = self.bifurcate_edge(
-                            edge_child, interval, tables, current_edges
-                        )
+                if (tree.num_samples(edge.child) / ts.num_samples) > self.rec_threshold:
+                    while right != left and right != -1 and left != -1:
+                        tr = tree.get_time(right)
+                        tl = prev_tree.get_time(left)
+                        if tr < tl:
+                            tables, current_edges = self.bifurcate_edge(
+                                right, interval, tables, current_edges
+                            )
+                            right = tree.parent(right)
+                        elif tr > tl:
+                            tables, current_edges = self.bifurcate_edge(
+                                left, interval, tables, current_edges
+                            )
+                            left = prev_tree.parent(left)
+                        else:
+                            tables, current_edges = self.bifurcate_edge(
+                                right, interval, tables, current_edges
+                            )
+                            right = tree.parent(right)
             prev_tree = tree.copy()
 
         # Any edges still in current_edges at the last tree are added
