@@ -11,3 +11,4 @@ tskit
 tqdm
 numpy
 networkx
+pandas

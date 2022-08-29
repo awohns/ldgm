@@ -4,7 +4,7 @@
 Welcome to ldgm's documentation
 ==================================
 
-`ldgm <https://github.com/awohns/ldgm>`_ is a software package that enables extremely sparse and highly accurate modeling of linkage disequilibrium (LD).
+``ldgm`` is a software package that enables extremely sparse and highly accurate modeling of linkage disequilibrium (LD).
 
 
 .. toctree::

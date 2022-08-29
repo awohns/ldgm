@@ -18,7 +18,8 @@ autodoc_mock_imports = [
     "scipy.stats",
     "scipy.special",
     "numpy",
-    "networkx"
+    "networkx",
+    "pandas"
 ]
 
 # -- Path setup --------------------------------------------------------------
@@ -29,7 +30,7 @@ autodoc_mock_imports = [
 #
 
 sys.path.insert(0, os.path.abspath(".."))
-matlab_src_dir = os.path.abspath('..')
+matlab_src_dir = os.path.abspath("..")
 
 # The master document
 master_doc = "index"
@@ -62,8 +63,8 @@ extensions = [
     "sphinxarg.ext",
     "sphinx_issues",
     "sphinxcontrib.matlab",
-    'sphinx_copybutton',
-    'sphinxcontrib.fulltoc'
+    "sphinx_copybutton",
+    "sphinxcontrib.fulltoc",
 ]
 
 # Github repo
@@ -102,7 +103,7 @@ intersphinx_mapping = {
     "https://docs.scipy.org/doc/numpy/": None,
     "https://numpy.org/doc/stable/": None,
     "https://tskit.dev/tskit/docs/stable": None,
-    "https://networkx.org/documentation/stable/": None
+    "https://networkx.org/documentation/stable/": None,
 }
 
-autodoc_member_order = 'bysource'
+autodoc_member_order = "bysource"

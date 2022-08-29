@@ -11,7 +11,7 @@ The ``ldgm`` Python API provides methods for inferring an LDGM from a tree seque
 Creating an LDGM
 ================
 
-.. autofunction:: ldgm.reduce
+.. autofunction:: ldgm.make_ldgm
 
 
 Intermediate steps to creating an LDGM
@@ -41,4 +41,4 @@ Utility functions
 .. autofunction:: ldgm.prune_sites
 
    
-.. autofunction:: ldgm.return_site_info
+.. autofunction:: ldgm.make_snplist

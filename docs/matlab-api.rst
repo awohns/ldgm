@@ -5,11 +5,19 @@
 MATLAB API
 ==========
 
-This page provides documentation for the ``ldgm`` MATLAB API to create a precision matrix from a graphical model of SNPs.
+This page provides documentation for the ``ldgm`` MATLAB API to perform efficent matrix algebra with a LDGM precision matrix, as well as code to create an LDGM precision matrix from an LDGM.
 
 
-Precision estimation code
-=========================
+Efficient Matrix Algebra Operations for StatGen Applications
+============================================================
+
+.. mat:automodule:: matlab
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Estimating an LDGM Precision Matrix
+===================================
 
 
 .. mat:automodule:: matlab.precision
