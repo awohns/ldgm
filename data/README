@@ -1,1 +1,5 @@
-Populate this directory with LDGMs downloaded from our Zenodo repository by running...
+Populate this directory with LDGMs downloaded from our Zenodo repository by running:
+
+```
+make download
+```
