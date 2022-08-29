@@ -11,7 +11,7 @@ This page provides documentation for the ``ldgm`` MATLAB API to perform efficent
 Efficient Matrix Algebra Operations for StatGen Applications
 ============================================================
 
-.. mat:automodule:: matlab
+.. mat:automodule:: MATLAB
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,7 +20,7 @@ Estimating an LDGM Precision Matrix
 ===================================
 
 
-.. mat:automodule:: matlab.precision
+.. mat:automodule:: MATLAB.precision
    :members:
    :undoc-members:
    :show-inheritance:
