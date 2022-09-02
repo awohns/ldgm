@@ -5,10 +5,10 @@
 MATLAB API
 ==========
 
-This page provides documentation for the ``ldgm`` MATLAB API to perform efficent matrix algebra with a LDGM precision matrix, as well as code to create an LDGM precision matrix from an LDGM.
+This page provides documentation for the ``ldgm`` MATLAB API to perform efficent matrix algebra with a LDGM precision matrix, as well as code to create an LDGM precision matrix from an LDGM. We recommend starting with with the tutorials, which walk through how to use LDGM precision matrices to efficiently analyze real or simulated GWAS summary statistics. Detailed documentation of the functions in this package are below.
 
 
-Efficient Matrix Algebra Operations for StatGen Applications
+Functions to analyze GWAS summary statistics using LDGM precision matrices
 ============================================================
 
 .. mat:automodule:: MATLAB
@@ -16,7 +16,7 @@ Efficient Matrix Algebra Operations for StatGen Applications
    :undoc-members:
    :show-inheritance:
 
-Estimating an LDGM Precision Matrix
+Functions to infer LDGM precision matrices
 ===================================
 
 
