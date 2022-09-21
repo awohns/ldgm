@@ -1,4 +1,4 @@
-function [grad] = GWASlikelihoodGradient(alphaHat, sigmasq, P, nn, delSigmaDelA, whichSNPs, fixedIntercept)
+function [grad] = GWASlikelihoodGradient(Z, sigmasq, P, nn, delSigmaDelA, whichSNPs, fixedIntercept)
 % GWASlikelihoodGradient computes gradient of the likelihood of the GWAS 
 % sumstats alphaHat under a gaussian model:
 %                   beta ~ MVN(mu,diag(sigmasq))
@@ -47,12 +47,15 @@ end
 
 if iscell(P) % handle cell-array-valued inputs
     if nargin < 6
-        whichSNPs = cellfun(@(x)true(size(x),alphaHat),'UniformOutput', false);
+        whichSNPs = cellfun(@(x)true(size(x),Z),'UniformOutput', false);
     end
-    assert(iscell(alphaHat) & iscell(whichSNPs) & iscell(sigmasq))
+    assert(iscell(Z) & iscell(whichSNPs) & iscell(sigmasq))
     grad = cellfun(@(a,p,w)GWASlikelihoodGradient(a,s,p,nn,delSigmaDelA,w,fixedIntercept),...
-        alphaHat,sigmasq,P,whichSNPs, 'UniformOutput', false);
+        Z,sigmasq,P,whichSNPs, 'UniformOutput', false);
 else
+    % unit conversion
+    Z = Z/sqrt(nn);
+    
     % handle missing rows/cols of P
     if ~islogical(whichSNPs)
         whichSNPs = unfind(whichSNPs,length(P));
@@ -71,7 +74,7 @@ else
     MinvDiag = diag(Minv);
     
     % betahat = P/P11 * alphaHat
-    betahat = precisionMultiply(P, alphaHat, whichSNPs);
+    betahat = precisionMultiply(P, Z, whichSNPs);
     b = precisionDivide(M, betahat, whichSNPs);
     
     % two terms of the log-likelihood (quadratic term + log-determinant

@@ -20,7 +20,7 @@ else
     
     % handle zero diagonal elements in P
     incl = diag(P) ~= 0;
-    assert(all(incl(whichIndices)),'Precision matrix should have nonzero diagonal entries for all non-missing SNPs')
+    assert(all(incl(whichIndices)),'Precision matrix should have nonzero diagonal entries for all SNPs in y')
     
     % yp is y augmented with zeros
     yp = sparse(whichIndices,ones(length(whichIndices),1),y,length(P),1);

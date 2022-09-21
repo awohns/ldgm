@@ -21,6 +21,10 @@ if any(A(:,1) > A(:,2))
     A = A(A(:,2) >= A(:,1), :);
 end
 
+if nargin < 2
+    noVertices = max(max(A(:,1)))+1;
+end
+
 % Get rid of redundant rows if present
 [~,ui] = unique(A(:,1)+noVertices*A(:,2),'stable');
 A = A(ui,:);
@@ -29,9 +33,7 @@ A = A(ui,:);
 offdiagonal = A(:,1) ~= A(:,2);
 A = [A; A(offdiagonal,[2 1 3])];
 
-if nargin < 2
-    noVertices = max(max(A(:,1)))+1;
-end
+
 
 % Create one-indexed sparse matrix
 A = sparse(A(:,1)+1, A(:,2)+1, A(:,3),noVertices,noVertices);
