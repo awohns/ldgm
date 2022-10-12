@@ -3,7 +3,7 @@ function x = precisionDivide(P, y, whichIndices)
 % P11 = P(whichIndices,whichIndices), and P/P00 is the Schur complement
 % Input arguments:
 % P: precision matrix or cell array of precision matrices
-% y: vector or cell array of vectors with same dimension as P
+% y: vector, matrix or cell array of vectors/matrices with same dimension as P
 % whichIndices: indices or cell array of indices, or boolean vector/cell
 % array of boolean vectors, indicating which entries of P correspond to the
 % entries of y
@@ -23,12 +23,13 @@ else
     assert(all(incl(whichIndices)),'Precision matrix should have nonzero diagonal entries for all SNPs in y')
     
     % yp is y augmented with zeros
-    yp = sparse(whichIndices,ones(length(whichIndices),1),y,length(P),1);
+    yp = zeros(size(P,1),size(y,2));
+    yp(whichIndices,:) = y;
     
     % xp is x augmented with entries that can be ignored
     xp = zeros(size(yp));
-    xp(incl) = P(incl,incl) \ yp(incl);
-    x = xp(whichIndices);
+    xp(incl,:) = P(incl,incl) \ yp(incl,:);
+    x = xp(whichIndices,:);
 end
 
 
