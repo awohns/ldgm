@@ -46,12 +46,12 @@ if nargin < 7
 end
 
 if iscell(P) % handle cell-array-valued inputs
-    if nargin < 6
+    if nargin < 5
         whichSNPs = cellfun(@(x)true(size(x),Z),'UniformOutput', false);
     end
     assert(iscell(Z) & iscell(whichSNPs) & iscell(sigmasq))
-    grad = cellfun(@(a,p,w)GWASlikelihoodGradient(a,s,p,nn,delSigmaDelA,w,fixedIntercept),...
-        Z,sigmasq,P,whichSNPs, 'UniformOutput', false);
+    grad = cellfun(@(a,s,p,dS,w)GWASlikelihoodGradient(a,s,p,nn,dS,w,fixedIntercept),...
+        Z,sigmasq,P,delSigmaDelA,whichSNPs, 'UniformOutput', false);
 else
     % unit conversion
     Z = Z/sqrt(nn);
@@ -82,7 +82,7 @@ else
     d = -sum(delSigmaDelA .* b.^2);
     delLogDetP = sum(delSigmaDelA .* MinvDiag(whichSNPs));
     
-    grad = - 1/2 * (- delLogDetP - d);
+    grad = - 1/2 * (delLogDetP + d);
     
     % gradient of minus log-likelihood wrt 1/nn
     if ~fixedIntercept
