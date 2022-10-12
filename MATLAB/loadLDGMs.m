@@ -1,4 +1,4 @@
-function [matrices, snplists] = loadLDGMs(filepath,popn_names,whichBlocks)
+function [matrices, snplists, AF] = loadLDGMs(filepath,popn_names,whichBlocks)
 %loadLDGMs reads LDGMs or LDGM precision matrices from
 %specified file or directory, together with corresponding SNP lists
 % It expects to find .edgelist files named [filepath, '*', popn_names{j}, '.edgelist']
@@ -17,6 +17,9 @@ if nargin >= 3
     snplist_files = snplist_files(whichBlocks);
 end
 noFiles = length(snplist_files);
+if noFiles == 0
+    warning('No files were found')
+end
 
 snplists = cell(noFiles,1);
 matrices = cell(noFiles,length(popn_names));
@@ -41,6 +44,22 @@ for ii = 1:length(popn_names)
     end
 end
 
+% Get allele frequencies
+if nargout >= 3
+    [noBlocks,noPopns] = size(matrices);
+    AF = cell(noBlocks,noPopns);
+    for ii = 1:noBlocks
+        % call unique() on the SNP list indices with two output arguments in
+        % order to pick a representative SNP for each index
+        [~,representatives] = unique(snplists{ii}.index,'stable');
 
+        % snplists table can be sliced using the names of each column as a cell
+        % array of strings
+        AF(ii,:) = mat2cell(table2array(snplists{ii}(representatives,popn_names)),...
+            length(representatives),ones(1,noPopns));
+    end
 end
+end
+
+
 
