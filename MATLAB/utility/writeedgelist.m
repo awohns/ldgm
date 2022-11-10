@@ -5,7 +5,9 @@ function writeedgelist(filename,A)
 % A: symmetric matrix, usually sparse, to be recorded
 
 noDigits = 6;
-assert(issymmetric(A),'A should be a symmetric matrix')
+if ~issymmetric(A)
+    warning('A should be a symmetric matrix')
+end
 [ii,jj,entries] = find(A);
 
 % only record upper triangle

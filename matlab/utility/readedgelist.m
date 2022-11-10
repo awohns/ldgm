@@ -22,7 +22,7 @@ if any(A(:,1) > A(:,2))
 end
 
 if nargin < 2
-    noVertices = max(max(A(:,1)))+1;
+    noVertices = max(A(:,2))+1;
 end
 
 % Get rid of redundant rows if present

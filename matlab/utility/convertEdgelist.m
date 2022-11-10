@@ -1,4 +1,4 @@
-function newFile = convertEdgelist(filename, snplist, one_indexed, newFile)
+function newFile = convertEdgelist(filename, snplist, one_indexed, newFile, convertIndices)
 % Converts a .adjlist file to a .edgelist file
 
 if isstr(snplist)
@@ -6,6 +6,9 @@ if isstr(snplist)
 end
 if nargin < 3
     one_indexed = 0;
+end
+if nargin < 5
+    convertIndices = true;
 end
 
 noDigits = 6;
@@ -21,8 +24,14 @@ weights = data{3};
 assert(max(max(ii(:)),max(jj(:))) <= height(snplist));
 
 % Convert from SNP indices to row/col indices
-ii = snplist.index(ii);
-jj = snplist.index(jj);
+if convertIndices
+    ii = snplist.index(ii);
+    jj = snplist.index(jj);
+else
+    % make zero-indexed
+    ii = ii - 1;
+    jj = jj - 1;
+end
 
 % Upper-triangular
 incl = ii <= jj;
