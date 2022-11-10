@@ -202,7 +202,7 @@ else
 end
 
 % LDGM file
-edgelist_file = dir([edgelist_dir,filename,'.edgelist']);
+edgelist_file = dir([edgelist_dir,filename,'.ldgm.edgelist']);
 assert(~isempty(edgelist_file),"Adjacency list file not found in [edgelist_dir,filename,'.edgelist']");
 replace_zeros = eps;
 A_weighted = readedgelist([edgelist_dir, edgelist_file.name], noIndices, replace_zeros);
