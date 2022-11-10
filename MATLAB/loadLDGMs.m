@@ -1,19 +1,54 @@
-function [matrices, snplists, AF] = loadLDGMs(filepath,popn_names,whichBlocks)
+function [matrices, snplists, AF] = loadLDGMs(filepath,varargin)
 %loadLDGMs reads LDGMs or LDGM precision matrices from
 %specified file or directory, together with corresponding SNP lists
-% It expects to find .edgelist files named [filepath, '*', popn_names{j}, '.edgelist']
-% and .snplist files named [filepath, '*', '.snplist']. If you
-% are loading data for multiple populations, specify the population names
-% as a cell array of strings, e.g. {'AFR','EUR'}; otherwise, specify it
-% just as a string.
-% Specify whichBlocks to load only one or a few LD blocks at a time; this
-% should be an array of indices
+% 
+% Input arguments:
+% filepath: where to look for .edgelist files to load
+% 
+% Optional input arguments (name-value pairs):
+%  popnNames: names of populations to be included, or arbitrary strings that must be
+%  included in the filenames
+%  whichBlocks: indices of which LD blocks to include, out of all of those that are found
+%  snsplistpath: where to look for SNP lists, if different from filepath
+%  normalizePrecision: whether to normalize precision matrices such that
+%  the diagonal of their inverse is exactly 1
 
-if isstr(popn_names)
-    popn_names = {popn_names};
+p=inputParser;
+
+% directory containing genotype matrices (default) or LD matrix
+addRequired(p, 'filepath', @isstr);
+
+% names of populations to be included, or arbitrary strings that must be
+% included in the filenames
+addParameter(p, 'popnNames', '', @(x)isstr(x) || iscell(x));
+
+% indices of which LD blocks to include, out of all of those that are found
+addParameter(p, 'whichBlocks', 0, @isnumeric);
+
+% directory containing SNP lists
+addParameter(p, 'snplistpath', filepath, @isstr);
+
+% whether to normalize LDGM precision matrices such that the diagonal of
+% their inverse is exactly 1
+addParameter(p, 'normalizePrecision', false, @isscalar);
+
+% turns p.Results.x into just x
+parse(p, filepath, varargin{:});
+fields = fieldnames(p.Results);
+for k=1:numel(fields)
+    line = sprintf('%s = p.Results.%s;', fields{k}, fields{k});
+    eval(line);
 end
-snplist_files = dir([filepath,'*','.snplist']);
-if nargin >= 3
+
+if isstr(popnNames)
+    popnNames = {popnNames};
+end
+if ~exist('snplistpath')
+    snplistpath = filepath;
+end
+snplist_files = dir([snplistpath,'*','.snplist']);
+
+if all(whichBlocks > 0)
     snplist_files = snplist_files(whichBlocks);
 end
 noFiles = length(snplist_files);
@@ -22,7 +57,7 @@ if noFiles == 0
 end
 
 snplists = cell(noFiles,1);
-matrices = cell(noFiles,length(popn_names));
+matrices = cell(noFiles,length(popnNames));
 
 % Read snplists
 for jj = 1:noFiles
@@ -30,16 +65,25 @@ for jj = 1:noFiles
 end
 
 % Read edgelists
-for ii = 1:length(popn_names)
+edgelist_files = dir([filepath, '*.edgelist']);
+filedir = edgelist_files(1).folder;
+filenames = {edgelist_files.name};
+for ii = 1:length(popnNames)
     for jj = 1:noFiles
-        if isfile([snplist_files(jj).folder, '/', ...
-                extractBefore(snplist_files(jj).name,'snplist'), ...
-                popn_names{ii}, '.edgelist'])
-            matrices{jj,ii} = readedgelist([snplist_files(jj).folder, '/', ...
-                extractBefore(snplist_files(jj).name,'snplist'), ...
-                popn_names{ii}, '.edgelist'], max(snplists{jj}.index)+1);
-        else
+        pattern = extractBefore(snplist_files(jj).name,'snplist');
+        file = contains(filenames, pattern) & contains(filenames,popnNames{ii});
+        if sum(file) == 1
+            matrices{jj,ii} = readedgelist([filedir, '/', ...
+                filenames{file}], max(snplists{jj}.index)+1);
+            if normalizePrecision
+                D = sqrt(diag(sparseinv(matrices{jj,ii})));
+                matrices{jj,ii} = D .* matrices{jj,ii} .* D';
+            end
+        elseif sum(file) == 0
             matrices{jj,ii} = [];
+            warning('No matching edgelist found for at least one LD block')
+        else
+            error('Multiple matching edgelists found for at least one LD block')
         end
     end
 end
@@ -55,7 +99,7 @@ if nargout >= 3
 
         % snplists table can be sliced using the names of each column as a cell
         % array of strings
-        AF(ii,:) = mat2cell(table2array(snplists{ii}(representatives,popn_names)),...
+        AF(ii,:) = mat2cell(table2array(snplists{ii}(representatives,popnNames)),...
             length(representatives),ones(1,noPopns));
     end
 end
