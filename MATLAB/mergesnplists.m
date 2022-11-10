@@ -99,11 +99,18 @@ sumstats_SNPs_in_snplists = cellfun(@(i){sumstats_idx(i)}, blocks);
 a1column = strcmpi(sumstats_colnames,'A1');
 if sum(a1column) == 0
     a1column = strcmpi(sumstats_colnames,'anc_alleles');
+    if sum(a1column) == 0
+        a1column = strcmpi(sumstats_colnames,'REF');
+    end
 end
 a2column = strcmpi(sumstats_colnames,'A2');
 if sum(a2column) == 0
     a2column = strcmpi(sumstats_colnames,'deriv_alleles');
+    if sum(a2column) == 0
+        a2column = strcmpi(sumstats_colnames,'ALT');
+    end
 end
+
 if sum(a1column)==1 && sum(a2column) == 1
     for ii = 1:noBlocks
         
