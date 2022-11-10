@@ -8,11 +8,11 @@ Installation
 
 To install the ``ldgm`` Python package simply run::
 
-    $ python3 -m pip git+https://github.com/awohns/ldgm.git
+    $ python3 -m pip install git+https://github.com/awohns/ldgm.git
 
 To use the Matlab code, first clone the repo::
 
-    $ git clone https://github.com/awohns/ldgm.git
+    $ git clone --depth 1 https://github.com/awohns/ldgm.git
 
 And then run Matlab scripts in the ``matlab/`` directory.
 
