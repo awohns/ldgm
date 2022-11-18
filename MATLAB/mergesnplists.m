@@ -1,10 +1,10 @@
 function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = mergesnplists(snplists,sumstats,P)
 %mergesnplists merges (1) a cell array of .snplist tables, one for each LD block,
 %with (2) a table of summary statistics containing RSIDs.
-% 
+%
 % Input arguments:
 % snplists: cell array where each cell contains a snplist table.
-% 
+%
 % sumstats: summary statistics table with mandatory column name
 % (non-case-sensitive) SNP or RSID, to be used for merging.
 %   Optionally, sumstats can also contain columns named A1/A2
@@ -15,24 +15,24 @@ function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = 
 % P (optional): cell array of LDGM precision matrices. Any indices whose
 %  corresponding rows/columns in P are empty will be ingored.
 %  Alternatively, specify a logical row vector.
-% 
+%
 % Ouput arguments:
 % whichIndices: cell array of indices, a subset of the 'index' column of each
 % snplist. Indexes which row/column of LDGMs have a corresponding SNP in
 % the sumstats table.
-% 
+%
 % mergedSumstats: cell array of sumstats tables, each containing a subset
 % of the rows of the original sumstats table, that match the indices of
 % each LD block. Note: when multiple SNPs correspond to the same row/column
 % of the LDGM, the first-listed one will arbitrarily be chosen as a
-% representative. 
-% 
+% representative.
+%
 % If alleles are specified in the sumstats table, the mergedSumstats tables
 % will have an extra column appended called 'phase', which indicates
 % whether the alleles match (+1) or anti-match (-1). If they mismatch
 % (i.e., flipping their labels doesn't make them match), then the SNP will
 % be discarded.
-% 
+%
 % Note: sometimes it makes this function run much faster if you go
 % chromosome-by-chromosome; this is not done automatically.
 
@@ -82,7 +82,7 @@ representatives = cell(size(snplists));
 for ii = 1:noBlocks
     [whichIndices{ii}, representatives{ii}] = ...
         unique(snplists{ii}.index(whichSNPs{ii}) + 1);
-    
+
     % Get rid of indices whos corresponding columns of P are empty
     if nargin > 2
         include_indices = find(any(P{ii}));
@@ -113,19 +113,19 @@ end
 
 if sum(a1column)==1 && sum(a2column) == 1
     for ii = 1:noBlocks
-        
+
         idx = find(whichSNPs{ii});
         idx = idx(representatives{ii});
-        
+
         % +1 for matching alleles, -1 for anti-matching, 0 for mismatching
         phase = mergealleles(table2cell(mergedSumstats{ii}(:,a1column)), ...
             table2cell(mergedSumstats{ii}(:,a2column)), ...
             snplists{ii}.anc_alleles(idx),...
             snplists{ii}.deriv_alleles(idx));
-                
+
         % assign phase field to merged sumstats
         mergedSumstats{ii}.phase = phase;
-        
+
         % assign Z score field, phased to derived allele
         if any(strcmpi(sumstats_colnames,'Z'))
             z_col = strcmpi(sumstats_colnames,'Z');
@@ -142,7 +142,20 @@ if sum(a1column)==1 && sum(a2column) == 1
         else
             error('Sumstats should specify either a z score (Z) or an effect size (beta) and standard error (se)')
         end
-        
+
+        % assign derived allele frequencies
+        AF_col = contains(column_names, 'AF', 'IgnoreCase',true);
+        if any(AF_col)
+            if sum(AF_col) > 1
+                warning('Multiple columns found with name containing AF; choosing %s',...
+                    column_names{find(AF_col,1)})
+                AF_col = find(AF_col,1);
+            end
+
+            mergedSumstats{ii}.AF_deriv_allele = (1+phase)/2 - phase .* ...
+                table2array(mergedSumstats{ii}(:,AF_col));
+        end
+
         % get rid of mismatched alleles
         if mean(phase==0) > 0.5
             warning('In block %d, more than half of putatively matching SNPs had mismatched alleles (perhaps due to strandedness?)',ii)

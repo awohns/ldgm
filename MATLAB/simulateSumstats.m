@@ -84,7 +84,9 @@ addParameter(p, 'precisionMatrices', {}, @iscell);
 addParameter(p, 'correlationMatrices', {}, @iscell);
 
 % annotation matrix for each LD block as a number-of-LD
-% blocks by 1 cell array
+% blocks by 1 cell array. Each SNP should be assigned to exactly one
+% annotation, and the annotation matrix should be 0-1 valued with row sums
+% equal to one
 addParameter(p, 'annotations', {}, @iscell);
 
 % total heritability for each population, either as a scalar, a vector, or
@@ -103,12 +105,12 @@ addParameter(p, 'heritability', [], @isnumeric);
 addParameter(p, 'componentVariance', [], @isnumeric);
 
 % mixture weight for each heritability component, as a number-of-components
-% by number-of-annotations array
+% by number-of-annotations array. If row sums are smaller than one, a null
+% component is added with componentVariance equal to zero.
 addParameter(p, 'componentWeight', [], @isvector);
 
-% fraction of missing SNPs
+% fraction of missing SNPs (missing at random)
 addParameter(p, 'missingness', 0, @isscalar);
-
 
 % turns p.Results.x into just x
 parse(p, sampleSize, varargin{:});
@@ -182,7 +184,7 @@ if isempty(componentVariance)
 end
 
 if noPops == 1
-    if ndims(componentVariance) == 1
+    if isvector(componentVariance)
         componentVariance = reshape(componentVariance,1,1,length(componentVariance));
     end
 
@@ -302,7 +304,10 @@ for block = 1:noBlocks
         sumstats{block,pop}.Z_deriv_allele = Z{block,pop};
         sumstats{block,pop}.N = sampleSize(pop) * ones(size(Z{block,pop}));
         if ~isempty(alleleFrequency)
-            sumstats{block,pop}.AF = alleleFrequency{block,pop}(whichIndices{block,pop});
+            sumstats{block,pop}.AF_deriv_allele = ...
+                binornd( 2*sumstats{block,pop}.N, ...
+                alleleFrequency{block,pop}(whichIndices{block,pop}) ) ./ ...
+                (2*sumstats{block,pop}.N);
         end
     end
 end

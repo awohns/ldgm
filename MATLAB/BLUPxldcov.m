@@ -79,17 +79,25 @@ alphaHat = cellfun(@(v,n){v/sqrt(n)},alphaHat,nn_cell);
 % (per-sd-of-genotype) units. alpha_param is the AF-dependent architecture parameter
 % of e.g. Schoech et al. 2019. For a SNP that is missing in a population,
 % its effect-size s.d. is zero.
-AF_col = strcmpi(column_names, 'AF');
+AF_col = contains(column_names, 'AF', 'IgnoreCase',true);
+
 if ~any(AF_col)
     SD = cellfun(@double,whichIndices,'uniformoutput',0);
 else
+    if sum(AF_col) > 1
+        warning('Multiple columns found with name containing AF; choosing %s',...
+            column_names{find(AF_col,1)})
+        AF_col = find(AF_col,1);
+    end
+
     if nargin < 6
         % default no AF-dependent architecture (constant per-allele effect
         % size variance)
         alpha_param = 0;
     end
+    
     % assign sqrt(2pq) (if alpha_param==0) to nonmissing SNPs
-    SD = cell(size(R));
+    SD = cell(size(P));
     for block = 1:noBlocks
         for popn = 1:noPopns
             AF = table2array(mergedSumstats{block,popn}(:,AF_col));

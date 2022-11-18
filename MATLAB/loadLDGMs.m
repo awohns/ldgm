@@ -76,7 +76,9 @@ for ii = 1:length(popnNames)
             matrices{jj,ii} = readedgelist([filedir, '/', ...
                 filenames{file}], max(snplists{jj}.index)+1);
             if normalizePrecision
-                D = sqrt(diag(sparseinv(matrices{jj,ii})));
+                incl = any(matrices{jj,ii});
+                D = ones(length(matrices{jj,ii}),1);
+                D(incl) = sqrt(diag(sparseinv(matrices{jj,ii}(incl,incl))));
                 matrices{jj,ii} = D .* matrices{jj,ii} .* D';
             end
         elseif sum(file) == 0

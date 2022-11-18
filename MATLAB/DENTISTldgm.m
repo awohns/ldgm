@@ -1,4 +1,4 @@
-function [P_dentist,T_dentist,Z_tilde] = DENTISTldgm(P, whichIndices, mergedSumstats)
+function [P_dentist,T_dentist,Z_tilde] = DENTISTldgm(P, whichIndices, mergedSumstats, normalizePrecision)
 %DENTISTldgm computes p-values for LD mismatch or bad summary statistics QC
 %using LDGM precision matrices and GWAS summary statistics
 %
@@ -35,9 +35,12 @@ function [P_dentist,T_dentist,Z_tilde] = DENTISTldgm(P, whichIndices, mergedSums
 
 
 if iscell(P)
+    if nargin < 4
+        normalizePrecision = false;
+    end
     assert(iscell(whichIndices) && iscell(mergedSumstats))
     for ii = 1:numel(P)
-        [P_dentist{ii},T_dentist{ii},Z_tilde{ii}] = DENTISTldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii});
+        [P_dentist{ii},T_dentist{ii},Z_tilde{ii}] = DENTISTldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii}, normalizePrecision);
     end
 else
 
@@ -57,7 +60,7 @@ else
     S{1} = sort(randsample(1:noSNPs,floor(noSNPs/2),false));
     S{2} = setdiff(1:noSNPs,S{1});
 
-    % Compute imputed Z scores for each partition
+    % submatrix of identity
     for pp = 1:2
         v{pp} = sparse(S{pp},1:length(S{pp}),ones(length(S{pp}),1),noSNPs,length(S{pp}) );
     end
@@ -75,7 +78,8 @@ else
         qq = 3-pp;
 
         % Imputed Z scores from the other half of the data
-        Z_tilde(S{qq}) = Rit{pp} * (precisionMultiply(P,Z(S{pp}),whichIndices(S{pp})));
+        temp = v{pp} * (precisionMultiply(P,Z(S{pp}),whichIndices(S{pp})));
+        Z_tilde(S{qq}) = v{qq} * precisionDivide(P,temp,whichIndices);
 
         % Compute denominators
         denominators{pp} = 1 - ...
