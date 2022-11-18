@@ -3,3 +3,7 @@ ldgm/_version.py
 .DS_Store
 ldgm/__pycache__
 _build/
+data/ldgms/
+data/genotypes
+data/sumstats
+data/ukb
