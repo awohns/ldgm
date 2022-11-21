@@ -1,5 +1,6 @@
 ldgm/_version.py
 *.asv
+python/*.pyc
 .DS_Store
 ldgm/__pycache__
 _build/
