@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 18 10:18:06 2022
-
-@author: psalehin
 """
 import pandas as pd 
 from scipy.sparse import csc_matrix
@@ -14,35 +11,46 @@ from utility import *
 class ldgmMatrix:
     
 
-    def __init__(self, edge_list_path, snp_list_path):
+    def __init__(self, edge_list_path = None, snp_list_path = None):
         
-        #load edge_list and snp_list - make sure they are for the same set of SNPs
-        edge_list = pd.read_csv(edge_list_path, header =  None)
-        snp_list = pd.read_csv(edge_list_path)
+        self.matrix = None
+        self.name = None
+        self.snps = None
+        self.nz_index = None
         
-        assert(all(edge_list[0] <= edge_list[1]))
-        # make matrix symmetric by adding (j,i,entry) for every edge (i,j,entry) where i<j
-        edge_list2 = edge_list[[1,0,2]]
-        edge_list2 = edge_list2[edge_list[0] < edge_list[1]]
-        edge_list2.rename(columns = {1:0, 0:1}, inplace = True)
-        edge_list = pd.concat((edge_list,edge_list2),axis=0)
+        if edge_list_path is not None:
+            
+            #load edge_list and snp_list - make sure they are for the same set of SNPs
+            edge_list = pd.read_csv(edge_list_path, header =  None)
+            
+            assert(all(edge_list[0] <= edge_list[1]))
+            # make matrix symmetric by adding (j,i,entry) for every edge (i,j,entry) where i<j
+            edge_list2 = edge_list[[1,0,2]]
+            edge_list2 = edge_list2[edge_list[0] < edge_list[1]]
+            edge_list2.rename(columns = {1:0, 0:1}, inplace = True)
+            edge_list = pd.concat((edge_list,edge_list2),axis=0)
+            
+            # compressed sparse column matrix
+            self.matrix = csc_matrix( (edge_list[2],(edge_list[0], edge_list[1])) )
+                    
+            self.name = edge_list_path
+            
+            Anz = self.matrix!=0
+            self.nz_index = Anz * np.ones(self.matrix.shape[0]) != 0
         
-        # compressed sparse column matrix
-        self.matrix = csc_matrix( (edge_list[2],(edge_list[0], edge_list[1])) )
-        
-        # SNP list
-        self.snps = snp_list
-    
-        self.name = edge_list_path
+        if snp_list_path is not None:
+            # SNP list
+            snp_list = pd.read_csv(edge_list_path)
+            assert "index" in snp_list.columns, "SNP list should have a column named 'index'"
+            self.snps = snp_list
         
     def multiply(self, y, whichIndices):
         if np.ndim(y)==1:
             y = np.reshape(y,(y.shape[0],1))
-         
+        
+        assert all(self.nz_index(whichIndices)), "Matrix should have nonzero diagonal entries for all nonmissing SNPs"
         # handle indices not in precision matrix (i.e. all-zeros columns)
-        Anz = self.matrix!=0
-        v = Anz * np.ones(self.matrix.shape[0]) != 0
-        otherIndices = np.logical_and (np.logical_not(whichIndices), v)
+        otherIndices = np.logical_and (np.logical_not(whichIndices), self.nz_idnex)
         
         # submatrices of A == self.matrix
         A_11 = sliceMatrix(self.matrix, otherIndices, otherIndices)
@@ -56,15 +64,13 @@ class ldgmMatrix:
         return x
   
     def divide(self, y, whichIndices):
+        assert all(self.nz_index(whichIndices)), "Matrix should have nonzero diagonal entries for all nonmissing SNPs"
+        
         if np.ndim(y)==1:
             y = np.reshape(y,(y.shape[0],1))
          
-        # handle indices not in precision matrix (i.e. all-zeros columns)
-        Anz = self.matrix!=0
-        incl = Anz * np.ones(self.matrix.shape[0]) != 0
-
         #diagonal elements should not be zero
-        assert np.all(incl[whichIndices])
+        assert np.all(self.nz_idnex[whichIndices])
         
         # yp is y augmented with zeros           
         yp = np.zeros((self.matrix.shape[0],y.shape[1]), dtype=float, order='C')
@@ -72,10 +78,10 @@ class ldgmMatrix:
 
         #xp is x augmented with entries that can be ignored
         xp = np.zeros_like(yp)
-        A_11 = sliceMatrix(self.matrix, incl, incl)
+        A_11 = sliceMatrix(self.matrix, self.nz_idnex, self.nz_idnex)
         factor = cholesky(A_11)
 
-        xp[incl, :] = factor(yp[incl, :])
+        xp[self.nz_idnex, :] = factor(yp[self.nz_idnex, :])
         x = xp[whichIndices, :]
         return x    
     
