@@ -10,6 +10,6 @@ download:
 	ls -d */ | xargs rmdir
 
 download_all:
-        curl -L -o ldgm.tar.gz https://www.dropbox.com/sh/1huaxgad2bjjv9a/AACI6pRZpr6gmK5E1mo4fck6a
-        tar -xvf ldgm.tar.gz
+	curl -L -o ldgm.tar.gz https://www.dropbox.com/sh/1huaxgad2bjjv9a/AACI6pRZpr6gmK5E1mo4fck6a
+	tar -xvf ldgm.tar.gz
 
