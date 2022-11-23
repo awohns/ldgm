@@ -3,3 +3,9 @@ Populate this directory with LDGMs downloaded from our Zenodo repository by runn
 ```
 make download
 ```
+
+This downloads LDGM precision matrices, SNP lists and summary statistics, which are what is needed to run the MATLAB tutorials; these will be sufficient for most users. To download the entire repo, which is ~30GB, run:
+
+```
+make download_all
+``` 
