@@ -15,14 +15,11 @@ if iscell(P)
     assert(iscell(y) & iscell(whichIndices))
     x = cellfun(@precisionMultiply, P, y, whichIndices, 'UniformOutput', false);
 else
-    if ~islogical(whichIndices)
-        whichIndices = unfind(whichIndices,length(P));
-    end
     
     % handle SNPs not in the LDGM
     incl = diag(P)~=0;
     assert(all(incl(whichIndices)),'Precision matrix should have nonzero diagonal entries for all non-missing SNPs')
-    otherIndices = (~whichIndices) & incl;
+    otherIndices = incl; otherIndices(whichIndices) = false;
     
     x = P(whichIndices,whichIndices) * y - P(whichIndices,otherIndices) * ...
         (P(otherIndices,otherIndices) \ (P(otherIndices,whichIndices) * y));
