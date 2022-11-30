@@ -40,7 +40,7 @@ class ldgmMatrix:
         
         if snp_list_path is not None:
             # SNP list
-            snp_list = pd.read_csv(edge_list_path)
+            snp_list = pd.read_csv(snp_list_path)
             assert "index" in snp_list.columns, "SNP list should have a column named 'index'"
             self.snps = snp_list
         
@@ -53,14 +53,14 @@ class ldgmMatrix:
         otherIndices = np.logical_and (np.logical_not(whichIndices), self.nz_idnex)
         
         # submatrices of A == self.matrix
-        A_11 = sliceMatrix(self.matrix, otherIndices, otherIndices)
-        factor = cholesky(A_11)
-        A_00 = sliceMatrix(self.matrix, whichIndices, whichIndices) 
-        A_10 = sliceMatrix(self.matrix, otherIndices, whichIndices)
+        A_00 = sliceMatrix(self.matrix, otherIndices, otherIndices)
+        factor = cholesky(A_00, ordering_method = "natural")
+        A_11 = sliceMatrix(self.matrix, whichIndices, whichIndices) 
+        A_01 = sliceMatrix(self.matrix, otherIndices, whichIndices)
         
-        # x == (A/A_11) * y
-        z = factor(A_10 * y)
-        x = A_00 * y  - np.transpose(A_10) * z
+        # x == (A/A_00) * y
+        z = factor(A_01 * y)
+        x = A_11 * y  - np.transpose(A_01) * z
         return x
   
     def divide(self, y, whichIndices):
@@ -79,9 +79,32 @@ class ldgmMatrix:
         #xp is x augmented with entries that can be ignored
         xp = np.zeros_like(yp)
         A_11 = sliceMatrix(self.matrix, self.nz_idnex, self.nz_idnex)
-        factor = cholesky(A_11)
+        factor = cholesky(A_11, ordering_method = "natural")
 
         xp[self.nz_idnex, :] = factor(yp[self.nz_idnex, :])
         x = xp[whichIndices, :]
-        return x    
+        return x
+
+    def root_divide(self, y, whichIndices):
+        assert all(self.nz_index[whichIndices]), "Matrix should have nonzero diagonal entries for all nonmissing SNPs"
+        
+        if np.ndim(y)==1:
+            y = np.reshape(y,(y.shape[0],1))
+         
+        #diagonal elements should not be zero
+        assert np.all(self.nz_index[whichIndices])
+        
+        #yp is y augmented with zeros           
+        yp = np.zeros((self.matrix.shape[0],y.shape[1]), dtype=float, order='C')
+        yp[whichIndices, :] = y
+
+        #xp is x augmented with entries that can be ignored
+        xp = np.zeros_like(yp)
+        A_11 = sliceMatrix(self.matrix, self.nz_index, self.nz_index)
+        factor = cholesky(A_11, ordering_method = "natural")
+
+        xp[self.nz_index, :] = factor.solve_Lt(yp[self.nz_index, :], use_LDLt_decomposition = False)
+        x = xp[whichIndices, :]
+        return x
+
     
