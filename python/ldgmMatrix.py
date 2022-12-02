@@ -54,7 +54,7 @@ class ldgmMatrix:
         
         # submatrices of A == self.matrix
         A_00 = sliceMatrix(self.matrix, otherIndices, otherIndices)
-        factor = cholesky(A_00, ordering_method = "natural")
+        factor = cholesky(A_00)
         A_11 = sliceMatrix(self.matrix, whichIndices, whichIndices) 
         A_01 = sliceMatrix(self.matrix, otherIndices, whichIndices)
         
@@ -79,7 +79,7 @@ class ldgmMatrix:
         #xp is x augmented with entries that can be ignored
         xp = np.zeros_like(yp)
         A_11 = sliceMatrix(self.matrix, self.nz_idnex, self.nz_idnex)
-        factor = cholesky(A_11, ordering_method = "natural")
+        factor = cholesky(A_11)
 
         xp[self.nz_idnex, :] = factor(yp[self.nz_idnex, :])
         x = xp[whichIndices, :]
