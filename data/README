@@ -7,5 +7,11 @@ make download
 This downloads LDGM precision matrices, SNP lists and summary statistics, which are what is needed to run the MATLAB tutorials; these will be sufficient for most users. To download the entire repo, which is ~30GB, run:
 
 ```
+make download_eur
+```
+This downloads LDGM precision matrices and SNP lists for EUR only, which will be sufficient for many users.
+
+```
 make download_all
 ``` 
+This downloads the entire data repository, which will be needed for users looking to reproduce our manuscript results.
