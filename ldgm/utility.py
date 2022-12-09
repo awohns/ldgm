@@ -8,6 +8,7 @@ import pandas as pd
 
 import numpy as np
 import tskit
+import networkx as nx
 
 from . import provenance
 
@@ -212,3 +213,29 @@ def make_snplist(bricked_ts, site_metadata_id=None, population_dict=None):
                         )
             assert np.sum(return_lists[pop_id] == -1) == 0
     return pd.DataFrame(return_lists, columns=list(return_lists.keys()))
+
+
+def convert_node_ids(reduced_graph, bricked_ts):
+    bricks_to_muts = get_mut_edges(bricked_ts)
+    old_to_new_ids = {}
+    for new_brick, (old_brick, muts) in enumerate(bricks_to_muts.items()):
+        for mut in muts:
+            old_to_new_ids[mut] = new_brick
+    return nx.relabel_nodes(reduced_graph, mapping=old_to_new_ids)
+
+
+def return_edgelist(reduced_graph):
+    """
+    Function which takes an LDGM (the output of `ldgm.reduce()` or `ldgm.reduce_graph`
+    and returns a list of edges.
+    """
+    edge_weights = []
+    in_nodes = []
+    out_nodes = []
+    for u, v in reduced_graph.edges():
+        edge_weights.append(reduced_graph.get_edge_data(u, v)["weight"])
+        in_nodes.append(u)
+        out_nodes.append(v)
+    return pd.DataFrame(
+        {"from": in_nodes, "to": out_nodes, "weight": np.round(edge_weights, 4)}
+    )
