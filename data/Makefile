@@ -1,5 +1,6 @@
 download:
 	mkdir ldgms
+	curl -L -o README https://www.dropbox.com/s/g8g2szfs8r1hk0g/README
 	curl -L -o - https://www.dropbox.com/s/km9qe0q4lswsq25/AFR.tar.gz | tar -xz -C ldgms
 	curl -L -o - https://www.dropbox.com/s/3g8x1rkj7mqnypr/AMR.tar.gz | tar -xz -C ldgms
 	curl -L -o - https://www.dropbox.com/s/v19rm6s9or47zgr/EAS.tar.gz | tar -xz -C ldgms
@@ -12,12 +13,14 @@ download:
 	
 download_eur:
 	mkdir ldgms
+	curl -L -o README https://www.dropbox.com/s/g8g2szfs8r1hk0g/README
 	curl -L -o - https://www.dropbox.com/s/p5l2l2peny9ox3n/EUR.tar.gz | tar -xz -C ldgms
 	curl -L -o - https://www.dropbox.com/s/5biod4rbzc88iez/snplist.tar.gz | tar -xz -C ldgms
 	mv ldgms/*/* ldgms
 	ls -d ldgms/*/ | xargs rmdir
 	
 download_all:
+	curl -L -o README https://www.dropbox.com/s/g8g2szfs8r1hk0g/README
 	curl -L -o ldgm.tar.gz https://www.dropbox.com/sh/1huaxgad2bjjv9a/AACI6pRZpr6gmK5E1mo4fck6a
 	tar -xvf ldgm.tar.gz
 
