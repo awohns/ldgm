@@ -82,7 +82,7 @@ alphaHat = cellfun(@(v,n){v/sqrt(n)},alphaHat,nn_cell);
 AF_col = contains(column_names, 'AF', 'IgnoreCase',true);
 
 if ~any(AF_col)
-    SD = cellfun(@double,whichIndices,'uniformoutput',0);
+    SD = arrayfun(@(m)ones(m,1),noSNPs,'uniformoutput',0);
 else
     if sum(AF_col) > 1
         warning('Multiple columns found with name containing AF; choosing %s',...
@@ -116,7 +116,7 @@ for block = 1:noBlocks
     nnAlphaHatCat{block} = vertcat(nnAlphaHat{:});
     nnRblocks = cellfun(@(x,y)y * x, num2cell(sampleSize), R(block,:),'UniformOutput',false);
     nnRCat{block} = blkdiag(nnRblocks{:});
-    temp = cellfun(@(ii,X){unfind(ii,length(X))},whichIndices(block,:),R);
+    temp = cellfun(@(ii,X){unfind(ii,length(X))},whichIndices(block,:),R(block,:));
     whichIndicesCat{block} = find(vertcat(temp{:}));
 end
 

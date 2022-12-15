@@ -94,7 +94,7 @@ betaHat = precisionMultiply(P,alphaHat,whichIndices);
 AF_col = contains(column_names, 'AF', 'IgnoreCase',true);
 
 if ~any(AF_col)
-    SD = cellfun(@double,whichIndices,'uniformoutput',0);
+    SD = arrayfun(@(m)ones(m,1),noSNPs,'uniformoutput',0);
 else
     if sum(AF_col) > 1
         warning('Multiple columns found with name containing AF; choosing %s',...
