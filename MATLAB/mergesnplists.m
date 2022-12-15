@@ -144,6 +144,7 @@ if sum(a1column)==1 && sum(a2column) == 1
         end
 
         % assign derived allele frequencies
+        column_names = sumstats.Properties.VariableNames;
         AF_col = contains(column_names, 'AF', 'IgnoreCase',true);
         if any(AF_col)
             if sum(AF_col) > 1
