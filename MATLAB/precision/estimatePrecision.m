@@ -48,7 +48,7 @@ function precisionEstimate = estimatePrecision(data_directory, varargin)
 % FILENAME HANDLING OPTIONS:
 %   -edgelist_dir: directory containing LDGM .edgelist files. Defaults to
 %   data_directory.
-%   snplist_dir: directory containing .snplist files. Defaults to
+%   -snplist_dir: directory containing .snplist files. Defaults to
 %   data_directory.
 %   -output_dir: directory in which to save the output files
 %   -custom_filename: if specified, this is prepended to the name of the
@@ -347,7 +347,7 @@ end
 
 
 % LDGM file
-edgelist_file = dir([edgelist_dir,filename,'.edgelist']);
+edgelist_file = dir([edgelist_dir,filename,'.ldgm.edgelist']);
 assert(~isempty(edgelist_file),"Adjacency list file not found in [edgelist_dir,filename,'.edgelist']");
 replace_zeros = eps;
 A_weighted = readedgelist([edgelist_dir, edgelist_file.name], noIndices, replace_zeros);
