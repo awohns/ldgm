@@ -1,4 +1,4 @@
-function [P_dentist,T_dentist,Z_tilde] = DENTISTldgm(P, whichIndices, mergedSumstats, normalizePrecision, partition )
+function [P_dentist,T_dentist,Z_tilde] = DENTISTldcov(R, whichIndices, mergedSumstats, normalizeCorrelation, partition )
 %DENTISTldgm computes p-values for LD mismatch or bad summary statistics QC
 %using LDGM precision matrices and GWAS summary statistics
 %
@@ -36,19 +36,18 @@ function [P_dentist,T_dentist,Z_tilde] = DENTISTldgm(P, whichIndices, mergedSums
 
 if iscell(P)
     if nargin < 4
-        normalizePrecision = false;
+        normalizeCorrelation = false;
     end
     assert(iscell(whichIndices) && iscell(mergedSumstats))
     for ii = 1:numel(P)
-        [P_dentist{ii},T_dentist{ii},Z_tilde{ii}] = DENTISTldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii}, normalizePrecision);
+        [P_dentist{ii},T_dentist{ii},Z_tilde{ii}] = DENTISTldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii}, normalizeCorrelation);
     end
 else
 
-    % diagonal of R
-    Rdiag = ones(length(P),1);
-    Rdiag(any(P)) = sqrt(diag(sparseinv(P(any(P),any(P)))));
-    
-    P = Rdiag .* P .* Rdiag';
+    % diagonal of R -> 1
+    if normalizeCorrelation
+        R = corrcov(R);
+    end
 
     if islogical(whichIndices)
         whichIndices = find(whichIndices);
@@ -56,7 +55,6 @@ else
     noSNPs = length(whichIndices);
 
     % Randomly partition variants
-    %     S{1} = sort(randsample(1:noSNPs,floor(noSNPs/2),false));
     if nargin < 5
         partition{1} = sort(randsample(1:noSNPs,floor(noSNPs/2),false));
         partition{2} = setdiff(1:noSNPs,partition{1});
@@ -71,8 +69,8 @@ else
     
     Z = mergedSumstats.Z_deriv_allele;
 
-    % submatrix of inv(P)
-    Rit{1} = precisionDivide(P,v{2},whichIndices)' * v{1};
+    % submatrix of R
+    Rit{1} = R(partition{1},partition{2});
     Rit{2} = Rit{1}';
 
     T_dentist = zeros(noSNPs,1);
@@ -82,13 +80,16 @@ else
         qq = 3-pp;
 
         % Imputed Z scores from the other half of the data
-        temp = v{pp} * (precisionMultiply(P,Z(partition{pp}),whichIndices(partition{pp})));
-        Z_tilde(partition{qq}) = v{qq} * precisionDivide(P,temp,whichIndices);
+        temp = v{pp} * (R(whichIndices(partition{pp}),whichIndices(partition{pp})) \ ...
+            Z(partition{pp}));
+        
+        Z_tilde(partition{qq}) = v{qq} * R(whichIndices,whichIndices) \ temp;
 
         % Compute denominators
         denominators{pp} = 1 - ...
-            sum(Rit{pp} .* precisionMultiply(P,Rit{pp}',whichIndices(partition{pp}))',2);
-
+            sum(Rit{pp} .* ...
+            (R(whichIndices(partition{pp}),whichIndices(partition{pp})) \ ...
+            Rit{pp}'),2);
         % Compute dentist statistics + p-values
         T_dentist(partition{qq}) = (Z(partition{qq}) - Z_tilde(partition{qq})).^2 ./ denominators{pp};
 
