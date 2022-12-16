@@ -8,10 +8,10 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAn
 %
 %
 % % Optional input arguments as name-value pairs:
-% 
+%
 % savePath: path and file name where summary statistics should be saved.
 % One file is saved per population; if there are multiple populations, this
-% should be a cell array of length noPops. Sumstats will be saved as a plain 
+% should be a cell array of length noPops. Sumstats will be saved as a plain
 % text file with the following columns:
 %   SNP: identifier of each SNP, if snpID is specified
 %   Z_deriv_allele: Z scores
@@ -24,11 +24,13 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAn
 %   beta_perSD_true: true causal effect size, in per-standard-deviation
 %   units, for each SNP
 %
-% snpID: RSIDs or other identifiers of each row/column in the
-% precision matrices, as a number-of-blocks by 1 cell array. These are
-% appended to the summary statistics if specified, but otherwise are not
-% needed
-% 
+% snplists: SNP lists containing additional information to be printed with the
+% summary statistics. Must be specified in order to use 'PRScs'
+% file format option
+%
+% fileFormats: If saving summary statistics to a file, which file format to
+% use. Current options are 'ldgm' and 'PRScs'
+%
 % alleleFrequency: allele frequency for each LD block and each population as
 % a number-of-LD blocks by number-of-populations cell array. If specified,
 % the effect sizes will be in per-allele rather than per-SD units
@@ -40,22 +42,22 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAn
 % correlationMatrices: correlation matrix for each LD block and each population
 % as a number-of-LD blocks by number-of-populations cell array. Specify
 % either this or precisionMatrices
-% 
+%
 % annotations: annotation matrix for each LD block as a number-of-LD
 % blocks by 1 cell array
 %
-% linkFn: link function mapping annotation vector of a SNP to its relative 
+% linkFn: link function mapping annotation vector of a SNP to its relative
 % per-SNP heritability. Should be a nonnegative, scalar-valued function:
 % for example, @(annot)log(1 + exp(annot * tau)), where tau is a column
 % vector of length equal to the number of annotations
-% 
+%
 % whichIndicesAnnot: which rows/columns of the precision matrices/correlation
 % matrices have a corresponding annotations vector, as a
 % number-of-LD-blocks by 1 cell array. This is useful when you are
 % performing simulations with real functional annotations, and they are
 % missing for some of the SNPs in the LDGM. SNPs not in whichIndices will
 % not be assigned an effect, and will not have summary statistics.
-% 
+%
 % heritability: total heritability for each population, either as a scalar, a vector, or
 % a square matrix. If a matrix, it specifies both the heritability for each
 % population (along its diagonal) and the genetic correlations (off the
@@ -103,11 +105,14 @@ addRequired(p, 'sampleSize', @isnumeric);
 % save path for summary statistics
 addParameter(p, 'savePath', '', @(s)ischar(s) || iscell(s));
 
-% RSIDs or other identifiers of each row/column in the
-% precision matrices, as a number-of-blocks by 1 cell array. These are
-% appended to the summary statistics if specified, but otherwise are not
-% needed
-addParameter(p, 'snpID', {}, @iscell);
+% SNP lists containing additional information to be printed with the
+% summary statistics. Must be specified in order to use 'PRScs'
+% file format option
+addParameter(p, 'snplists', {}, @iscell);
+
+% If saving summary statistics to a file, which file format to use. Current
+% options are 'ldgm' and 'PRScs'
+addParameter(p, 'fileFormat', 'ldgm', @ischar);
 
 % allele frequency for each LD block and each population as a number-of-LD
 % blocks by number-of-populations cell array
@@ -182,7 +187,7 @@ end
 % input handling
 assert(nargin > 0 | ~isempty(savePath), 'No output requested')
 
-if isempty(precisionMatrices) && isempty(correlationMatrices) %#ok<*USENS> 
+if isempty(precisionMatrices) && isempty(correlationMatrices) %#ok<*USENS>
     error('Specify either precision matrices or correlation matrices')
 elseif ~isempty(precisionMatrices)
     [noBlocks, noPops] = size(precisionMatrices);
@@ -200,7 +205,7 @@ else
 end
 
 % Construct all-ones annotation matrix if needed
-if isempty(annotations) %#ok<*NODEF> 
+if isempty(annotations) %#ok<*NODEF>
     annotations = arrayfun(@(n){ones(n,1)},noSNPs);
 end
 noAnnot = size(annotations{1},2);
@@ -223,11 +228,14 @@ for block = 1:noBlocks
     assert(all(size(annotations{block}) == [noSNPsAnnot(block), noAnnot]))
 end
 
-if ~isempty(snpID)
-    assert(numel(snpID) == noBlocks,...
-        'Specify snpID as a number-of-blocks by 1 cell array containing SNP IDs for each row/column of the precision matrices')
-    assert(all(cellfun(@numel,snpID) == noSNPs),...
-        'Specify snpID as a number-of-blocks by 1 cell array containing SNP IDs for each row/column of the precision matrices')
+if ~isempty(snplists)
+    assert(numel(snplists) == noBlocks,...
+        'Specify snplists as a number-of-blocks by 1 cell array')
+    for block = 1:noBlocks
+        [ui, representatives] = unique(snplists{block}.index);
+        assert(all(ui==(0:noSNPs(block)-1)'),'Something wrong with SNP list indices')
+        snplists{block} = snplists{block}(representatives,:);
+    end
 end
 
 % Heritability for each population
@@ -247,7 +255,7 @@ assert(all(componentWeight<=1) & all(componentWeight>=0))
 assert(sum(componentWeight)<=1)
 noCpts = length(componentWeight);
 
-% If componentVariance is specified as a vector, convert it into a 
+% If componentVariance is specified as a vector, convert it into a
 % noPops x noPops x noCpts array with cross-population correlations nearly
 % 1
 if isvector(componentVariance)
@@ -256,7 +264,7 @@ if isvector(componentVariance)
 else
     assert(ndims(componentVariance) == 3,...
         'Specify componentVariance as either a vector or as an array of size noPops x noPops x noCpts')
-    
+
     assert(all(size(componentVariance) == [noPops, noPops, noCpts]),...
         'Specify componentVariance as either a vector or as an array of size noPops x noPops x noCpts')
 end
@@ -273,7 +281,7 @@ true_beta_perallele = arrayfun(@(m)zeros(m,1),repmat(noSNPs,1,noPops),'UniformOu
 true_beta_perSD = true_beta_perallele;
 for block = 1:noBlocks
 
-    % mixture component assignments 
+    % mixture component assignments
     whichCpt = randsample(1:length(componentWeight),noSNPs(block),true,componentWeight);
     beta = zeros(noSNPs(block),noPops);
 
@@ -294,7 +302,7 @@ for block = 1:noBlocks
         sqrt(linkFn(annotations{block}));
 
     assert(isreal(beta) & all(beta == beta), 'Imaginary or NaN beta; check link function')
-    
+
     % Assign betas to true_beta_perallele, and assign normalized betas to
     % true_beta_perSD, for each population
     for pop = 1:noPops
@@ -331,7 +339,7 @@ for block = 1:noBlocks
             pnz = diag(precisionMatrices{block,pop}) ~= 0;
             incl = whichIndicesAnnot{block}(pnz(whichIndicesAnnot{block}));
             whichIndices{block,pop} = incl;
-            
+
             % Simulate sumstats using precision matrices
             Z{block,pop} = precisionDivide(precisionMatrices{block,pop},...
                 true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop)), incl);
@@ -345,7 +353,7 @@ for block = 1:noBlocks
             pnz = diag(correlationMatrices{block,pop}) ~= 0;
             incl = whichIndicesAnnot{block}(pnz(whichIndicesAnnot{block}));
             whichIndices{block,pop} = incl;
-                        
+
             % Simulate using correlation matrices
             Z{block,pop} = correlationMatrices{block,pop}(incl,incl) *...
                 true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop))...
@@ -374,17 +382,17 @@ sumstats = cell(noBlocks,noPops);
 for block = 1:noBlocks
     for pop = 1:noPops
         sumstats{block,pop} = table('size',[length(Z{block,pop}),0]);
-        if ~isempty(snpID)
-            sumstats{block,pop}.SNP = snpID{block}(whichIndices{block,pop});
+        if ~isempty(snplists)
+            sumstats{block,pop}.SNP = snplists{block}.site_ids(whichIndices{block,pop});
         end
         sumstats{block,pop}.Z_deriv_allele = Z{block,pop};
         sumstats{block,pop}.N = sampleSize(pop) * ones(size(Z{block,pop}));
         if ~isempty(alleleFrequency)
             if noisySampleAF
-            sumstats{block,pop}.AF_deriv_allele = ...
-                binornd( 2*sumstats{block,pop}.N, ...
-                alleleFrequency{block,pop}(whichIndices{block,pop}) ) ./ ...
-                (2*sumstats{block,pop}.N);
+                sumstats{block,pop}.AF_deriv_allele = ...
+                    binornd( 2*sumstats{block,pop}.N, ...
+                    alleleFrequency{block,pop}(whichIndices{block,pop}) ) ./ ...
+                    (2*sumstats{block,pop}.N);
             else
                 sumstats{block,pop}.AF_deriv_allele = ...
                     alleleFrequency{block,pop}(whichIndices{block,pop});
@@ -402,13 +410,53 @@ if ~isempty(savePath)
     end
     true_beta_perSD = cellfun(@(x,j)x(j),true_beta_perSD,whichIndices,'UniformOutput',false);
     for pop = 1:noPops
-        T = vertcat(sumstats{:,pop});
-        T.index(:) = vertcat(whichIndices{:,pop}) - 1; % zero-indexed
-        whichBlock = arrayfun(@(n,s)n*ones(s,1),(1:noBlocks)',...
-            noNonmissingSNPs,'UniformOutput',false);
-        T.block(:) = vertcat(whichBlock{:}) - 1; % zero-indexed
-        T.beta_perSD_true(:) = vertcat(true_beta_perSD{:,pop});
-        writetable(T,savePath{pop},'FileType','text');
+        % ldgm sumstats file format output
+        if strcmpi(fileFormat,'ldgm')
+            T = vertcat(sumstats{:,pop});
+            T.index(:) = vertcat(whichIndices{:,pop}) - 1; % zero-indexed
+            whichBlock = arrayfun(@(n,s)n*ones(s,1),(1:noBlocks)',...
+                noNonmissingSNPs,'UniformOutput',false);
+            T.block(:) = vertcat(whichBlock{:}) - 1; % zero-indexed
+            T.beta_perSD_true(:) = vertcat(true_beta_perSD{:,pop});
+
+        % PRS-CS file format ouput
+        elseif strcmpi(fileFormat,'PRScs')
+            assert(~isempty(snplists),'To use PRScs file format, SNP lists must be specified')
+            snplistsCat = cellfun(@(T,j)T(j,:),snplists(:,pop),whichIndices(:,pop),'UniformOutput',false);
+            snplistsCat = vertcat(snplistsCat{:,pop});
+            nn = height(snplistsCat);
+            T = table('size',[nn,0]);
+            T.SNP = snplistsCat.site_ids;
+            T.A1 = snplistsCat.anc_alleles;
+            T.A2 = snplistsCat.deriv_alleles;
+            sumstatsCat = vertcat(sumstats{:,pop});
+            T.BETA = sumstatsCat.Z_deriv_allele;
+            T.P = chi2cdf(sumstatsCat.Z_deriv_allele.^2,1,'upper');
+
+            % Discard NA SNP IDs
+            T = T(~strcmpi(T.SNP,'NA'),:);
+
+        % LDSC file format output
+        elseif strcmpi(fileFormat,'LDSC')
+            assert(~isempty(snplists),'To use LDSC file format, SNP lists must be specified')
+            snplistsCat = cellfun(@(T,j)T(j,:),snplists(:,pop),whichIndices(:,pop),'UniformOutput',false);
+            snplistsCat = vertcat(snplistsCat{:,pop});
+            nn = height(snplistsCat);
+            T = table('size',[nn,0]);
+            T.SNP = snplistsCat.site_ids;
+            T.A1 = snplistsCat.anc_alleles;
+            T.A2 = snplistsCat.deriv_alleles;
+            sumstatsCat = vertcat(sumstats{:,pop});
+            T.Z = sumstatsCat.Z_deriv_allele;
+            T.N(:) = sampleSize;
+
+            % Discard NA SNP IDs
+            T = T(~strcmpi(T.SNP,'NA'),:);
+        else
+            error('Current file format options are PRScs, ldgm, and LDSC')
+        end
+
+        writetable(T,savePath{pop},'FileType','text','delimiter','\t');
     end
 end
 
