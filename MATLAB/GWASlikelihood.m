@@ -47,39 +47,34 @@ end
         if ~islogical(whichSNPs)
             whichSNPs = unfind(whichSNPs,length(P));
         end
-        mm = length(whichSNPs);
-        mmz = sum(whichSNPs);
-        assert(all(sigmasq>=0),'sigmasq should be nonnegative')
-        assert(mmz == length(Z) && mmz == length(sigmasq),...
-            'whichSNPs should be a boolean vector with sum equal to length of alphahat and sigmasq')
-        assert(all(length(whichSNPs) == size(P)))
         
+        assert(all(sigmasq>=0),'sigmasq should be nonnegative')
+       
+        % handling SNPs missing from P
+        incl = diag(P)~=0;
+        assert(all(incl(whichSNPs)))
+        mm = sum(incl);
+        P = P(incl,incl);
+        whichSNPs = whichSNPs(incl);
         
         % inv(P)(whichSNPs,whichSNPs) * Z
         x = precisionMultiply(P,Z,whichSNPs);
         
-        % diag([sigmasq,0,0,...]) + P)
-        DplusP = sparse(zeros(mm,1));
-        DplusP(whichSNPs) = sigmasq * nn;
-        DplusP = diag(DplusP) + P;
+        % M == E(xx')
+        M = sparse(find(whichSNPs), find(whichSNPs), nn*sigmasq, mm, mm);
+        M = M + P;
+        A = chol(M);
         
-        % handling SNPs missing from P
-        incl = diag(P)~=0;
-        otherSNPs = incl & (~whichSNPs);
+        % log|P/P11 + nn*diag(sigmasq)| == log|M| - log|P11|
+        logdetM = 2*sum(log(diag(A)));
+        logdetP11 = 2*sum(log(diag(chol(P(~whichSNPs,~whichSNPs)))));
         
-        A = chol(DplusP(incl,incl));
-        
-        % log|1/nn*P/P11 + diag(sigmasq)| == log|DplusP| - log|P11|
-        logdetDplusP = 2*sum(log(diag(A)));
-        logdetP11 = 2*sum(log(diag(chol(P(otherSNPs,otherSNPs)))));
-        
-        % betahat' * PplusD\betahat == x'*x
+        % x'*M\x == w'*w
         y = zeros(mm,1);
         y(whichSNPs) = x;
-        x = A' \ y(incl);
-        x = x(whichSNPs(incl));
+        w = A' \ y;
         
-        ll = 1/2 * (-(logdetDplusP - logdetP11) - x'*x - mmz*log(2*pi));
+        ll = 1/2 * (-(logdetM - logdetP11) - w'*w - sum(whichSNPs)*log(2*pi));
     end
 
 
