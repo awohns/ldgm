@@ -53,36 +53,37 @@ if iscell(P) % handle cell-array-valued inputs
     grad = cellfun(@(a,s,p,dS,w)GWASlikelihoodGradient(a,s,p,nn,dS,w,fixedIntercept),...
         Z,sigmasq,P,delSigmaDelA,whichSNPs, 'UniformOutput', false);
 else
-    % unit conversion
-    Z = Z/sqrt(nn);
     
     % handle missing rows/cols of P
     if ~islogical(whichSNPs)
         whichSNPs = unfind(whichSNPs,length(P));
     end
-    pnz = diag(P)~=0;
-    assert(all(pnz(whichSNPs)))
-    mm = sum(pnz);
-    P = P(pnz,pnz);
-    whichSNPs = whichSNPs(pnz);
+
+    % handling SNPs missing from P
+    incl = diag(P)~=0;
+    assert(all(incl(whichSNPs)))
+    mm = sum(incl);
+    P = P(incl,incl);
+    whichSNPs = whichSNPs(incl);
     
-    % M = Sigma + P/nn is the covariance matrix of betaHat = P/P11 * alphaHat
-    M = zeros(mm,1);
-    M(whichSNPs) = sigmasq;
-    M = P/nn + speye(mm).*M;
+    % M == E(xx')
+    M = sparse(find(whichSNPs), find(whichSNPs), nn*sigmasq, mm, mm);
+    M = M + P;
+
+    % sparse inverse subset of M
     Minv = sparseinv(M);
     MinvDiag = diag(Minv);
     
-    % betahat = P/P11 * alphaHat
-    betahat = precisionMultiply(P, Z, whichSNPs);
-    b = precisionDivide(M, betahat, whichSNPs);
+    % x = P/P11 * z
+    x = precisionMultiply(P, Z, whichSNPs);
+    b = precisionDivide(M, x, whichSNPs);
     
     % two terms of the log-likelihood (quadratic term + log-determinant
     % term)
-    d = -sum(delSigmaDelA .* b.^2);
-    delLogDetP = sum(delSigmaDelA .* MinvDiag(whichSNPs));
+    delwtw = -nn * sum(delSigmaDelA .* b.^2);
+    delLogDetM = nn * sum(delSigmaDelA .* MinvDiag(whichSNPs));
     
-    grad = - 1/2 * (delLogDetP + d);
+    grad = - 1/2 * (delLogDetM + delwtw);
     
     % gradient of minus log-likelihood wrt 1/nn
     if ~fixedIntercept
@@ -91,5 +92,6 @@ else
         grad(end+1) = nGrad;
     end
 end
+
 end
 
