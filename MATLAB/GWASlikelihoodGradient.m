@@ -1,4 +1,4 @@
-function [grad] = GWASlikelihoodGradient(Z, sigmasq, P, nn, delSigmaDelA, whichSNPs, fixedIntercept)
+function [grad] = GWASlikelihoodGradient(Z, sigmasq, P, nn, delSigmaDelA, whichSNPs, intercept, fixedIntercept)
 % GWASlikelihoodGradient computes gradient of the likelihood of the GWAS 
 % sumstats alphaHat under a gaussian model:
 %                   beta ~ MVN(mu,diag(sigmasq))
@@ -42,6 +42,10 @@ function [grad] = GWASlikelihoodGradient(Z, sigmasq, P, nn, delSigmaDelA, whichS
 % respect to a; this will be the last element of grad.
 
 if nargin < 7
+    intercept = 1;
+end
+assert(isscalar(intercept) && all(intercept>=0,'all'))
+if nargin < 8
     fixedIntercept = true;
 end
 
@@ -50,7 +54,7 @@ if iscell(P) % handle cell-array-valued inputs
         whichSNPs = cellfun(@(x)true(size(x),Z),'UniformOutput', false);
     end
     assert(iscell(Z) & iscell(whichSNPs) & iscell(sigmasq))
-    grad = cellfun(@(a,s,p,dS,w)GWASlikelihoodGradient(a,s,p,nn,dS,w,fixedIntercept),...
+    grad = cellfun(@(a,s,p,dS,w)GWASlikelihoodGradient(a,s,p,nn,dS,w,intercept,fixedIntercept),...
         Z,sigmasq,P,delSigmaDelA,whichSNPs, 'UniformOutput', false);
 else
     
@@ -68,7 +72,7 @@ else
     
     % M == E(xx')
     M = sparse(find(whichSNPs), find(whichSNPs), nn*sigmasq, mm, mm);
-    M = M + P;
+    M = M + intercept * P;
 
     % sparse inverse subset of M
     Minv = sparseinv(M);
@@ -88,8 +92,7 @@ else
     % gradient of minus log-likelihood wrt 1/nn
     if ~fixedIntercept
         c = precisionMultiply(P,b,whichSNPs);
-        nGrad = 1/2 * (sum(nonzeros(Minv.*P)) - sum(b.*c));
-        grad(end+1) = nGrad;
+        grad(end+1) = -1/2 * (sum(nonzeros(Minv.*P)) - sum(b.*c));
     end
 end
 
