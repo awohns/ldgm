@@ -7,7 +7,7 @@ function [Z_merged, Z_imputed, whichIndices_imputed] = ImpGldgm(P, whichIndices,
 % LD correlation matrix.
 %
 % This is implemented with LDGMs instead using the formula
-% Z_0 =  v_0' * (P/P_11) \ (v_1 * (P/P_00) * Z_1)
+% Z_0 =  v_0 * (P/P_11) \ (v_1' * (P/P_00) * Z_1)
 % where v_0, v_1 are the projection matrices onto the coordinates
 % of the missing and non-mising SNPs, respectively.
 %
