@@ -1,5 +1,5 @@
 function [P_dentist,T_dentist,Z_tilde] = DENTISTldcov(R, whichIndices, mergedSumstats, normalizeCorrelation, partition )
-%DENTISTldgm computes p-values for LD mismatch or bad summary statistics QC
+%DENTISTldcov computes p-values for LD mismatch or bad summary statistics QC
 %using LDGM precision matrices and GWAS summary statistics
 %
 % Re-implements the DENTIST method of Chen et al. 2021 Nat Commun,
@@ -12,12 +12,12 @@ function [P_dentist,T_dentist,Z_tilde] = DENTISTldcov(R, whichIndices, mergedSum
 % 
 % 
 % Input arguments:
-% P: LDGM precision matrices, as a number-of-LD-blocks by 1 cell
-% array with each cell containing a precision matrix, or as a single
+% R: LDGM correlation matrices, as a number-of-LD-blocks by 1 cell
+% array with each cell containing a correlation matrix, or as a single
 % precision matrix.
 %
 % whichIndices: output from mergesnplists, encoding which indices
-% (rows/columns of the LDGM precision matrices) have corresponding SNPs in
+% (rows/columns of the correlation matrices) have corresponding SNPs in
 % the summary statistics. Should be a cell array of indices/logicals, or a
 % single vector of indices/logicals
 %
@@ -33,14 +33,13 @@ function [P_dentist,T_dentist,Z_tilde] = DENTISTldcov(R, whichIndices, mergedSum
 %
 % S: cell array containing SNPs that were assigned to each partition
 
-
-if iscell(P)
-    if nargin < 4
-        normalizeCorrelation = false;
-    end
+if nargin < 4
+    normalizeCorrelation = false;
+end
+if iscell(R)
     assert(iscell(whichIndices) && iscell(mergedSumstats))
-    for ii = 1:numel(P)
-        [P_dentist{ii},T_dentist{ii},Z_tilde{ii}] = DENTISTldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii}, normalizeCorrelation);
+    for ii = 1:numel(R)
+        [P_dentist{ii},T_dentist{ii},Z_tilde{ii}] = DENTISTldcov(R{ii}, whichIndices{ii}, mergedSumstats{ii}, normalizeCorrelation);
     end
 else
 
@@ -69,10 +68,6 @@ else
     
     Z = mergedSumstats.Z_deriv_allele;
 
-    % submatrix of R
-    Rit{1} = R(partition{1},partition{2});
-    Rit{2} = Rit{1}';
-
     T_dentist = zeros(noSNPs,1);
     Z_tilde = T_dentist;
 
@@ -80,16 +75,17 @@ else
         qq = 3-pp;
 
         % Imputed Z scores from the other half of the data
-        temp = v{pp} * (R(whichIndices(partition{pp}),whichIndices(partition{pp})) \ ...
-            Z(partition{pp}));
+        temp = R(whichIndices(partition{pp}),whichIndices(partition{pp})) \ ...
+            Z(partition{pp});
         
-        Z_tilde(partition{qq}) = v{qq} * R(whichIndices,whichIndices) \ temp;
+        Z_tilde(partition{qq}) = R(whichIndices(partition{qq}),whichIndices(partition{pp})) * temp;
 
         % Compute denominators
         denominators{pp} = 1 - ...
-            sum(Rit{pp} .* ...
+            sum(R(whichIndices(partition{pp}),whichIndices(partition{qq}))' .* ...
             (R(whichIndices(partition{pp}),whichIndices(partition{pp})) \ ...
-            Rit{pp}'),2);
+            R(whichIndices(partition{pp}),whichIndices(partition{qq})))',2);
+
         % Compute dentist statistics + p-values
         T_dentist(partition{qq}) = (Z(partition{qq}) - Z_tilde(partition{qq})).^2 ./ denominators{pp};
 
