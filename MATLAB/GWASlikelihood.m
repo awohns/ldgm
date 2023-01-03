@@ -65,6 +65,7 @@ end
         mm = sum(incl);
         P = P(incl,incl);
         whichSNPs = whichSNPs(incl);
+        mm0 = sum(~whichSNPs); % no. missing SNPs from sumstats
 
         % inv(P)(whichSNPs,whichSNPs) * Z
         x = precisionMultiply(P,Z,whichSNPs);
@@ -74,9 +75,9 @@ end
         M = M + intercept * P;
         A = chol(M);
 
-        % log|P/P11 + nn*diag(sigmasq)| == log|M| - log|P11|
+        % log|intercept * P/P11 + nn*diag(sigmasq)| == log|M| - log|intercept*P11|
         logdetM = 2*sum(log(diag(A)));
-        logdetP11 = 2*sum(log(diag(chol(P(~whichSNPs,~whichSNPs)))));
+        logdetP11 = mm0 * log(intercept) + 2*sum(log(diag(chol(P(~whichSNPs,~whichSNPs)))));
 
         % x'*M\x == w'*w
         y = zeros(mm,1);

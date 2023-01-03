@@ -69,6 +69,7 @@ else
     mm = sum(incl);
     P = P(incl,incl);
     whichSNPs = whichSNPs(incl);
+    mm0 = sum(~whichSNPs); % no. missing SNPs from sumstats
     
     % M == E(xx')
     M = sparse(find(whichSNPs), find(whichSNPs), nn*sigmasq, mm, mm);
@@ -92,7 +93,7 @@ else
     % gradient of minus log-likelihood wrt 1/nn
     if ~fixedIntercept
         c = precisionMultiply(P,b,whichSNPs);
-        grad(end+1) = -1/2 * (sum(nonzeros(Minv.*P)) - sum(b.*c));
+        grad(end+1) = -1/2 * (sum(nonzeros(Minv.*P)) - sum(b.*c) - mm0 / intercept);
     end
 end
 
