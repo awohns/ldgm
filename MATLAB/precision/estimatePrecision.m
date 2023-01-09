@@ -1,4 +1,4 @@
-function precisionEstimate = estimatePrecision(data_directory, varargin)
+function [precisionEstimate, R] = estimatePrecision(data_directory, varargin)
 % Estimates LDGM precision matrix from an LDGM and genotype data using
 % modified DP-GLASSO algorithm
 %
@@ -206,7 +206,6 @@ addParameter(p, 'banded_control_ldgm', 0, @isscalar);
 % on adjacency matrix and path_distance_threshold
 addParameter(p, 'r2_control_ldgm', 0, @isscalar);
 
-
 % turns p.Results.x into just x
 parse(p, data_directory, varargin{:});
 fields = fieldnames(p.Results);
@@ -218,6 +217,9 @@ end
 if isempty(output_dir) && nargout == 0
     error('Please specify output_dir so that the results are saved')
 end
+
+% add MATLAB and its subdirectories to path
+addpath(genpath('../../MATLAB/'));
 
 % suffixes for output files
 output_suffix = sprintf('.path_distance=%.1f.l1_pen=%.2f.maf=%.2f.%s',...
@@ -241,10 +243,18 @@ end
 smallNumber = 1e-12;
 
 % data file
-data_files = dir([data_directory, data_pattern, data_file_extension]);
-assert(~isempty(data_files));
-filename = data_files(data_file_index).name;
-filename = filename(1:end-length(data_file_extension));
+if isfolder(data_directory)
+    data_files = dir([data_directory, data_pattern, data_file_extension]);
+    assert(~isempty(data_files));
+    filename = data_files(data_file_index).name;
+    filename = filename(1:end-length(data_file_extension));
+elseif isfile(data_directory)
+    data_files = dir(data_directory);
+    filename = data_files.name(1:end-length(data_file_extension));
+    data_directory = [data_files.folder, '/'];
+else
+    error('No data files found');
+end
 
 % check if output file already exists
 if isfile([output_dir,custom_filename,filename,output_suffix,'.stats.txt'])
@@ -330,25 +340,35 @@ elseif strcmp(data_type,'edgelist')
     R = readedgelist([data_directory,filename, data_file_extension]);
 end
 
-noSNPs = length(R);
 % SNP list file
-snplist_files = dir([snplist_dir,filename,'.snplist']);
-if isempty(snplist_files)
-    error("SNP list not found in [snplist_dir,filename,'.snplist']")
-else
+if isfolder(snplist_dir)
+    snplist_files = dir([snplist_dir,filename,'.snplist']);
+    assert(~isempty(snplist_files),"SNP list not found in [snplist_dir,filename,'.snplist']")
     ldgmSnpTable = readtable([snplist_dir,filename,'.snplist'],'FileType','text');
-    noIndices = numel(unique(ldgmSnpTable.index));
-    [~,index_representatives] = unique(ldgmSnpTable.index);
-    if strcmp(data_type,'genotypes')
-        MAF = MAF(index_representatives);
-        R = R(index_representatives,index_representatives);
-    end
+elseif isfile(snplist_dir)
+    ldgmSnpTable = readtable(snplist_dir,'FileType','text');
+else
+    error('SNP list not found')
 end
 
+noIndices = numel(unique(ldgmSnpTable.index));
+[~,index_representatives] = unique(ldgmSnpTable.index);
+if strcmp(data_type,'genotypes')
+    MAF = MAF(index_representatives);
+    R = R(index_representatives,index_representatives);
+end
 
 % LDGM file
-edgelist_file = dir([edgelist_dir,filename,'.ldgm.edgelist']);
-assert(~isempty(edgelist_file),"Adjacency list file not found in [edgelist_dir,filename,'.edgelist']");
+if isfolder(edgelist_dir)
+    edgelist_file = dir([edgelist_dir,filename,'.ldgm.edgelist']);
+    assert(~isempty(edgelist_file),"Adjacency list file not found in [edgelist_dir,filename,'.edgelist']");
+elseif isfile(edgelist_dir)
+    edgelist_file = dir(edgelist_dir);
+    edgelist_dir = [edgelist_file.folder,'/'];
+else
+    error('Edge list not found')
+end
+
 replace_zeros = eps;
 A_weighted = readedgelist([edgelist_dir, edgelist_file.name], noIndices, replace_zeros);
 
@@ -368,59 +388,44 @@ if strcmp(data_type,'correlation') || strcmp(data_type,'edgelist')
             'LD_matrix_snplist_dir not specified, and size of LD matrix does not match size of LDGM')
         R = R(index_representatives,index_representatives);
         MAF = MAF(index_representatives);
-    else
-        % LD SNP list
+    elseif isfolder(LD_matrix_snplist_dir)
         ldSnpTable = readtable([LD_matrix_snplist_dir,filename,'.snplist'],'FileType','text');
-
-        % Merge SNPs between the LD SNP list and LDGM SNP list
-        [~, idxLDGM, idxR] = intersect(ldgmSnpTable.rsid, ldSnpTable.rsid, 'stable');
-        R = R(idxR,idxR);
-        ldSnpTable = ldSnpTable(idxR,:);
-
-        % Index field refers to which brick each SNP came from
-        if any(strcmp(ldgmSnpTable.Properties.VariableNames,'index'))
-            assert(sum(SNPs) == max(ldgmSnpTable.index),...
-                'number of SNPs with edges in the LDGM should match number of unique indices in the SNP table')
-
-            % unique_indices: which bricks (rows/columns of A_weighted) have a
-            % matching SNP in the LD matrix
-            % representatives: a SNP in the LD matrix that maps to the bricks
-            % corresponding to each element of unique_indices
-            % indices: rows/columns of precision matrix that will correspond to
-            % each SNP in ldSnpTable
-            [unique_indices, representatives, indices] = unique(ldgmSnpTable.index(idxLDGM),'stable');
-
-            % restrict ldgmSnpTable to SNPs belonging to a matching brick
-            ldSnpTable.index = indices - 1;
-
-            % Restrict R, AF to representatives
-            R = R(representatives, representatives);
-            MAF = MAF(representatives);
-
-
-            % Reduce A_weighted to bricks with a matching SNP in the LD matrix
-            if patch_paths > 0
-                A_weighted = reduce_weighted_graph(A_weighted,...
-                    setdiff(1:sum(SNPs),unique_indices));
-            else
-                A_weighted = A_weighted(unique_indices,unique_indices);
-            end
-
-        else
-            error('To merge LDGM with LD matrix, .snplist file must contain index field')
-        end
-    end
-end
-
-% Remove low-frequency and duplicate SNPs, patching paths if needed
-if minimum_maf > 0
-    commonSNPs = MAF > minimum_maf;
-    if patch_paths == 2
-        A_weighted = reduce_weighted_graph(A_weighted, find(~commonSNPs));
+    elseif isfile(LD_matrix_snplist_dir)
+        ldSnpTable = readtable(LD_matrix_snplist_dir,'FileType','text');
     else
-        A_weighted = A_weighted(commonSNPs,commonSNPs);
+        error('LD matrix SNP list not found')
     end
-    R = R(commonSNPs,commonSNPs);
+    
+    % Restrict to common SNPs
+    commonSNPs = MAF > minimum_maf;
+    ldgmSnpTable = ldgmSnpTable(commonSNPs,:);
+
+    % Merge SNPs between the LD SNP list and LDGM SNP list
+    [~, idxLDGM, idxR] = intersect(ldgmSnpTable.site_ids, ldSnpTable.site_ids, 'stable');
+    ldSnpTable = ldSnpTable(idxR,:);
+    R = R(idxR,idxR);
+
+    % Convert merged SNPs to merged indices
+    [mergedIndices, representatives] = unique(ldgmSnpTable(idxLDGM,:).index,'stable');
+    R = R(representatives, representatives);
+
+    % Reduce A_weighted to bricks with a matching SNP in the LD matrix
+    if patch_paths
+        % Restrict LDGM to indices corresponding to a common SNP
+        commonIndices = unique(ldgmSnpTable.index, 'stable');
+        A_weighted = A_weighted(commonIndices + 1, commonIndices + 1);
+        
+        idx = lift(mergedIndices + 1, commonIndices + 1);
+        missingIdx = setdiff(1:length(A_weighted),idx);
+        if length(missingIdx) > length(idx)/3
+            warning('More than 1/4 of SNPs in LDGM are missing, possibly leading to a low quality solution');
+        end
+        A_weighted = reduce_weighted_graph(A_weighted,...
+            missingIdx, 0);
+    else
+        A_weighted = A_weighted(mergedIndices + 1, mergedIndices + 1);
+    end
+       
 end
 
 % Number of SNPs remaining
