@@ -1,4 +1,4 @@
-function [precisionEstimate, R] = estimatePrecision(data_directory, varargin)
+function [precisionEstimate, R, ldSnpTable] = estimatePrecision(data_directory, varargin)
 % Estimates LDGM precision matrix from an LDGM and genotype data using
 % modified DP-GLASSO algorithm
 %
@@ -381,7 +381,6 @@ MAF = min(AF,1-AF);
 if isempty(LD_matrix_snplist_dir)
     assert(noSNPs == height(ldgmSnpTable),...
         'LD_matrix_snplist_dir not specified, and size of LD matrix does not match size of LDGM')
-    R = R(index_representatives,index_representatives);
     ldSnpTable = [];
 elseif isfolder(LD_matrix_snplist_dir)
     ldSnpTable = readtable([LD_matrix_snplist_dir,filename,'.snplist'],'FileType','text');
