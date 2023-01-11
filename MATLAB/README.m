@@ -9,6 +9,9 @@
 % 
 %   BLUPxldgm: computes polygenic scores from GWAS summary statistics and
 %   LDGM precision matrices, for one or more populations
+%
+%   BLUPxldcov: computes polygenic scores from GWAS summary statistics and
+%   LD correlation matrices, for one or more populations
 % 
 %   GWASlikelihood: computes log-likelihood of the GWAS summary statistics
 %   under a Gaussian model
@@ -42,7 +45,10 @@
 % 
 %   simulateSumstats: simulates GWAS summary statistics with the specified
 %   LD patterns and effect size distribution, for one or more populations
-% 
+%   
+%   ImpGldgm and ImpGldcov: perform linear imputation of GWAS summary
+%   statistics using an LDGM precision matrix or an LD correlation matrix,
+%   respectively
 % 
 % The utility subdirectory contains functions that users will probably not
 % use directly, but which are called from the functions above.
