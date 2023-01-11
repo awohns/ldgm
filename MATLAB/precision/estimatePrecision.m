@@ -353,10 +353,6 @@ end
 
 noIndices = numel(unique(ldgmSnpTable.index));
 [~,index_representatives] = unique(ldgmSnpTable.index);
-if strcmp(data_type,'genotypes')
-    MAF = MAF(index_representatives);
-    R = R(index_representatives,index_representatives);
-end
 
 % LDGM file
 if isfolder(edgelist_dir)
@@ -373,59 +369,63 @@ replace_zeros = eps;
 A_weighted = readedgelist([edgelist_dir, edgelist_file.name], noIndices, replace_zeros);
 
 % Merge SNPs between LDGM and correlation matrix
-if strcmp(data_type,'correlation') || strcmp(data_type,'edgelist')
 
-    % Allele frequencies
-    assert(any(strcmp(ldgmSnpTable.Properties.VariableNames,population_name)),...
-        'No allele frequency column in LDGM SNP list found')
-    AF = table2array(ldgmSnpTable(:,population_name));
-    MAF = min(AF,1-AF);
+% Allele frequencies
+assert(any(strcmp(ldgmSnpTable.Properties.VariableNames,population_name)),...
+    'No allele frequency column in LDGM SNP list found')
+AF = table2array(ldgmSnpTable(:,population_name));
+MAF = min(AF,1-AF);
 
-    % If no LD matrix SNP list is specified, require that LD matrix is
-    % already merged with SNP list
-    if isempty(LD_matrix_snplist_dir)
-        assert(noSNPs == height(ldgmSnpTable),...
-            'LD_matrix_snplist_dir not specified, and size of LD matrix does not match size of LDGM')
-        R = R(index_representatives,index_representatives);
-        MAF = MAF(index_representatives);
-    elseif isfolder(LD_matrix_snplist_dir)
-        ldSnpTable = readtable([LD_matrix_snplist_dir,filename,'.snplist'],'FileType','text');
-    elseif isfile(LD_matrix_snplist_dir)
-        ldSnpTable = readtable(LD_matrix_snplist_dir,'FileType','text');
-    else
-        error('LD matrix SNP list not found')
-    end
-    
-    % Restrict to common SNPs
-    commonSNPs = MAF > minimum_maf;
-    ldgmSnpTable = ldgmSnpTable(commonSNPs,:);
+% If no LD matrix SNP list is specified, require that LD matrix is
+% already merged with SNP list
+if isempty(LD_matrix_snplist_dir)
+    assert(noSNPs == height(ldgmSnpTable),...
+        'LD_matrix_snplist_dir not specified, and size of LD matrix does not match size of LDGM')
+    R = R(index_representatives,index_representatives);
+    MAF = MAF(index_representatives);
+    ldSnpTable = [];
+elseif isfolder(LD_matrix_snplist_dir)
+    ldSnpTable = readtable([LD_matrix_snplist_dir,filename,'.snplist'],'FileType','text');
+elseif isfile(LD_matrix_snplist_dir)
+    ldSnpTable = readtable(LD_matrix_snplist_dir,'FileType','text');
+else
+    error('LD matrix SNP list not found')
+end
 
-    % Merge SNPs between the LD SNP list and LDGM SNP list
+% Restrict to common SNPs
+commonSNPs = MAF > minimum_maf;
+ldgmSnpTable = ldgmSnpTable(commonSNPs,:);
+
+% Merge SNPs between the LD SNP list and LDGM SNP list
+if ~isempty(ldSnpTable)
     [~, idxLDGM, idxR] = intersect(ldgmSnpTable.site_ids, ldSnpTable.site_ids, 'stable');
     ldSnpTable = ldSnpTable(idxR,:);
     R = R(idxR,idxR);
+else
+    R = R(commonSNPs, commonSNPs);
+    idxLDGM = 1:sum(commonSNPs);
+end
 
-    % Convert merged SNPs to merged indices
-    [mergedIndices, representatives] = unique(ldgmSnpTable(idxLDGM,:).index,'stable');
-    R = R(representatives, representatives);
+% Convert merged SNPs to merged indices
+[mergedIndices, representatives] = unique(ldgmSnpTable(idxLDGM,:).index,'stable');
+R = R(representatives, representatives);
 
-    % Reduce A_weighted to bricks with a matching SNP in the LD matrix
-    if patch_paths
-        % Restrict LDGM to indices corresponding to a common SNP
-        commonIndices = unique(ldgmSnpTable.index, 'stable');
-        A_weighted = A_weighted(commonIndices + 1, commonIndices + 1);
-        
-        idx = lift(mergedIndices + 1, commonIndices + 1);
-        missingIdx = setdiff(1:length(A_weighted),idx);
-        if length(missingIdx) > length(idx)/3
-            warning('More than 1/4 of SNPs in LDGM are missing, possibly leading to a low quality solution');
-        end
-        A_weighted = reduce_weighted_graph(A_weighted,...
-            missingIdx, 0);
-    else
-        A_weighted = A_weighted(mergedIndices + 1, mergedIndices + 1);
+
+% Reduce A_weighted to bricks with a matching SNP in the LD matrix
+if patch_paths
+    % Restrict LDGM to indices corresponding to a common SNP
+    commonIndices = unique(ldgmSnpTable.index, 'stable');
+    A_weighted = A_weighted(commonIndices + 1, commonIndices + 1);
+
+    idx = lift(mergedIndices + 1, commonIndices + 1);
+    missingIdx = setdiff(1:length(A_weighted),idx);
+    if length(missingIdx) > length(idx)/3
+        warning('More than 1/4 of SNPs in LDGM are missing, possibly leading to a low quality solution');
     end
-       
+    A_weighted = reduce_weighted_graph(A_weighted,...
+        missingIdx, 0);
+else
+    A_weighted = A_weighted(mergedIndices + 1, mergedIndices + 1);
 end
 
 % Number of SNPs remaining
