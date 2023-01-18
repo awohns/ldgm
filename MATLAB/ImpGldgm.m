@@ -1,4 +1,5 @@
-function [Z_merged, Z_imputed, whichIndices_imputed] = ImpGldgm(P, whichIndices, mergedSumstats, parallelize_blocks)
+function [Z_merged, Z_imputed, whichIndices_imputed] = ImpGldgm(P, ...
+    whichIndices, mergedSumstats, precomputed_ldlChol, parallelize_blocks)
 %ImpGldgm performs "Bogdan-style" linear imputation of missing summary
 % statistics using the method of Pasaniuc et al. 2014 Bioinformatics
 %
@@ -33,25 +34,38 @@ function [Z_merged, Z_imputed, whichIndices_imputed] = ImpGldgm(P, whichIndices,
 % Output arguments:
 % Z_imputed: Bogdan-style imputed Z scores.
 
+if nargin < 4
+    precomputed_ldlChol = false;
+end
+if precomputed_ldlChol
+    error('Not yet implemented');
+end
+
 if iscell(P)
-    if nargin < 4
+    if nargin < 5
         parallelize_blocks = false;
     end
     assert(iscell(whichIndices) && iscell(mergedSumstats))
-    Z_imputed = cell(size(P)); whichIndices_imputed = cell(size(P));
-
+    Z_imputed = cell(size(P)); 
+    whichIndices_imputed = cell(size(P));
+    Z_merged = cell(size(P));
     if parallelize_blocks
         parfor ii = 1:numel(P)
-            [Z_imputed{ii}, whichIndices_imputed{ii}] = ...
-                ImpGldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii});
+            [Z_merged{ii}, Z_imputed{ii}, whichIndices_imputed{ii}] = ...
+                ImpGldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii}, precomputed_ldlChol);
         end
     else
         for ii = 1:numel(P)
-            [Z_imputed{ii}, whichIndices_imputed{ii}] = ...
-                ImpGldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii});
+            [Z_merged{ii}, Z_imputed{ii}, whichIndices_imputed{ii}] = ...
+                ImpGldgm(P{ii}, whichIndices{ii}, mergedSumstats{ii}, precomputed_ldlChol);
         end
     end
 else
+    if istable(mergedSumstats)
+        z = mergedSumstats.Z_deriv_allele;
+    else
+        z = mergedSumstats;
+    end
 
     % Indices of typed + imputed SNPs; discard SNPs that are missing from
     % the LDGM
@@ -73,14 +87,14 @@ else
         ones(noImputed,1),noSNPs,noImputed);
 
     % Imputed Z scores
-    temp = V1 * (precisionMultiply(P, mergedSumstats.Z_deriv_allele, ...
+    temp = V1 * (precisionMultiply(P, z, ...
         whichIndices));
     Z_imputed = V0(allIndices,:)' * precisionDivide(P,temp(allIndices),allIndices);
     whichIndices_imputed = otherIndices;
     
     Z_merged = zeros(noSNPs,1);
     Z_merged(otherIndices) = Z_imputed;
-    Z_merged(whichIndices) = mergedSumstats.Z_deriv_allele;
+    Z_merged(whichIndices) = z;
 
 
 end
