@@ -413,7 +413,7 @@ if ~isempty(savePath)
     elseif ischar(savePath)
         savePath = {savePath};
     end
-    true_beta_perSD = cellfun(@(x,j)x(j),true_beta_perSD,whichIndices,'UniformOutput',false);
+    true_beta_perSD_nonmissing = cellfun(@(x,j)x(j),true_beta_perSD,whichIndices,'UniformOutput',false);
     for pop = 1:noPops
         % ldgm sumstats file format output
         if strcmpi(fileFormat,'ldgm')
@@ -422,7 +422,7 @@ if ~isempty(savePath)
             whichBlock = arrayfun(@(n,s)n*ones(s,1),(1:noBlocks)',...
                 noNonmissingSNPs,'UniformOutput',false);
             T.block(:) = vertcat(whichBlock{:}) - 1; % zero-indexed
-            T.beta_perSD_true(:) = vertcat(true_beta_perSD{:,pop});
+            T.beta_perSD_true(:) = vertcat(true_beta_perSD_nonmissing{:,pop});
 
         % PRS-CS file format ouput
         elseif strcmpi(fileFormat,'PRScs')
