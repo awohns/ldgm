@@ -28,8 +28,8 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAn
 % summary statistics. Must be specified in order to use 'PRScs'
 % file format option
 %
-% fileFormats: If saving summary statistics to a file, which file format to
-% use. Current options are 'ldgm' and 'PRScs'
+% fileFormat: If saving summary statistics to a file, which file format to
+% use. Current options are 'ldgm', 'PRScs', and 'LDSC'
 %
 % alleleFrequency: allele frequency for each LD block and each population as
 % a number-of-LD blocks by number-of-populations cell array. If specified,
@@ -301,7 +301,7 @@ for block = 1:noBlocks
     beta = beta(whichIndicesAnnot{block},:) .*...
         sqrt(linkFn(annotations{block}));
 
-    assert(isreal(beta) & all(beta == beta), 'Imaginary or NaN beta; check link function')
+    assert(isreal(beta) & all(beta == beta, 'all'), 'Imaginary or NaN beta; check link function')
 
     % Assign betas to true_beta_perallele, and assign normalized betas to
     % true_beta_perSD, for each population
@@ -312,6 +312,11 @@ for block = 1:noBlocks
             true_beta_perSD{block,pop}(whichIndicesAnnot{block}) = beta(:,pop) .* ...
                 sqrt(2 * alleleFrequency{block,pop}(whichIndicesAnnot{block}) .* ...
                 (1 - alleleFrequency{block,pop}(whichIndicesAnnot{block})));
+        
+        elseif ~isempty(precisionMatrices)% zero out effects for SNPs not in precision matrix
+            nzAF = any(precisionMatrices{block,pop},2); 
+            true_beta_perSD{block,pop}(whichIndicesAnnot{block}) = ...
+                beta(:,pop) .* nzAF(whichIndicesAnnot{block});
         else
             true_beta_perSD{block,pop}(whichIndicesAnnot{block}) = beta(:,pop);
         end
