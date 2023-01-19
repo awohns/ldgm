@@ -57,6 +57,14 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAn
 % performing simulations with real functional annotations, and they are
 % missing for some of the SNPs in the LDGM. SNPs not in whichIndices will
 % not be assigned an effect, and will not have summary statistics.
+% 
+% annotationDependentPolygenicity: if false (default), annotation-dependent
+% and AF-dependent differences in per-SNP heritability will be simulated by
+% scaling the effect-size magnitude of causal SNPs. If true, differences
+% will be simulated by modifying the proportion of causal SNPs. When this
+% is set to true, sum(componentWeight) should be small enough (e.g., 0.01)
+% that it is possible to produce the deesired enrichments without exceeding
+% the desired polygenicity; otherwise, a warning will be printed.
 %
 % heritability: total heritability for each population, either as a scalar, a vector, or
 % a square matrix. If a matrix, it specifies both the heritability for each
@@ -146,6 +154,11 @@ addParameter(p, 'linkFn', @(x)ones(size(x)), @(f)isa(f,'function_handle'));
 % missing for some of the SNPs in the LDGM. SNPs not in whichIndices will
 % not be assigned an effect, and will not have summary statistics.
 addParameter(p, 'whichIndicesAnnot', {}, @iscell);
+
+% Whether differences in per-SNP heritability due to alpha model scaling
+% and annotations should be modeled by modifying the fraction of causal
+% SNPs, or by scaling the causal effect sizes
+addParameter(p, 'annotationDependentPolygenicity', 0, @isscalar);
 
 % total heritability for each population, either as a scalar, a vector, or
 % a square matrix. If a matrix, it specifies both the heritability for each
@@ -269,11 +282,51 @@ else
         'Specify componentVariance as either a vector or as an array of size noPops x noPops x noCpts')
 end
 
-% if componentWeight sums to <1, null component is added
-if sum(componentWeight) < 1
-    componentWeight(end+1) = 1-sum(componentWeight);
-    componentVariance(:,:,end+1) = zeros(noPops);
-    noCpts = noCpts + 1;
+% Get rid of null components
+componentVarianceNotNull = reshape(any(componentVariance,1:2),noCpts,1);
+componentVariance = componentVariance(:,:,componentVarianceNotNull);
+componentWeight = componentWeight(componentVarianceNotNull);
+noCpts = length(componentWeight);
+
+% mixture component assignments, which may be annotation- and
+% AF-dependent
+totalProbabilityCausal = sum(componentWeight(componentVarianceNotNull));
+assert(totalProbabilityCausal <= 1, 'Component weights must sum to at most 1')
+if ~annotationDependentPolygenicity
+    probabilityCausal = arrayfun(@(n){totalProbabilityCausal * ones(n,1)},noSNPsAnnot);
+else
+    % annotation-dependent probability of being assigned to a non-null
+    % component
+    relativeProbabilityCausal = cellfun(linkFn,annotations,'UniformOutput',false); 
+    
+    % allele-frequency-dependent scaling
+    if alphaParam ~= -1
+        assert(~isempty(alleleFrequency), ...
+            'If alphaParam is specified, allele frequencies must be specified')
+        for block=1:noBlocks
+            % mean allele frequency across populations
+            meanAF = max(1e-9, min(1-1e-9, mean([alleleFrequency{block,:}],2)));
+            meanAF = meanAF(whichIndicesAnnot{block});
+
+            % scale relativeProbabilityCausal by alpha model factor
+            relativeProbabilityCausal{block} = relativeProbabilityCausal{block} .* ...
+                (meanAF.*(1-meanAF)).^(1 + alphaParam);
+        end
+    end
+    
+    % scale relativeProbabilityCausal to sum to totalProbabilityCausal
+    scalingFactor = totalProbabilityCausal * sum(noSNPsAnnot) / sum(cellfun(@sum,relativeProbabilityCausal));
+    probabilityCausal = cellfun(@(p){p * scalingFactor}, relativeProbabilityCausal);
+    
+    % probabilityCausal might have entries greater than 1, which are
+    % truncated with a warning
+    fractionSNPsProbabilityCausalGTOne = mean(cellfun(@(p)mean(p>1),probabilityCausal));
+    if any(cellfun(@max,probabilityCausal) > 1)
+        warning(['Around %.3f of SNPs had causal probabilities greater than 1, ',...
+            'and are being truncated. Address this by reducing polygenicity ',...
+            'or changing link function'], fractionSNPsProbabilityCausalGTOne)
+        probabilityCausal = cellfun(@(x)min(x,1), probabilityCausal, 'UniformOutput', false);
+    end
 end
 
 % Simulate summary statistics for each LD block
@@ -282,29 +335,38 @@ true_beta_perSD = true_beta_perallele;
 for block = 1:noBlocks
 
     % mixture component assignments
-    whichCpt = randsample(1:length(componentWeight),noSNPs(block),true,componentWeight);
-    beta = zeros(noSNPs(block),noPops);
+    whichSNPsCausal = rand(noSNPsAnnot(block),1) < probabilityCausal{block};
+    whichCpt = zeros(noSNPsAnnot(block),1);
+    whichCpt(whichSNPsCausal) = randsample(1:noCpts,sum(whichSNPsCausal),true,componentWeight);
 
     % sample beta from respective mixture components
+    beta = zeros(noSNPsAnnot(block),noPops);
     for cpt = 1:noCpts
         beta(whichCpt == cpt,:) = mvnrnd(zeros(1,noPops), componentVariance(:,:,cpt), sum(whichCpt == cpt));
     end
-
-    % apply alpha model scaling
+    
+    % mean allele frequency across populations
     if ~isempty(alleleFrequency)
         meanAF = max(1e-9, min(1-1e-9, mean([alleleFrequency{block,:}],2)));
-        beta = beta .* sqrt((meanAF.*(1-meanAF)).^alphaParam);
+        meanAF = meanAF(whichIndicesAnnot{block});
     end
 
-    % scale effect sizes using linkFn for SNPs in annotation matrix, and
-    % throw out betas for SNPs not in the annotation matrix
-    beta = beta(whichIndicesAnnot{block},:) .*...
-        sqrt(linkFn(annotations{block}));
+    % scale causal effects to desired variance
+    if annotationDependentPolygenicity && ~isempty(alleleFrequency)
+        % larger per-allele effect-size magnitudes for low-frequency causal SNPs
+        beta = beta ./ sqrt((meanAF.*(1-meanAF)));
+    else
+        % apply alpha model scaling
+        if ~isempty(alleleFrequency)
+            beta = beta .* sqrt((meanAF.*(1-meanAF)).^alphaParam);
+        end
+        % scale effect sizes using linkFn for SNPs in annotation matrix
+        beta = beta .* sqrt(linkFn(annotations{block}));
+    end
 
     assert(isreal(beta) & all(beta == beta, 'all'), 'Imaginary or NaN beta; check link function')
 
-    % Assign betas to true_beta_perallele, and assign normalized betas to
-    % true_beta_perSD, for each population
+    % Assign normalized and per-allele betas for each population
     for pop = 1:noPops
         true_beta_perallele{block,pop}(whichIndicesAnnot{block}) = beta(:,pop);
 
@@ -336,6 +398,7 @@ end
 % Sample summary statistics
 Z = cell(noBlocks,noPops);
 whichIndices = Z;
+mergedAnnot = cell(size(annot));
 for block = 1:noBlocks
     for pop = 1:noPops
 
@@ -437,7 +500,9 @@ if ~isempty(savePath)
             sumstatsCat = vertcat(sumstats{:,pop});
             T.BETA = sumstatsCat.Z_deriv_allele;
             T.P = chi2cdf(sumstatsCat.Z_deriv_allele.^2,1,'upper');
-
+            if any(sumstatsCat.Z_deriv_allele.^2 > 300)
+                warning('Very large chi^2 statistics might lead to unreliable p-values in printed summary statistics')
+            end
             % Discard NA SNP IDs
             T = T(~strcmpi(T.SNP,'NA'),:);
 
