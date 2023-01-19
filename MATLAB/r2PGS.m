@@ -49,9 +49,22 @@ function r2 = r2PGS(trueBeta, estimatedBeta, P, whichIndices, AF, useLdlChol)
 % weights themselves)
 
 [noBlocks,noPopns] = size(P);
+
+if isempty(whichIndices)
+    whichIndices = cellfun(@any, P, 'UniformOutput', false);
+else
+    error('whichIndices input argument is now required to be empty for this function to avoid misleading results')
+end
 if size(estimatedBeta,2) == 1
     estimatedBeta = repmat(estimatedBeta,1,noPopns);
 end
+if size(trueBeta,2) == 1
+    trueBeta = repmat(trueBeta,1,noPopns);
+end
+
+assert(all(cellfun(@(a,b,c)length(a)==length(b) && length(b)==length(c),...
+    P,trueBeta,estimatedBeta)),...
+    'P, trueBeta, and estimatedBeta should be same-sized cell arrays with entries having the same length');
 
 % convert per-allele to per-SD units
 if nargin < 5 || isempty(AF)
@@ -70,13 +83,7 @@ if nargin < 6
     useLdlChol = false;
 end
 
-if isempty(whichIndices)
-    whichIndices = cellfun(@any, P, 'UniformOutput', false);
-end
 
-assert(all(cellfun(@(a,b,c)length(a)==length(b) && length(b)==length(c),...
-    P,trueBeta,estimatedBeta)),...
-    'P, trueBeta, and estimatedBeta should be same-sized cell arrays with entries having the same length');
 
 % quadratic function
 qf = @(beta1,beta2,P,whichIndices)beta1(whichIndices)' * precisionDivide(P, beta2(whichIndices), whichIndices, useLdlChol);
