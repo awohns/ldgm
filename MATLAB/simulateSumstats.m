@@ -398,7 +398,7 @@ end
 % Sample summary statistics
 Z = cell(noBlocks,noPops);
 whichIndices = Z;
-mergedAnnot = cell(size(annot));
+mergedAnnot = cell(size(annotations));
 for block = 1:noBlocks
     for pop = 1:noPops
 
