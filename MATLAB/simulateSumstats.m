@@ -472,7 +472,8 @@ end
 % Save to file if requested
 if ~isempty(savePath)
     if noPops > 1
-        assert(iscell(savePath) & numel(savePath) == noPops)
+        assert(iscell(savePath) & numel(savePath) == noPops,...
+            'If simulating multiple populations, savePath should be a cell array with one save path per population')
     elseif ischar(savePath)
         savePath = {savePath};
     end
@@ -490,8 +491,8 @@ if ~isempty(savePath)
         % PRS-CS file format ouput
         elseif strcmpi(fileFormat,'PRScs')
             assert(~isempty(snplists),'To use PRScs file format, SNP lists must be specified')
-            snplistsCat = cellfun(@(T,j)T(j,:),snplists(:,pop),whichIndices(:,pop),'UniformOutput',false);
-            snplistsCat = vertcat(snplistsCat{:,pop});
+            snplistsCat = cellfun(@(T,j)T(j,:),snplists,whichIndices(:,pop),'UniformOutput',false);
+            snplistsCat = vertcat(snplistsCat{:});
             nn = height(snplistsCat);
             T = table('size',[nn,0]);
             T.SNP = snplistsCat.site_ids;
@@ -509,8 +510,8 @@ if ~isempty(savePath)
         % LDSC file format output
         elseif strcmpi(fileFormat,'LDSC')
             assert(~isempty(snplists),'To use LDSC file format, SNP lists must be specified')
-            snplistsCat = cellfun(@(T,j)T(j,:),snplists(:,pop),whichIndices(:,pop),'UniformOutput',false);
-            snplistsCat = vertcat(snplistsCat{:,pop});
+            snplistsCat = cellfun(@(T,j)T(j,:),snplists,whichIndices(:,pop),'UniformOutput',false);
+            snplistsCat = vertcat(snplistsCat{:});
             nn = height(snplistsCat);
             T = table('size',[nn,0]);
             T.SNP = snplistsCat.site_ids;
@@ -525,8 +526,9 @@ if ~isempty(savePath)
         else
             error('Current file format options are PRScs, ldgm, and LDSC')
         end
-
-        writetable(T,savePath{pop},'FileType','text','delimiter','\t');
+        if ~isempty(savePath{pop})
+            writetable(T,savePath{pop},'FileType','text','delimiter','\t');
+        end
     end
 end
 
