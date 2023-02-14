@@ -290,7 +290,7 @@ noCpts = length(componentWeight);
 
 % mixture component assignments, which may be annotation- and
 % AF-dependent
-totalProbabilityCausal = sum(componentWeight(componentVarianceNotNull));
+totalProbabilityCausal = sum(componentWeight);
 assert(totalProbabilityCausal <= 1, 'Component weights must sum to at most 1')
 if ~annotationDependentPolygenicity
     probabilityCausal = arrayfun(@(n){totalProbabilityCausal * ones(n,1)},noSNPsAnnot);
