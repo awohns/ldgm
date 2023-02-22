@@ -134,10 +134,14 @@ addParameter(p, 'precisionMatrices', {}, @iscell);
 % blocks by number-of-populations cell array
 addParameter(p, 'correlationMatrices', {}, @iscell);
 
+% ldlchol(P) for each LD block and each population as a number-of-LD
+% blocks by number-of-populations cell array
+addParameter(p, 'choleskyFactors', {}, @iscell);
+
 % 'alpha' parameter of e.g. Schoech et al. 2019 Nat Comm. If there are
 % multiple populations, it uses mean AF to determine per-allele effect size
 % variance
-addParameter(p, 'alphaParam', 0, @isscalar);
+addParameter(p, 'alphaParam', -1, @isscalar);
 
 % annotation matrix for each LD block as a number-of-LD
 % blocks by 1 cell array
@@ -359,6 +363,8 @@ for block = 1:noBlocks
         % apply alpha model scaling
         if ~isempty(alleleFrequency)
             beta = beta .* sqrt((meanAF.*(1-meanAF)).^alphaParam);
+        elseif alphaParam ~=-1
+            error('If alphaParam is specified, allele frequencies must be specified')
         end
         % scale effect sizes using linkFn for SNPs in annotation matrix
         beta = beta .* sqrt(linkFn(annotations{block}));
@@ -379,7 +385,7 @@ for block = 1:noBlocks
             nzAF = any(precisionMatrices{block,pop},2); 
             true_beta_perSD{block,pop}(whichIndicesAnnot{block}) = ...
                 beta(:,pop) .* nzAF(whichIndicesAnnot{block});
-        else
+        elseif ~isempty(correlationMatrices)
             true_beta_perSD{block,pop}(whichIndicesAnnot{block}) = beta(:,pop);
         end
     end
@@ -401,26 +407,40 @@ whichIndices = Z;
 mergedAnnot = cell(size(annotations));
 for block = 1:noBlocks
     for pop = 1:noPops
-
-        if ~isempty(precisionMatrices)
-            % SNPs not missing in precision matrix
+        
+        if ~isempty(choleskyFactors)
+            % SNPs not missing in LD matrix
             pnz = diag(precisionMatrices{block,pop}) ~= 0;
             incl = whichIndicesAnnot{block}(pnz(whichIndicesAnnot{block}));
-            whichIndices{block,pop} = incl;
+            idx = lift(incl,find(pnz));
+
+            % Simulate sumstats using cholesky factors
+            use_ldlchol = true;
+            Z{block,pop} = precisionDivide(precisionMatrices{block,pop},...
+                true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop)), ...
+                incl, use_ldlchol);
+            [L,D] = ldlsplit(choleskyFactors{block,pop});
+            L = L * sqrt(D); % L*L' == P
+            noise = L' \ randn(length(L),1);
+            Z{block,pop} = Z{block,pop} + noise(idx);
+
+        elseif ~isempty(precisionMatrices)
+            % SNPs not missing in LD matrix
+            pnz = diag(precisionMatrices{block,pop}) ~= 0;
+            incl = whichIndicesAnnot{block}(pnz(whichIndicesAnnot{block}));
+            idx = lift(incl,find(pnz));
 
             % Simulate sumstats using precision matrices
             Z{block,pop} = precisionDivide(precisionMatrices{block,pop},...
                 true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop)), incl);
             noise = chol(precisionMatrices{block,pop}(pnz,pnz)) \...
                 randn(sum(pnz),1);
-            idx = lift(whichIndices{block,pop},find(pnz));
             Z{block,pop} = Z{block,pop} + noise(idx);
 
-        else
-            % SNPs not missing in correlation matrix
+        elseif ~isempty(correlationMatrices)
+            % SNPs not missing in LD matrix
             pnz = diag(correlationMatrices{block,pop}) ~= 0;
             incl = whichIndicesAnnot{block}(pnz(whichIndicesAnnot{block}));
-            whichIndices{block,pop} = incl;
 
             % Simulate using correlation matrices
             Z{block,pop} = correlationMatrices{block,pop}(incl,incl) *...
@@ -428,6 +448,8 @@ for block = 1:noBlocks
                 + chol(correlationMatrices{block,pop}(incl,incl))' *...
                 randn(sum(incl),1);
         end
+
+        whichIndices{block,pop} = incl;
 
         % Additional SNPs missing at random
         if missingness > 0
