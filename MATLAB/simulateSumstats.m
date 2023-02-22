@@ -1,4 +1,4 @@
-function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAnnot] = ...
+function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAnnot, true_alpha_perSD] = ...
     simulateSumstats(sampleSize, varargin)
 % Simulates summary statistics from specified prior distribution for
 % one or more populations.
@@ -416,13 +416,13 @@ for block = 1:noBlocks
 
             % Simulate sumstats using cholesky factors
             use_ldlchol = true;
-            Z{block,pop} = precisionDivide(precisionMatrices{block,pop},...
-                true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop)), ...
+            true_alpha_perSD{block,pop} = precisionDivide(precisionMatrices{block,pop},...
+                true_beta_perSD{block,pop}(incl), ...
                 incl, use_ldlchol);
             [L,D] = ldlsplit(choleskyFactors{block,pop});
             L = L * sqrt(D); % L*L' == P
             noise = L' \ randn(length(L),1);
-            Z{block,pop} = Z{block,pop} + noise(idx);
+            Z{block,pop} = true_alpha_perSD{block,pop} * sqrt(sampleSize(pop)) + noise(idx);
 
         elseif ~isempty(precisionMatrices)
             % SNPs not missing in LD matrix
@@ -431,11 +431,11 @@ for block = 1:noBlocks
             idx = lift(incl,find(pnz));
 
             % Simulate sumstats using precision matrices
-            Z{block,pop} = precisionDivide(precisionMatrices{block,pop},...
-                true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop)), incl);
+            true_alpha_perSD{block,pop} = precisionDivide(precisionMatrices{block,pop},...
+                true_beta_perSD{block,pop}(incl), incl);
             noise = chol(precisionMatrices{block,pop}(pnz,pnz)) \...
                 randn(sum(pnz),1);
-            Z{block,pop} = Z{block,pop} + noise(idx);
+            Z{block,pop} = true_alpha_perSD{block,pop} * sqrt(sampleSize(pop)) + noise(idx);
 
         elseif ~isempty(correlationMatrices)
             % SNPs not missing in LD matrix
@@ -443,10 +443,11 @@ for block = 1:noBlocks
             incl = whichIndicesAnnot{block}(pnz(whichIndicesAnnot{block}));
 
             % Simulate using correlation matrices
-            Z{block,pop} = correlationMatrices{block,pop}(incl,incl) *...
-                true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop))...
-                + chol(correlationMatrices{block,pop}(incl,incl))' *...
+            true_alpha_perSD{block,pop} = correlationMatrices{block,pop}(incl,incl) *...
+                true_beta_perSD{block,pop}(incl) * sqrt(sampleSize(pop));
+            noise = chol(correlationMatrices{block,pop}(incl,incl))' *...
                 randn(sum(incl),1);
+            Z{block,pop} = true_alpha_perSD{block,pop} * sqrt(sampleSize(pop)) + noise(idx);
         end
 
         whichIndices{block,pop} = incl;
