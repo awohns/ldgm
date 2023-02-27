@@ -1,0 +1,103 @@
+2023/02/03 02:40:21 PM Adopting the file prefixes in the directory: /n/holystore01/LABS/xlin/Lab/huili/h2_ldgm/data/ldgm_normalized
+2023/02/03 02:40:21 PM Block names: ['1kg_chr22_10516173_17414263', '1kg_chr22_17414263_19608021', '1kg_chr22_19608021_22004675', '1kg_chr22_22004675_23374984', '1kg_chr22_23374984_25249905', '1kg_chr22_25249905_26864676', '1kg_chr22_26864676_29423003', '1kg_chr22_29423003_30667654', '1kg_chr22_30667654_32269392', '1kg_chr22_32269392_34098789', '1kg_chr22_34098789_35136741', '1kg_chr22_35136741_37320379', '1kg_chr22_37320379_39179317', '1kg_chr22_39179317_40951809', '1kg_chr22_40951809_43251864', '1kg_chr22_43251864_44603286', '1kg_chr22_44603286_46177037', '1kg_chr22_46177037_47876022', '1kg_chr22_47876022_49355984', '1kg_chr22_49355984_50799822']
+2023/02/03 02:40:21 PM Processing block 0...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 10267
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 4089
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 1938
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 2151
+2023/02/03 02:40:21 PM Processing block 1...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 11502
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 4679
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 355
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 4324
+2023/02/03 02:40:21 PM Processing block 2...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 14438
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 5404
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 493
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 4911
+2023/02/03 02:40:21 PM Processing block 3...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 6155
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 2450
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 157
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 2293
+2023/02/03 02:40:21 PM Processing block 4...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 14182
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 5024
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 494
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 4530
+2023/02/03 02:40:21 PM Processing block 5...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 9403
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 3807
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 142
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 3665
+2023/02/03 02:40:21 PM Processing block 6...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 16888
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 6950
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 280
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 6670
+2023/02/03 02:40:21 PM Processing block 7...
+2023/02/03 02:40:21 PM Number of SNPs in the snp list: 7380
+2023/02/03 02:40:21 PM Number of non-zero SNPs in the precision matrix in this block: 2868
+2023/02/03 02:40:21 PM Some of the NZ SNPs in LDGM have no annotation information: 56
+2023/02/03 02:40:21 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 2812
+2023/02/03 02:40:22 PM Processing block 8...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 9651
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 3820
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 141
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 3679
+2023/02/03 02:40:22 PM Processing block 9...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 14187
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 5731
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 189
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 5542
+2023/02/03 02:40:22 PM Processing block 10...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 8297
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 3604
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 88
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 3516
+2023/02/03 02:40:22 PM Processing block 11...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 15579
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 6287
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 115
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 6172
+2023/02/03 02:40:22 PM Processing block 12...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 12145
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 4253
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 109
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 4144
+2023/02/03 02:40:22 PM Processing block 13...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 9742
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 3143
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 69
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 3074
+2023/02/03 02:40:22 PM Processing block 14...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 14943
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 5597
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 161
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 5436
+2023/02/03 02:40:22 PM Processing block 15...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 10497
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 4689
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 64
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 4625
+2023/02/03 02:40:22 PM Processing block 16...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 13534
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 5692
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 114
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 5578
+2023/02/03 02:40:22 PM Processing block 17...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 15629
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 5773
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 84
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 5689
+2023/02/03 02:40:22 PM Processing block 18...
+2023/02/03 02:40:22 PM Number of SNPs in the snp list: 16233
+2023/02/03 02:40:22 PM Number of non-zero SNPs in the precision matrix in this block: 7241
+2023/02/03 02:40:22 PM Some of the NZ SNPs in LDGM have no annotation information: 157
+2023/02/03 02:40:22 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 7084
+2023/02/03 02:40:22 PM Processing block 19...
+2023/02/03 02:40:23 PM Number of SNPs in the snp list: 11934
+2023/02/03 02:40:23 PM Number of non-zero SNPs in the precision matrix in this block: 5109
+2023/02/03 02:40:23 PM Some of the NZ SNPs in LDGM have no annotation information: 209
+2023/02/03 02:40:23 PM # of NZ SNPs after selecting the SNPs overlapped with annotations: 4900
+2023/02/03 02:40:25 PM Total time elapsed: 4.447701930999756s

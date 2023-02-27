@@ -1,4 +1,5 @@
-function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD, mergedAnnot, true_alpha_perSD] = ...
+function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD,... 
+    mergedAnnot, true_alpha_perSD, true_perSNP_h2] = ...
     simulateSumstats(sampleSize, varargin)
 % Simulates summary statistics from specified prior distribution for
 % one or more populations.
@@ -336,6 +337,8 @@ end
 % Simulate summary statistics for each LD block
 true_beta_perallele = arrayfun(@(m)zeros(m,1),repmat(noSNPs,1,noPops),'UniformOutput',false);
 true_beta_perSD = true_beta_perallele;
+true_perSNP_h2 = probabilityCausal;
+
 for block = 1:noBlocks
 
     % mixture component assignments
@@ -359,15 +362,18 @@ for block = 1:noBlocks
     if annotationDependentPolygenicity && ~isempty(alleleFrequency)
         % larger per-allele effect-size magnitudes for low-frequency causal SNPs
         beta = beta ./ sqrt((meanAF.*(1-meanAF)));
+        true_perSNP_h2{block} = true_perSNP_h2{block} ./ (meanAF.*(1-meanAF));
     else
         % apply alpha model scaling
         if ~isempty(alleleFrequency)
             beta = beta .* sqrt((meanAF.*(1-meanAF)).^alphaParam);
+            true_perSNP_h2{block} = true_perSNP_h2{block} .* (meanAF.*(1-meanAF)).^alphaParam;
         elseif alphaParam ~=-1
             error('If alphaParam is specified, allele frequencies must be specified')
         end
         % scale effect sizes using linkFn for SNPs in annotation matrix
         beta = beta .* sqrt(linkFn(annotations{block}));
+        true_perSNP_h2{block} = true_perSNP_h2{block} .* linkFn(annotations{block});
     end
 
     assert(isreal(beta) & all(beta == beta, 'all'), 'Imaginary or NaN beta; check link function')
@@ -390,6 +396,10 @@ for block = 1:noBlocks
         end
     end
 
+    % Compute per-SNP-h2 on SD scale
+    if ~isempty(alleleFrequency)
+        true_perSNP_h2{block} = true_perSNP_h2{block} .* (meanAF.*(1-meanAF));
+    end
 end
 
 % Normalize effect sizes so they add up to h2
@@ -399,6 +409,11 @@ if ~isempty(heritability)
         true_beta_perallele(:,pop) = cellfun(@(b){b*normalizer}, true_beta_perallele(:,pop));
         true_beta_perSD(:,pop) = cellfun(@(b){b*normalizer}, true_beta_perSD(:,pop));
     end
+
+    % normalize per-SNP h2 so they add up to h2
+    perSNPh2_normalizer = heritability(1,1)/sum(cellfun(@(x)sum(x),true_perSNP_h2));
+    true_perSNP_h2 = cellfun(@(h)(h*perSNPh2_normalizer), true_perSNP_h2, ...
+        'UniformOutput', false);
 end
 
 % Sample summary statistics
