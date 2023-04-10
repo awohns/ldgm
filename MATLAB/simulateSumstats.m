@@ -603,7 +603,7 @@ if ~isempty(savePath)
             sumstatsCat = vertcat(sumstats{:,pop});
             beta_perSD = sumstatsCat.Z_deriv_allele / sqrt(sampleSize(pop));
             T.beta = beta_perSD ./ sqrt(2*AFCat.*(1-AFCat));
-            T.beta_se = 1 ./ (2 * sampleSize(pop) * AFCat.*(1-AFCat));
+            T.beta_se = 1 ./ sqrt(2 * sampleSize(pop) * AFCat.*(1-AFCat));
 
             T.N(:) = sampleSize(pop);
             T.p = chi2cdf(sumstatsCat.Z_deriv_allele.^2, 1, 'upper');
