@@ -30,7 +30,7 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD,...
 % file format option
 %
 % fileFormat: If saving summary statistics to a file, which file format to
-% use. Current options are 'ldgm', 'PRScs', and 'LDSC'
+% use. Current options are 'ldgm', 'PRScs', 'LDpred', and 'LDSC'
 %
 % alleleFrequency: allele frequency for each LD block and each population as
 % a number-of-LD blocks by number-of-populations cell array. If specified,
@@ -120,8 +120,12 @@ addParameter(p, 'savePath', '', @(s)ischar(s) || iscell(s));
 addParameter(p, 'snplists', {}, @iscell);
 
 % If saving summary statistics to a file, which file format to use. Current
-% options are 'ldgm' and 'PRScs'
-addParameter(p, 'fileFormat', 'ldgm', @ischar);
+% options are 'ldgm', 'PRScs', 'LDSC', and 'LDpred'
+addParameter(p, 'fileFormat', 'ldgm', @(x)ischar(x) || iscell(x));
+
+% Chromosome number corresponding to each LD block, only needed if writing
+% to LDpred file format
+addParameter(p, 'chromosome', [], @(x)isnumeric(x));
 
 % allele frequency for each LD block and each population as a number-of-LD
 % blocks by number-of-populations cell array
@@ -510,15 +514,19 @@ end
 % Save to file if requested
 if ~isempty(savePath)
     if noPops > 1
-        assert(iscell(savePath) & numel(savePath) == noPops,...
-            'If simulating multiple populations, savePath should be a cell array with one save path per population')
-    elseif ischar(savePath)
-        savePath = {savePath};
+        if ischar(savePath)
+            savePath = arrayfun(@(n)[savePath, '_population', num2str(n)],1:noPops,'UniformOutput',false);
+        end
     end
     true_beta_perSD_nonmissing = cellfun(@(x,j)x(j),true_beta_perSD,whichIndices,'UniformOutput',false);
+
+    if ischar(fileFormat)
+        fileFormat = {fileFormat};
+    end
+
     for pop = 1:noPops
         % ldgm sumstats file format output
-        if strcmpi(fileFormat,'ldgm')
+        if any(contains(fileFormat,'ldgm','IgnoreCase',true))
             T = vertcat(sumstats{:,pop});
             T.index(:) = vertcat(whichIndices{:,pop}) - 1; % zero-indexed
             whichBlock = arrayfun(@(n,s)n*ones(s,1),(1:noBlocks)',...
@@ -526,8 +534,11 @@ if ~isempty(savePath)
             T.block(:) = vertcat(whichBlock{:}) - 1; % zero-indexed
             T.beta_perSD_true(:) = vertcat(true_beta_perSD_nonmissing{:,pop});
 
+            writetable(T,[savePath{pop}, '.ldgm.txt'],'FileType','text','delimiter','\t');
+        end
+
         % PRS-CS file format ouput
-        elseif strcmpi(fileFormat,'PRScs')
+        if any(contains(fileFormat,'PRScs','IgnoreCase',true))
             assert(~isempty(snplists),'To use PRScs file format, SNP lists must be specified')
             snplistsCat = cellfun(@(T,j)T(j,:),snplists,whichIndices(:,pop),'UniformOutput',false);
             snplistsCat = vertcat(snplistsCat{:});
@@ -542,11 +553,15 @@ if ~isempty(savePath)
             if any(sumstatsCat.Z_deriv_allele.^2 > 300)
                 warning('Very large chi^2 statistics might lead to unreliable p-values in printed summary statistics')
             end
+
             % Discard NA SNP IDs
             T = T(~strcmpi(T.SNP,'NA'),:);
 
+            writetable(T,[savePath{pop}, '.prscs.txt'],'FileType','text','delimiter','\t');
+        end
+
         % LDSC file format output
-        elseif strcmpi(fileFormat,'LDSC')
+        if any(contains(fileFormat,'LDSC','IgnoreCase',true))
             assert(~isempty(snplists),'To use LDSC file format, SNP lists must be specified')
             snplistsCat = cellfun(@(T,j)T(j,:),snplists,whichIndices(:,pop),'UniformOutput',false);
             snplistsCat = vertcat(snplistsCat{:});
@@ -557,16 +572,50 @@ if ~isempty(savePath)
             T.A2 = snplistsCat.deriv_alleles;
             sumstatsCat = vertcat(sumstats{:,pop});
             T.Z = sumstatsCat.Z_deriv_allele;
-            T.N(:) = sampleSize;
+            T.N(:) = sampleSize(pop);
 
             % Discard NA SNP IDs
             T = T(~strcmpi(T.SNP,'NA'),:);
-        else
-            error('Current file format options are PRScs, ldgm, and LDSC')
+
+            writetable(T,[savePath{pop}, '.ldsc.txt'],'FileType','text','delimiter','\t');
         end
-        if ~isempty(savePath{pop})
-            writetable(T,savePath{pop},'FileType','text','delimiter','\t');
+
+        % LDpred file format output
+        if any(contains(fileFormat,'LDpred','IgnoreCase',true))
+            assert(~isempty(snplists),'To use LDpred file format, SNP lists must be specified')
+            assert(any(contains(snplists{1}.Properties.VariableNames, 'position')),'To use LDpred file format, SNP lists must contain position information')
+            assert(~isempty(chromosome), 'To use LDpred file format, chromosome number must be specified')
+            assert(isscalar(chromosome) || numel(chromosome) == noBlocks, 'Size of chromosome vector should match number of blocks')
+            
+            snplistsCat = cellfun(@(T,j)T(j,:),snplists,whichIndices(:,pop),'UniformOutput',false);
+            snplistsCat = vertcat(snplistsCat{:});
+            AFCat = cellfun(@(T,j)T(j,:),alleleFrequency(:,pop),whichIndices(:,pop),'UniformOutput',false);
+            AFCat = vertcat(AFCat{:});
+
+            nn = height(snplistsCat);
+            T = table('size',[nn,0]);
+            T.rsid = snplistsCat.site_ids;
+            T.chr(:) = chromosome;
+            T.pos = vertcat(snplistsCat.position);
+            T.a0 = snplistsCat.anc_alleles;
+            T.a1 = snplistsCat.deriv_alleles;
+
+            sumstatsCat = vertcat(sumstats{:,pop});
+            beta_perSD = sumstatsCat.Z_deriv_allele / sqrt(sampleSize(pop));
+            T.beta = beta_perSD ./ sqrt(2*AFCat.*(1-AFCat));
+            T.beta_se = 1 ./ sqrt(2 * sampleSize(pop) * AFCat.*(1-AFCat));
+
+            T.N(:) = sampleSize(pop);
+            T.p = chi2cdf(sumstatsCat.Z_deriv_allele.^2, 1, 'upper');
+
+            % Discard NA SNP IDs
+            T = T(~strcmpi(T.rsid,'NA'),:);
+            
+            writetable(T,[savePath{pop}, '.ldpred.txt'],'FileType','text','delimiter','\t');
+            
         end
+
+        
     end
 end
 
