@@ -22,9 +22,6 @@ function [logLikelihood, logLikelihoodBlocks] = GWASlikelihood(Z_deriv_allele,si
 
 assert(isscalar(nn) && all(nn>0),'Sample size nn should be a positive scalar')
 
-if nargin < 6
-    intercept = 1;
-end
 assert(isscalar(intercept))
 if intercept < 0
     logLikelihood = -inf;

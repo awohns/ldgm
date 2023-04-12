@@ -41,13 +41,7 @@ function [grad] = GWASlikelihoodGradient(Z, sigmasq, P, nn, delSigmaDelA, whichS
 % where a==0, and it computes the derivative of the log-likelihood with 
 % respect to a; this will be the last element of grad.
 
-if nargin < 7
-    intercept = 1;
-end
 assert(isscalar(intercept) && all(intercept>=0,'all'))
-if nargin < 8
-    fixedIntercept = true;
-end
 
 if iscell(P) % handle cell-array-valued inputs
     if nargin < 5
