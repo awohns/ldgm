@@ -20,13 +20,16 @@ function [precisionEstimate, R, ldSnpTable] = estimatePrecision(data_directory, 
 % (see below). If correlation or edgelist is specified, it is required to
 % also specify LD_matrix_snplist_dir, whose rows correspond to the SNPs in
 % the LD matrix (or edgelist). This will automatically be merged with the
-% LDGM .snplist file, and alleles will be matched. The resulting precision
-% matrix will have one row/column for each labeled brick (i.e.,
+% LDGM .snplist file, using the column named 'site_ids'. The resulting 
+% precision matrix will have one row/column for each labeled brick (i.e.,
 % nonredundant SNP) in the LDGM such that at least one of its SNPs is
 % present in the LD matrix. Optionally, specify 'AF_column_name' together
 % with 'minimum_AF'. With this option, the allele frequencies will be
 % looked up in the LD matrix .snplist file (rather than the LDGM .snplist
-% file), under the column with the corresponding name.
+% file), under the column with the corresponding name. Optionally, specify
+% 'A1_column_name' and 'A2_column_name'. With this option, the alleles will
+% be matched between A1/A2 and ancestral/derived allele, and the resulting
+% precision matrix will be phased to ancestral/derived.
 %
 % If genotypes are specified, there are various additional options:
 %   -population_data_file: a file describing the ancestry of each
@@ -149,6 +152,13 @@ addParameter(p, 'LD_matrix_snplist_dir', '', @isstr);
 % name of LD matrix SNP list column that contains allele frequencies. If
 % not specified, a column of the LDGM .snplist will be used instead.
 addParameter(p, 'AF_column_name', '', @isstr);
+
+% name of LD matrix SNP list column that contains one of the alleles
+% (non-case-sensitive).
+addParameter(p, 'A1_column_name', '', @isstr);
+
+% name of LD matrix SNP list column that contains the other allele.
+addParameter(p, 'A2_column_name', '', @isstr);
 
 % extra filename field, added at beginning
 addParameter(p, 'custom_filename', '', @isstr);
@@ -371,10 +381,12 @@ A_weighted = readedgelist([edgelist_dir, edgelist_file.name], noIndices, replace
 % Merge SNPs between LDGM and correlation matrix
 
 % Allele frequencies
-assert(any(strcmp(ldgmSnpTable.Properties.VariableNames,population_name)),...
-    'No allele frequency column in LDGM SNP list found')
-AF = table2array(ldgmSnpTable(:,population_name));
-MAF = min(AF,1-AF);
+if isempty(AF_column_name)
+    assert(any(strcmp(ldgmSnpTable.Properties.VariableNames,population_name)),...
+        'No allele frequency column in LDGM SNP list found')
+    AF = table2array(ldgmSnpTable(:,population_name));
+    MAF = min(AF,1-AF);
+end
 
 % If no LD matrix SNP list is specified, require that LD matrix is
 % already merged with SNP list
@@ -390,22 +402,43 @@ else
     error('LD matrix SNP list not found')
 end
 
-% Restrict to common SNPs
-commonSNPs = MAF > minimum_maf;
-ldgmSnpTable = ldgmSnpTable(commonSNPs,:);
 
 % Merge SNPs between the LD SNP list and LDGM SNP list
 if ~isempty(ldSnpTable)
     [~, idxLDGM, idxR] = intersect(ldgmSnpTable.site_ids, ldSnpTable.site_ids, 'stable');
+
+    if ~isempty(A1_column_name) && ~isempty(A2_column_name)
+        phase = mergealleles(...
+            ldSnpTable(idxR,A1_column_name),ldSnpTable(idxR,A2_column_name),...
+            ldgmSnpTable.anc_allele(idxLDGM),ldgmSnpTable.deriv_allele(idxLDGM));
+        if mean(phase == 0) > 0.5
+            error('>50% of SNPs had mismatching alleles between LDGM and correlation matrix edgelists, indicating something is wrong')
+        end
+    end
+    % phase==0 for mismatching alleles
+    idxR = idxR(phase~=0); idxLDGM = idxLDGM(phase~=0);
+    phase = phase(phase~=0);
+
     ldSnpTable = ldSnpTable(idxR,:);
-    R = R(idxR,idxR);
+    R = phase .* R(idxR,idxR) .* phase';
+
+    if ~isempty(AF_column_name)
+        AF = table2array(ldSnpTable(:,AF_column_name));
+        MAF = min(AF,1-AF);
+    else
+        MAF = MAF(idxLDGM);
+    end
 else
-    R = R(commonSNPs, commonSNPs);
-    idxLDGM = 1:sum(commonSNPs);
+    idxLDGM = 1:length(MAF);
 end
 
+% Restrict to common SNPs
+commonSNPs = MAF > minimum_maf;
+R = R(commonSNPs, commonSNPs);
+
+
 % Convert merged SNPs to merged indices
-[mergedIndices, representatives] = unique(ldgmSnpTable(idxLDGM,:).index,'stable');
+[mergedIndices, representatives] = unique(ldgmSnpTable(idxLDGM(commonSNPs),:).index,'stable');
 R = R(representatives, representatives);
 
 
