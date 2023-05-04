@@ -18,7 +18,7 @@ function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = 
 % 
 % Optional input arguments:
 % Optional inputs specify the names of various columns in the summary
-% statistics table. Only the variant ID column is required; the others are
+% statistics table. Only the variant ID column is required; the others arefunction bgenreader
 % optional, and will be ignored if they do not match anything in the
 % sumstats table
 % 
@@ -35,7 +35,7 @@ function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = 
 %   way, it will create a column named 'Z_deriv_allele' for the Z score of
 %   the derived allele (if ref and alt alleles are found) (default: 'Z')
 % 
-%   columnNameContainingBeta, columnNameContainingSE: if Z score column not
+%   columnNameContainingBeta, columnNameContainingStandardError: if Z score column not
 %   found, function will compute Z scores from these columns (default: 
 %   'Beta', 'SE')
 % 
@@ -85,6 +85,9 @@ addRequired(p, 'sumstats', @istable);
 % indices for each LD block should be retained
 addRequired(p, 'P', @iscell);
 
+% optional name of file format. Currently only supported option is 'vcf'
+addParameter(p, 'tableFormat', '', @ischar);
+
 % column of sumstats table containing SNP IDs
 addParameter(p, 'columnNameContainingVariantId', 'SNP', @(x)ischar(x) || isnumeric(x));
 
@@ -123,6 +126,14 @@ clear p
 assert(iscell(snplists), 'Please specify snplists as a cell array of tables')
 assert(all(cellfun(@istable,snplists)), 'Please specify snplists as a cell array of tables')
 assert(istable(sumstats), 'Please specify sumstats as a table')
+
+if strcmpi(tableFormat, 'vcf')
+    columnNameContainingVariantId = 'ID';
+    columnNameContainingReferenceAllele = 'A1';
+    columnNameContainingAlternativeAllele = 'A2';
+    columnNameContainingBeta = 'BETA';
+    columnNameContainingStandardError = 'SE';
+end
 
 % Identify columns of sumstats table
 sumstatsColumnNames = sumstats.Properties.VariableNames;
