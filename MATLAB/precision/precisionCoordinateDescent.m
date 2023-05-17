@@ -39,14 +39,12 @@ end
 % the lasso solver is failing to find good solutions
 init_lasso_min_stepsize = 0.1;
 lasso_increment = 2;
-tic;
+time0 = toc;
 R_sample = R_sample - speye(nn);
+fprintf('\n Beginning %d iterations by %d nodes of coordinate descent with lambda=%.2f \n', maxIters, nn, lambda)
 for iter = 1:maxIters
     lasso_min_stepsize = init_lasso_min_stepsize;
     for ii = 1:nn
-        if mod(ii,100)==0
-            disp(ii);toc
-        end
         neighbors = A(:,ii);
         
         % no-L1-penalty solution
@@ -91,7 +89,9 @@ for iter = 1:maxIters
             end
         end
     end
-
+    time1 = toc;
+    fprintf('Time for %d iteration(s): %.1f minutes\n', iter, (time1-time0)/60)
+    
 end
 end
 
