@@ -34,7 +34,7 @@ else
     % handle zero diagonal elements in P
     incl = diag(P) ~= 0;
     if use_ldlchol
-        assert(all(incl), 'Cholesky factor should have all nonzero entries; please compute it using ldlchol')
+        assert(all(incl), 'Cholesky factor should have all nonzero diagonal entries; please compute it using ldlchol')
         assert(istril(P), 'Cholesky factor should be lower triangular; please compute it using ldlchol')
     else
         assert(all(incl(whichIndices)),...
