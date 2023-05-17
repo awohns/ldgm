@@ -56,7 +56,7 @@ function [precisionEstimate, R, ldSnpTable] = estimatePrecision(data_directory, 
 %   -output_dir: directory in which to save the output files
 %   -custom_filename: if specified, this is prepended to the name of the
 %   output files within output_dir
-%   -data_pattern: if specified, only data files matching this regular
+%   -data_pattern: if specified, only data files matching this
 %   expression will be found
 %   -data_file_index: out of the data files that are found, which one to
 %   compute a precision matrix for
@@ -64,6 +64,19 @@ function [precisionEstimate, R, ldSnpTable] = estimatePrecision(data_directory, 
 %   LD correlation matrix SNP list as the data file; directory in which to
 %   find a corresponding .snplist file, for merging with the LDGM .snplist
 %   file
+% 
+% MERGING RELATED OPTIONS:
+% If LD_matrix_snplist_dir is specified, there are various options for how
+% to merge between the LD information and the LDGM
+%  -match_snps_on_position: if true (default), there must be a column named
+%  'position' in both SNP lists, and this will be used for the merge
+%  (together with the allele info). If false, there must be a column named
+%  'site_ids' which will be used instead.
+%  -A1_column_name, A2_column_name: supply these in order to tell the
+%  method which columns contain A1 and A2 (it doesn't matter which is
+%  which)
+%  -AF_column_name: if supplied, this allele frequency will be used instead
+%  of the allele frequency specified in the LDGM SNP list
 %
 % METHOD PARAMETERS: (all of these can probably be left at default values)
 %   -minimum_maf: minimum allele frequency, as calculated either using the
@@ -117,7 +130,6 @@ function [precisionEstimate, R, ldSnpTable] = estimatePrecision(data_directory, 
 % precision matrix P directly.
 
 
-addpath(genpath('..'))
 p=inputParser;
 
 % directory containing genotype matrices (default) or LD matrix
@@ -148,6 +160,10 @@ addParameter(p, 'snplist_dir', data_directory, @isstr);
 
 % directory containing LD matrix SNP list, defaults to data_path
 addParameter(p, 'LD_matrix_snplist_dir', '', @isstr);
+
+% Whether to match SNPs in LD_matrix_snplist_dir using position column or
+% site_ids column
+addParameter(p, 'match_snps_on_position', true, @isstr);
 
 % name of LD matrix SNP list column that contains allele frequencies. If
 % not specified, a column of the LDGM .snplist will be used instead.
@@ -227,9 +243,6 @@ end
 if isempty(output_dir) && nargout == 0
     error('Please specify output_dir so that the results are saved')
 end
-
-% add MATLAB and its subdirectories to path
-addpath(genpath('../../MATLAB/'));
 
 % suffixes for output files
 output_suffix = sprintf('.path_distance=%.1f.l1_pen=%.2f.maf=%.2f.%s',...
@@ -343,7 +356,7 @@ if strcmp(data_type,'genotypes')
 
 elseif strcmp(data_type,'correlation')
     % LD correlation matrix
-    R = readmatrix([data_directory,filename, data_file_extension],'FileType','text');
+    R = load([data_directory,filename, data_file_extension]);
 
 elseif strcmp(data_type,'edgelist')
     % LD correlation matrix
@@ -405,12 +418,16 @@ end
 
 % Merge SNPs between the LD SNP list and LDGM SNP list
 if ~isempty(ldSnpTable)
-    [~, idxLDGM, idxR] = intersect(ldgmSnpTable.site_ids, ldSnpTable.site_ids, 'stable');
-
+    if match_snps_on_position
+        [~, idxLDGM, idxR] = intersect(ldgmSnpTable.position, ldSnpTable.position, 'stable');
+    else
+        [~, idxLDGM, idxR] = intersect(ldgmSnpTable.site_ids, ldSnpTable.site_ids, 'stable');
+    end
     if ~isempty(A1_column_name) && ~isempty(A2_column_name)
         phase = mergealleles(...
-            ldSnpTable(idxR,A1_column_name),ldSnpTable(idxR,A2_column_name),...
-            ldgmSnpTable.anc_allele(idxLDGM),ldgmSnpTable.deriv_allele(idxLDGM));
+            table2array(ldSnpTable(idxR,A1_column_name)), ...
+            table2array(ldSnpTable(idxR,A2_column_name)),...
+            ldgmSnpTable.anc_alleles(idxLDGM),ldgmSnpTable.deriv_alleles(idxLDGM));
         if mean(phase == 0) > 0.5
             error('>50% of SNPs had mismatching alleles between LDGM and correlation matrix edgelists, indicating something is wrong')
         end
@@ -541,10 +558,17 @@ end
 
 % saving
 if ~isempty(output_dir)
-    mkdir(output_dir);
+    if ~isfolder(output_dir)
+        mkdir(output_dir);
+    end
+
+    % assign entries of precisionEstimate to rows/cols corresponding to the
+    % rows/cols of the LDGM
+    P = zeros(max(ldgmSnpTable.index) + 1);
+    P(mergedIndices + 1, mergedIndices + 1) = precisionEstimate;
 
     writetable(T, [output_dir,custom_filename,filename,output_suffix,'.stats.txt']);
-    writeedgelist([output_dir,custom_filename,filename,output_suffix,'.edgelist'],precisionEstimate);
+    writeedgelist([output_dir,custom_filename,filename,output_suffix,'.edgelist'], P);
 end
 
 
