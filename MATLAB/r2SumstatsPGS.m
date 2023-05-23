@@ -1,4 +1,4 @@
-function [r2, pval] = r2SumstatsPGS(mergedSumstats, PGSWeightsPerSD, P, whichIndicesSumstats, whichIndicesPGS, sampleSize, projectOutMissingSNPs, useLdlChol)
+function [r2, pval] = r2SumstatsPGS(mergedSumstatsValidation, PGSWeightsPerSD, P, whichIndicesSumstats, whichIndicesPGS, sampleSizeValidation, projectOutMissingSNPs, useLdlChol)
 %r2SumstatsPGS estimates the PGS accuracy, i.e. the squared correlation between
 %Y and X*estimated_beta_perSD, using the precision matrix
 %and summary statistics from an external cohort (not used to compute the
@@ -49,7 +49,7 @@ function [r2, pval] = r2SumstatsPGS(mergedSumstats, PGSWeightsPerSD, P, whichInd
 assert(noPopns == 1, 'Only supported for a single ancestry group')
 
 if nargin < 6
-    sampleSize = 1;
+    sampleSizeValidation = 1;
 end
 if nargin < 7
     projectOutMissingSNPs = true;
@@ -78,7 +78,7 @@ xtx = zeros(noBlocks,1);
 xty = zeros(noBlocks,1);
 
 for block = 1:noBlocks
-    alphaHatGWAS = mergedSumstats{block}.Z_deriv_allele(subsetOfWhichIndicesTarget{block}) / sqrt(sampleSize);
+    alphaHatGWAS = mergedSumstatsValidation{block}.Z_deriv_allele(subsetOfWhichIndicesTarget{block}) / sqrt(sampleSizeValidation);
 
     xtx(block) = qf(PGSweightsProjected{block},P{block},whichIndicesSubset{block});
     
