@@ -109,6 +109,14 @@ addParameter(p, 'columnNameContainingStandardError', 'SE', @(x)ischar(x) || isnu
 % column of sumstats table containing allele frequencies of alt alleles
 addParameter(p, 'columnNameContainingAlternativeAlleleFrequency', 'EAF', @(x)ischar(x) || isnumeric(x));
 
+% optional QC step is to compare allele frequency from sumstats file
+% with AF from snplist file, and discard SNPs that seem to have discordant
+% frequencies. If doing this, specify which population (e.g., 'EUR') to
+% check against in the snplist tables. Optionally specify a tolerance for
+% abs(AF1 - AF2).
+addParameter(p, 'populationForCheckingAlleleFrequency', '', @(x)ischar(x) || isnumeric(x));
+addParameter(p, 'alleleFrequencyDifferenceTolerance', 0.2, @(x)ischar(x) || isnumeric(x));
+
 % columns of sumstats table containing PGS weights
 addParameter(p, 'columnNameContainingPGSWeight', '', @(x)ischar(x) || isnumeric(x));
 
@@ -257,6 +265,24 @@ for ii = 1:noBlocks
     representatives{ii} = representatives{ii}(include_indices);
     
     mergedSumstats{ii} = mergedSumstats{ii}(representatives{ii},:);
+end
+
+if ~isempty(populationForCheckingAlleleFrequency)
+    for block = 1:noBlocks
+        AF1 = mergedSumstats{block}.AF_deriv_allele;
+        AF2 = table2array(snplists{block}(whichSNPs{block}, populationForCheckingAlleleFrequency));
+        AF2 = AF2(representatives{block});
+        AF_difference = abs(AF1 - AF2);
+        incl = AF_difference < alleleFrequencyDifferenceTolerance;
+        if mean(incl) < .9
+            warning('Large number of SNPs (>0.1) with discordant allele frequencies')
+        end
+
+        whichIndices{block} = whichIndices{block}(incl);
+        mergedSumstats{block} = mergedSumstats{block}(incl,:);
+        whichSNPs{block} = whichSNPs{block}(incl);
+
+    end
 end
 
 end
