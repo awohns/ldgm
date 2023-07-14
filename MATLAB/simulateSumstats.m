@@ -1,14 +1,16 @@
 function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD,... 
-    mergedAnnot, true_alpha_perSD, true_perSNP_h2] = ...
+    true_alpha_perSD, true_perSNP_h2] = ...
     simulateSumstats(sampleSize, varargin)
 % Simulates summary statistics from specified prior distribution for
 % one or more populations.
 %
 % Required input arguments:
+% 
 % sampleSize: sample size for each population as a vector
+% 
+% Also must specify either precisionMatrices or correlationMatrices
 %
-%
-% % Optional input arguments as name-value pairs:
+% Optional input arguments as name-value pairs:
 %
 % savePath: path and file name where summary statistics should be saved.
 % One file is saved per population; if there are multiple populations, this
@@ -94,17 +96,19 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD,...
 %
 % whichIndices: number-of-blocks by number-of-populations cell array of
 % indices for which sumstats are reported. If missingness input is zero
-% (default), this is simply the indices for which the precision matrix is
-% nonmissing.
-%
-% componentVariance: per-allele effect-size covariance matrix across
-% populations for each variance component. This is normalized to the
-% desired heritability for each population.
+% (default), these are the indices for which the precision matrix has
+% nonzero entries and the annotations matrix (if specified) has data
 %
 % true_beta_perallele: true per-allele effect size of each variant,
-% including those that are missing in the summary statistics
+% including those that are missing in the summary statistics. 
 %
 % true_beta_perSD: same as true_beta_perallele, but in per-SD units
+% 
+% true_alpha_perSD: true marginal effect sizes (i.e., correlations)
+% 
+% true_perSNP_h2: the per-sd effect-size variance of each SNP in the
+% annotations matrix
+
 
 p=inputParser;
 
@@ -306,7 +310,7 @@ if ~annotationDependentPolygenicity
 else
     % annotation-dependent probability of being assigned to a non-null
     % component
-    relativeProbabilityCausal = cellfun(linkFn,annotations,'UniformOutput',false); 
+    relativeProbabilityCausal = cellfun(linkFn,annotations,'UniformOutput',false); %#ok<FUNFUN>
     
     % allele-frequency-dependent scaling
     if alphaParam ~= -1
@@ -378,6 +382,12 @@ for block = 1:noBlocks
         % scale effect sizes using linkFn for SNPs in annotation matrix
         beta = beta .* sqrt(linkFn(annotations{block}));
         true_perSNP_h2{block} = true_perSNP_h2{block} .* linkFn(annotations{block});
+    end
+    
+    % Convert from SNPs to indices
+    [whichIndicesAnnot{block}, representatives, duplicates] = unique(whichIndicesAnnot{block});
+    if numel(whichIndicesAnnot{block}) < numel(duplicates)
+        beta = accumarray(duplicates, beta);
     end
 
     assert(isreal(beta) & all(beta == beta, 'all'), 'Imaginary or NaN beta; check link function')
@@ -476,11 +486,6 @@ for block = 1:noBlocks
             incl = rand(length(incl),1) > missingness;
             Z{block,pop} = Z{block,pop}(incl);
             whichIndices{block,pop} = whichIndices{block,pop}(incl);
-        end
-
-        if nargout >= 5
-            idx = lift(whichIndices{block,pop},whichIndicesAnnot{block});
-            mergedAnnot{block} = annotations{block}(idx,:);
         end
     end
 end
