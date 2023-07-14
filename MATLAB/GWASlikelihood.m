@@ -51,6 +51,8 @@ end
     function ll = likelihoodFn(Z,sigmasq,P,nn,whichSNPs,intercept)
 
         if ~islogical(whichSNPs)
+            [whichSNPs, ~, duplicates] = unique(whichSNPs);
+            sigmasq = accumarray(duplicates,sigmasq);
             whichSNPs = unfind(whichSNPs,length(P));
         end
 
