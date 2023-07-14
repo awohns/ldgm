@@ -32,6 +32,10 @@ addParameter(p, 'snplistpath', filepath, @isstr);
 % their inverse is exactly 1
 addParameter(p, 'normalizePrecision', false, @isscalar);
 
+
+% whether to add column containing chromosome to each SNP list
+addParameter(p, 'addChromosomeColumn', false, @isscalar);
+
 % turns p.Results.x into just x
 parse(p, filepath, varargin{:});
 fields = fieldnames(p.Results);
@@ -62,6 +66,11 @@ matrices = cell(noFiles,length(popnNames));
 % Read snplists
 for jj = 1:noFiles
     snplists{jj} = readtable([snplist_files(jj).folder,'/',snplist_files(jj).name],'FileType','text');
+    if addChromosomeColumn
+        before = extractBefore(snplist_files(jj).name, 'chr');
+        chr = sscanf(snplist_files(jj).name, [before, 'chr%d']);
+        snplists{jj}.chr(:) = chr;
+    end
 end
 
 % Read edgelists
