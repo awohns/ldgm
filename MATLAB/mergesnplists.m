@@ -14,7 +14,7 @@ function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = 
 %
 % P: cell array of LDGM precision matrices. Any indices whose
 %  corresponding rows/columns in P are empty will be ingored.
-%  Alternatively, specify a logical row vector.
+%  Can be the empty cell array, in which case all indices are kept.
 % 
 % Optional input arguments:
 % Optional inputs specify the names of various columns in the summary
@@ -53,10 +53,14 @@ function [whichIndices, mergedSumstats, whichSNPs, sumstats_SNPs_in_snplists] = 
 %   the phased PGS weights for all SNPs corresponding to that index.
 %   (default: none)
 % 
+%   retainEquivalentSNPs: option to keep SNPs belonging to the same row/col
+%   index, instead of picking a representative
+% 
 % Ouput arguments:
 % whichIndices: cell array of indices, a subset of the 'index' column of each
 % snplist. Indexes which row/column of LDGMs have a corresponding SNP in
-% the sumstats table.
+% the sumstats table. By default, indices are unique, unless
+% retainEquivalentSNPs is set to true
 %
 % mergedSumstats: cell array of sumstats tables, each containing a subset
 % of the rows of the original sumstats table, that match the indices of
@@ -109,6 +113,18 @@ addParameter(p, 'columnNameContainingStandardError', 'SE', @(x)ischar(x) || isnu
 % column of sumstats table containing allele frequencies of alt alleles
 addParameter(p, 'columnNameContainingAlternativeAlleleFrequency', 'EAF', @(x)ischar(x) || isnumeric(x));
 
+% whether to match SNPs by position or by variant ID. If true, requires
+% that summary statistics contain chromosome and position identifiers, and
+% that snplists contain chromosome and position as well (with the same
+% genome build).
+addParameter(p, 'matchByPosition', false, @islogical);
+
+% column of sumstats table containing chromosome of each SNP
+addParameter(p, 'columnNameContainingChromosome', 'CHR', @(x)ischar(x) || isnumeric(x));
+
+% column of sumstats table containing position of each SNP
+addParameter(p, 'columnNameContainingPosition', 'POS', @(x)ischar(x) || isnumeric(x));
+
 % optional QC step is to compare allele frequency from sumstats file
 % with AF from snplist file, and discard SNPs that seem to have discordant
 % frequencies. If doing this, specify which population (e.g., 'EUR') to
@@ -120,6 +136,12 @@ addParameter(p, 'alleleFrequencyDifferenceTolerance', 0.2, @(x)ischar(x) || isnu
 % columns of sumstats table containing PGS weights
 addParameter(p, 'columnNameContainingPGSWeight', '', @(x)ischar(x) || isnumeric(x));
 
+% option to retain equivalent SNPs. Equivalent SNPs are assigned to the
+% same row/column of the LDGM, and they are typically in near-perfect LD
+% except for imputation issues. With this option set to true, whichIndices
+% will have duplicate entries, indicating which rows of mergedSumstats
+% belong to the indicated SNPs.
+addParameter(p, 'retainEquivalentSNPs', false, @islogical);
 
 parse(p, snplists, sumstats, P, varargin{:});
 
@@ -146,6 +168,8 @@ end
 % Identify columns of sumstats table
 sumstatsColumnNames = sumstats.Properties.VariableNames;
 snpcolumn = getMatchingColumn(sumstatsColumnNames,columnNameContainingVariantId);
+poscolumn = getMatchingColumn(sumstatsColumnNames,columnNameContainingPosition);
+chrcolumn = getMatchingColumn(sumstatsColumnNames,columnNameContainingChromosome);
 zcolumn = getMatchingColumn(sumstatsColumnNames, columnNameContainingZ);
 a1column = getMatchingColumn(sumstatsColumnNames, columnNameContainingReferenceAllele);
 a2column = getMatchingColumn(sumstatsColumnNames, columnNameContainingAlternativeAllele);
@@ -154,13 +178,24 @@ secolumn = getMatchingColumn(sumstatsColumnNames, columnNameContainingStandardEr
 afcolumn = getMatchingColumn(sumstatsColumnNames, columnNameContainingAlternativeAlleleFrequency);
 pgscolumn = getMatchingColumn(sumstatsColumnNames, columnNameContainingPGSWeight);
 
-assert(sum(snpcolumn) == 1, ...
-    'Please specify exactly one column in sumstats table containing variant identifiers')
-
+if matchByPosition
+    assert(sum(poscolumn) == 1, ...
+        'Please specify exactly one column in sumstats table containing variant positions')
+    assert(sum(chrcolumn) == 1, ...
+        'Please specify exactly one column in sumstats table containing chromosome of each variant')
+else
+    assert(sum(snpcolumn) == 1, ...
+        'Please specify exactly one column in sumstats table containing variant identifiers')
+end
 concatenated_snplists = vertcat(snplists{:});
 
-[~, ldgm_idx, sumstats_idx] = intersect(concatenated_snplists.site_ids,...
-    table2cell(sumstats(:,snpcolumn)), 'stable');
+if matchByPosition
+    [~, ldgm_idx, sumstats_idx] = intersect([concatenated_snplists.chr, concatenated_snplists.position],...
+        [table2array(sumstats(:,chrcolumn)) table2array(sumstats(:,poscolumn))], 'rows', 'stable');
+else
+    [~, ldgm_idx, sumstats_idx] = intersect(concatenated_snplists.site_ids,...
+        table2cell(sumstats(:,snpcolumn)), 'stable');
+end
 
 % Subset sumstats to matching SNPs
 sumstats = sumstats(sumstats_idx,:);
@@ -246,42 +281,58 @@ end
 
 % Convert from SNPs to LDGM row/col indices (which can have multiple SNPs)
 whichIndices = cell(size(snplists));
-representatives = cell(size(snplists));
-for ii = 1:noBlocks
-    [whichIndices{ii}, representatives{ii}, duplicates] = ...
-        unique(snplists{ii}.index(whichSNPs{ii}) + 1);
-    
-    % For PGS column, add up the entries when multiple SNPs are
-    % assigned to the same index
-    if any(pgscolumn)
-        mergedSumstats{ii}.pgs_weight_deriv_allele(representatives{ii},:) = ...
-            accumarray(duplicates, ...
-            mergedSumstats{ii}.pgs_weight_deriv_allele);
+if retainEquivalentSNPs
+    for ii = 1:noBlocks
+        whichIndices{ii} = snplists{ii}.index(whichSNPs{ii}) + 1;
+
+        % Get rid of indices whose corresponding columns of P are empty
+        if ~isempty(P)
+            include = ismember(whichIndices{ii}, find(any(P{ii})));
+            whichIndices{ii} = whichIndices{ii}(include);
+            mergedSumstats{ii} = mergedSumstats{ii}(include,:);
+        end
     end
+else
+    representatives = cell(size(snplists));
+    for ii = 1:noBlocks
+        [whichIndices{ii}, representatives{ii}, duplicates] = ...
+            unique(snplists{ii}.index(whichSNPs{ii}) + 1);
 
-    % Get rid of indices whose corresponding columns of P are empty
-    include_indices = find(any(P{ii}));
-    [whichIndices{ii}, include_indices] = intersect(whichIndices{ii},include_indices);
-    representatives{ii} = representatives{ii}(include_indices);
-    
-    mergedSumstats{ii} = mergedSumstats{ii}(representatives{ii},:);
-end
-
-if ~isempty(populationForCheckingAlleleFrequency)
-    for block = 1:noBlocks
-        AF1 = mergedSumstats{block}.AF_deriv_allele;
-        AF2 = table2array(snplists{block}(whichSNPs{block}, populationForCheckingAlleleFrequency));
-        AF2 = AF2(representatives{block});
-        AF_difference = abs(AF1 - AF2);
-        incl = AF_difference < alleleFrequencyDifferenceTolerance;
-        if mean(incl) < .9
-            warning('Large number of SNPs (>0.1) with discordant allele frequencies')
+        % For PGS column, add up the entries when multiple SNPs are
+        % assigned to the same index
+        if any(pgscolumn)
+            mergedSumstats{ii}.pgs_weight_deriv_allele(representatives{ii},:) = ...
+                accumarray(duplicates, ...
+                mergedSumstats{ii}.pgs_weight_deriv_allele);
         end
 
-        whichIndices{block} = whichIndices{block}(incl);
-        mergedSumstats{block} = mergedSumstats{block}(incl,:);
-        whichSNPs{block} = whichSNPs{block}(incl);
+        % Get rid of indices whose corresponding columns of P are empty
+        if ~isempty(P)
+            include_indices = find(any(P{ii}));
+            [whichIndices{ii}, include_indices] = intersect(whichIndices{ii},include_indices);
+            representatives{ii} = representatives{ii}(include_indices);
+        end
 
+        mergedSumstats{ii} = mergedSumstats{ii}(representatives{ii},:);
+    end
+    
+    % Get rid of SNPs whose allele frequency is discordant
+    if ~isempty(populationForCheckingAlleleFrequency)
+        for block = 1:noBlocks
+            AF1 = mergedSumstats{block}.AF_deriv_allele;
+            AF2 = table2array(snplists{block}(whichSNPs{block}, populationForCheckingAlleleFrequency));
+            AF2 = AF2(representatives{block});
+            AF_difference = abs(AF1 - AF2);
+            incl = AF_difference < alleleFrequencyDifferenceTolerance;
+            if mean(incl) < .9
+                warning('Large number of SNPs (>0.1) with discordant allele frequencies')
+            end
+
+            whichIndices{block} = whichIndices{block}(incl);
+            mergedSumstats{block} = mergedSumstats{block}(incl,:);
+            whichSNPs{block} = whichSNPs{block}(incl);
+
+        end
     end
 end
 
