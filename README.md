@@ -3,8 +3,9 @@
 [![codecov](https://codecov.io/gh/awohns/ldgm/branch/main/graph/badge.svg?token=2I8PxyDm8A)](https://codecov.io/gh/awohns/ldgm)
 [![Documentation Status](https://readthedocs.org/projects/ldgm/badge/?version=latest)](https://ldgm.readthedocs.io/en/latest/?badge=latest)
 
-Create sparse and accurate models of linkage disequilibrium (LD) to massively accelerate matrix algebra computations in statistical genetics.
+LDGMs (<ins>L</ins>inkage <ins>D</ins>isequilibrium <ins>G</ins>raphical <ins>M</ins>odels) are sparse and accurate models of linkage disequilibrium (LD) which massively accelerate matrix algebra computations in statistical genetics.
 
 Please refer to the [documentation](https://ldgm.readthedocs.io/en/latest/) for information on installing and using the software.
 
-Please cite our upcoming preprint if you use ``ldgm`` in your work.
+Please cite this preprint if you use LDGMs in published work.
+> Pouria Salehi Nowbandegani, Anthony Wilder Wohns, Jenna L. Ballard, Eric S. Lander, Alex Bloemendal, Benjamin M. Neale, and Luke J. O’Connor (2022) _Extremely sparse models of linkage disequilibrium in ancestrally diverse association studies_. Biorxiv doi: https://doi.org/10.1101/2022.09.06.506858
