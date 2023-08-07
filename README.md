@@ -7,5 +7,5 @@ LDGMs (<ins>L</ins>inkage <ins>D</ins>isequilibrium <ins>G</ins>raphical <ins>M<
 
 Please refer to the [documentation](https://ldgm.readthedocs.io/en/latest/) for information on installing and using the software.
 
-Please cite this preprint if you use LDGMs in published work.
-> Pouria Salehi Nowbandegani, Anthony Wilder Wohns, Jenna L. Ballard, Eric S. Lander, Alex Bloemendal, Benjamin M. Neale, and Luke J. O’Connor (2022) _Extremely sparse models of linkage disequilibrium in ancestrally diverse association studies_. Biorxiv doi: https://doi.org/10.1101/2022.09.06.506858
+Please cite this paper if you use LDGMs in published work.
+> Pouria Salehi Nowbandegani, Anthony Wilder Wohns, Jenna L. Ballard, Eric S. Lander, Alex Bloemendal, Benjamin M. Neale, and Luke J. O’Connor (2023) _Extremely sparse models of linkage disequilibrium in ancestrally diverse association studies_. Nat Genet. DOI: 10.1038/s41588-023-01487-8
