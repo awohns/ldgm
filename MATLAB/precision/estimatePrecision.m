@@ -244,6 +244,12 @@ if isempty(output_dir) && nargout == 0
     error('Please specify output_dir so that the results are saved')
 end
 
+if isfolder('../utility')
+    addpath('../utility')
+else
+    warning('Expected to find a directory with utility functions, but did not. Check directory structure.')
+end
+
 % suffixes for output files
 output_suffix = sprintf('.path_distance=%.1f.l1_pen=%.2f.maf=%.2f.%s',...
     path_distance_threshold,l1_penalty,minimum_maf,population_name);
