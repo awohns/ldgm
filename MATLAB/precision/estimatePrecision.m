@@ -244,10 +244,17 @@ if isempty(output_dir) && nargout == 0
     error('Please specify output_dir so that the results are saved')
 end
 
+% Add dependencies to path
 if isfolder('../utility')
     addpath('../utility')
 else
     warning('Expected to find a directory with utility functions, but did not. Check directory structure.')
+end
+
+if isfolder('../../MATLAB')
+    addpath('../../MATLAB')
+else
+    warning('Expected to find a MATLAB directory, but did not. Check directory structure.')
 end
 
 % suffixes for output files
