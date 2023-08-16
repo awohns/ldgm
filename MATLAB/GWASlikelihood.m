@@ -48,42 +48,42 @@ else
     logLikelihoodBlocks = logLikelihood;
 end
 
-    function ll = likelihoodFn(Z,sigmasq,P,nn,whichSNPs,intercept)
+    function ll = likelihoodFn(Z,sigmasq,P,nn,whichIndices,intercept)
 
-        if ~islogical(whichSNPs)
-            [whichSNPs, ~, duplicates] = unique(whichSNPs);
+        if ~islogical(whichIndices)
+            [whichIndices, ~, duplicates] = unique(whichIndices);
             sigmasq = accumarray(duplicates,sigmasq);
-            whichSNPs = unfind(whichSNPs,length(P));
+            whichIndices = unfind(whichIndices,length(P));
         end
 
         assert(all(sigmasq>=0),'sigmasq should be nonnegative')
 
         % handling SNPs missing from P
         incl = diag(P)~=0;
-        assert(all(incl(whichSNPs)))
+        assert(all(incl(whichIndices)))
         mm = sum(incl);
         P = P(incl,incl);
-        whichSNPs = whichSNPs(incl);
-        mm0 = sum(~whichSNPs); % no. missing SNPs from sumstats
+        whichIndices = whichIndices(incl);
+        mm0 = sum(~whichIndices); % no. missing SNPs from sumstats
 
         % inv(P)(whichSNPs,whichSNPs) * Z
-        x = precisionMultiply(P,Z,whichSNPs);
+        x = precisionMultiply(P,Z,whichIndices);
 
         % M == E(xx')
-        M = sparse(find(whichSNPs), find(whichSNPs), nn*sigmasq, mm, mm);
+        M = sparse(find(whichIndices), find(whichIndices), nn*sigmasq, mm, mm);
         M = M + intercept * P;
         A = chol(M);
 
         % log|intercept * P/P11 + nn*diag(sigmasq)| == log|M| - log|intercept*P11|
         logdetM = 2*sum(log(diag(A)));
-        logdetP11 = mm0 * log(intercept) + 2*sum(log(diag(chol(P(~whichSNPs,~whichSNPs)))));
+        logdetP11 = mm0 * log(intercept) + 2*sum(log(diag(chol(P(~whichIndices,~whichIndices)))));
 
         % x'*M\x == w'*w
         y = zeros(mm,1);
-        y(whichSNPs) = x;
+        y(whichIndices) = x;
         w = A' \ y;
 
-        ll = 1/2 * (-(logdetM - logdetP11) - w'*w - sum(whichSNPs)*log(2*pi));
+        ll = 1/2 * (-(logdetM - logdetP11) - w'*w - sum(whichIndices)*log(2*pi));
     end
 
 
