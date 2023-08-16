@@ -1,17 +1,21 @@
-Populate this directory with LDGMs downloaded from our Zenodo repository by running:
+This repository contains the following subdirectories:
 
-```
-make download
-```
+1. ldgms/ contains seven files for each LD block: a .snplist file, an LDGM, and five precision matrices.
+*.snplist: the SNP list is table with one row per SNP, with columns: 
+	index: these non-unique indices, starting at zero, correspond to rows and columns of the LDGMs. There can be multiple SNPs for a single index, which occurs when the corresponding mutations occur on the same brick of the bricked tree sequence. SNPs with the same index have high (nearly perfect) LD.
+	site_ids: RSIDs of SNPs that have one
+	anc_alleles: ancestral allele
+	deriv_alleles: derived allele
+	EUR: allele frequency of derived allele in EUR samples
+	AFR: allele frequency of derived allele in AFR samples
+	AMR: allele frequency of derived allele in AMR samples
+	EAS: allele frequency of derived allele in EAS samples
+	SAS: allele frequency of derived allele in SAS samples
 
-This downloads LDGM precision matrices, SNP lists and summary statistics, which are what is needed to run the MATLAB tutorials; these will be sufficient for most users. To download the entire repo, which is ~30GB, run:
+*.edgelist: edge lists contain one row for each non-zero entry of the LDGM adjacency matrix or precision matrix. There is one LDGM edge list for each LD block, and five precision matrices for each LD block (one for each of the five continental populations). Each row represents an edge, as a tuple (index_1, index_2, entry). For the LDGM adjacency matrices, the entry is the edge weight, where 0 represents a strong dependency and e.g. 6 represents a weak dependency. For the LDGM precision matrix, it is the precision matrix entry. There are no column names. Precision matrices are named with the corresponding population (e.g., ‘*.EUR.edgelist’), while the LDGM has no population name.
 
-```
-make download_eur
-```
-This downloads LDGM precision matrices and SNP lists for EUR only, which will be sufficient for many users.
+2. genos/ contains genotype matrices for the 40 LD blocks on chromosomes 21-22, as number-of-SNPs by number-of-samples 0/1 matrices. Each LD matrix contains one column for each row in the SNP list files, and one row for each row in the sample ID files. It also contains a .csv file with the sample IDs and ancestry labels corresponding to each row of the .genos files.
 
-```
-make download_all
-``` 
-This downloads the entire data repository, which will be needed for users looking to reproduce our manuscript results.
+3. ukb/ contains correlation matrices and SNP lists from UK Biobank data for chromosomes 21-22
+
+4. sumstats/ contains four summary statistics files obtained from https://alkesgroup.broadinstitute.org/UKBB/

@@ -1,26 +1,34 @@
 download:
 	mkdir ldgms
-	curl -L -o README https://www.dropbox.com/s/g8g2szfs8r1hk0g/README
-	curl -L -o - https://www.dropbox.com/s/km9qe0q4lswsq25/AFR.tar.gz | tar -xz -C ldgms
-	curl -L -o - https://www.dropbox.com/s/3g8x1rkj7mqnypr/AMR.tar.gz | tar -xz -C ldgms
-	curl -L -o - https://www.dropbox.com/s/v19rm6s9or47zgr/EAS.tar.gz | tar -xz -C ldgms
-	curl -L -o - https://www.dropbox.com/s/p5l2l2peny9ox3n/EUR.tar.gz | tar -xz -C ldgms
-	curl -L -o - https://www.dropbox.com/s/izv0sf7yunc4uhb/SAS.tar.gz | tar -xz -C ldgms
-	curl -L -o - https://www.dropbox.com/s/5biod4rbzc88iez/snplist.tar.gz | tar -xz -C ldgms
-	curl -L -o - https://www.dropbox.com/s/sk7f3zvtkjluh2m/sumstats.tar.gz | tar -xz
+	curl -L -o - https://zenodo.org/record/8157131/files/AFR.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/AMR.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/EAS.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/EUR.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/SAS.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/snplists_GRCh38positions.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/sumstats.tar.gz?download=1| tar -xz
 	mv ldgms/*/* ldgms
 	ls -d ldgms/*/ | xargs rmdir
 	
 download_eur:
 	mkdir ldgms
-	curl -L -o README https://www.dropbox.com/s/g8g2szfs8r1hk0g/README
-	curl -L -o - https://www.dropbox.com/s/p5l2l2peny9ox3n/EUR.tar.gz | tar -xz -C ldgms
-	curl -L -o - https://www.dropbox.com/s/5biod4rbzc88iez/snplist.tar.gz | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/EUR.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/snplists_GRCh38positions.tar.gz?download=1 | tar -xz -C ldgms
 	mv ldgms/*/* ldgms
 	ls -d ldgms/*/ | xargs rmdir
 	
 download_all:
-	curl -L -o README https://www.dropbox.com/s/g8g2szfs8r1hk0g/README
-	curl -L -o ldgm.tar.gz https://www.dropbox.com/sh/1huaxgad2bjjv9a/AACI6pRZpr6gmK5E1mo4fck6a
-	tar -xvf ldgm.tar.gz
+	mkdir ldgms
+	curl -L -o ldgms/1kg_nygc_trios_removed_All_pops_geno_ids_pops.csv https://zenodo.org/record/8157131/files/1kg_nygc_trios_removed_All_pops_geno_ids_pops.csv?download=1
+	curl -L -o - https://zenodo.org/record/8157131/files/AFR.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/AMR.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/EAS.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/EUR.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/SAS.precision.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/snplists_GRCh38positions.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/sumstats.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/ldgms.tar.gz?download=1 | tar -xz -C ldgms
+	curl -L -o - https://zenodo.org/record/8157131/files/ukb.tar?download=1 | tar -xz -C ldgms
+	mv ldgms/*/* ldgms
+	ls -d ldgms/*/ | xargs rmdir
 
