@@ -195,6 +195,10 @@ addParameter(p, 'componentVariance', 1, ...
 addParameter(p, 'componentWeight', 1, ...
     @(x)isvector(x) & sum(x,'all')<=1 & all(x>=0,'all'));
 
+% random seed for component assignments, such that component assignments
+% will be identical across simulations if it is set to a value besides 0
+addParameter(p, 'componentRandomSeed', false, @isscalar);
+
 % fraction of missing SNPs (missing at random)
 addParameter(p, 'missingness', 0, @isscalar);
 
@@ -347,7 +351,16 @@ true_beta_perallele = arrayfun(@(m)zeros(m,1),repmat(noSNPs,1,noPops),'UniformOu
 true_beta_perSD = true_beta_perallele;
 true_perSNP_h2 = probabilityCausal;
 
+if componentRandomSeed
+    randomNumberInitialSeed = rand();
+end
+
 for block = 1:noBlocks
+    
+    if componentRandomSeed
+        % Set random seed so that it will be repeatable
+        rng(componentRandomSeed + block,'twister');
+    end
 
     % mixture component assignments
     whichSNPsCausal = rand(noSNPsAnnot(block),1) < probabilityCausal{block};
@@ -355,6 +368,10 @@ for block = 1:noBlocks
     whichCpt(whichSNPsCausal) = randsample(1:noCpts,sum(whichSNPsCausal),true,componentWeight);
 
     % sample beta from respective mixture components
+    if componentRandomSeed
+        % Set random seed so that it will be repeatable
+        rng(randomNumberInitialSeed + block,'twister');
+    end
     beta = zeros(noSNPsAnnot(block),noPops);
     for cpt = 1:noCpts
         beta(whichCpt == cpt,:) = mvnrnd(zeros(1,noPops), componentVariance(:,:,cpt), sum(whichCpt == cpt));
@@ -547,17 +564,17 @@ if ~isempty(savePath)
             assert(~isempty(snplists),'To use PRScs file format, SNP lists must be specified')
             snplistsCat = cellfun(@(T,j)T(j,:),snplists,whichIndices(:,pop),'UniformOutput',false);
             snplistsCat = vertcat(snplistsCat{:});
+            AFCat = cellfun(@(T,j)T(j,:),alleleFrequency(:,pop),whichIndices(:,pop),'UniformOutput',false);
+            AFCat = vertcat(AFCat{:});
             nn = height(snplistsCat);
             T = table('size',[nn,0]);
             T.SNP = snplistsCat.site_ids;
             T.A1 = snplistsCat.anc_alleles;
             T.A2 = snplistsCat.deriv_alleles;
             sumstatsCat = vertcat(sumstats{:,pop});
-            T.BETA = sumstatsCat.Z_deriv_allele;
-            T.P = chi2cdf(sumstatsCat.Z_deriv_allele.^2,1,'upper');
-            if any(sumstatsCat.Z_deriv_allele.^2 > 300)
-                warning('Very large chi^2 statistics might lead to unreliable p-values in printed summary statistics')
-            end
+            beta_perSD = sumstatsCat.Z_deriv_allele / sqrt(sampleSize(pop));
+            T.BETA = -beta_perSD ./ sqrt(2*AFCat.*(1-AFCat)); % per-allele effect size of A1
+            T.SE = 1 ./ sqrt(2 * sampleSize(pop) * AFCat.*(1-AFCat));
 
             % Discard NA SNP IDs
             T = T(~strcmpi(T.SNP,'NA'),:);
