@@ -352,7 +352,7 @@ true_beta_perSD = true_beta_perallele;
 true_perSNP_h2 = probabilityCausal;
 
 if componentRandomSeed
-    randomNumberInitialSeed = rand();
+    randomNumberInitialSeed = 2^31 * rand();
 end
 
 for block = 1:noBlocks
