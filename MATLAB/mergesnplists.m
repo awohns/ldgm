@@ -136,6 +136,10 @@ addParameter(p, 'alleleFrequencyDifferenceTolerance', 0.2, @(x)ischar(x) || isnu
 % columns of sumstats table containing PGS weights
 addParameter(p, 'columnNameContainingPGSWeight', '', @(x)ischar(x) || isnumeric(x));
 
+% Parameter to regularize the Z scores using the precision matrices. Should
+% be between 0 and 1 (but probably closer to 0).
+addParameter(p, 'regularizationParameter', 0, @isscalar);
+
 % option to retain equivalent SNPs. Equivalent SNPs are assigned to the
 % same row/column of the LDGM, and they are typically in near-perfect LD
 % except for imputation issues. With this option set to true, whichIndices
@@ -333,6 +337,15 @@ else
             whichSNPs{block} = whichSNPs{block}(incl);
 
         end
+    end
+end
+
+% Regularize Z scores to be more concordant with LDGM LD patterns
+if regularizationParameter > 0
+    Z = cellfun(@(T)T.Z_deriv_allele,mergedSumstats,'UniformOutput',false);
+    Z_regularized = regularizeSumstats(P,Z,whichIndices,regularizationParameter);
+    for block = 1:noBlocks
+        mergedSumstats{block}.Z_deriv_allele = Z_regularized{block};
     end
 end
 
