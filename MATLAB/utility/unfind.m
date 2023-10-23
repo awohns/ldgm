@@ -7,6 +7,12 @@ function [lgc, permutation, inverse_permutation] = unfind(idx, N)
 if nargin < 2
     N = max(idx);
 end
+if isempty(idx)
+    lgc = false(N,1);
+    permutation = [];
+    inverse_permutation = [];
+    return
+end
 assert(N >= max(idx));
 if nargout < 2
     assert(issorted(idx),'Only use unfind when indices are sorted')
