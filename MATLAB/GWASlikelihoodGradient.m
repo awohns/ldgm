@@ -1,9 +1,14 @@
-function [grad] = GWASlikelihoodGradient(Z, sigmasq, P, nn, delSigmaDelA, whichSNPs, intercept, fixedIntercept)
-% GWASlikelihoodGradient computes gradient of the likelihood of the GWAS 
+function [grad, nodeGrad] = GWASlikelihoodGradient(Z, sigmasq, P, nn, delSigmaDelA, whichSNPs, intercept, fixedIntercept)
+% GWASlikelihoodGradient computes gradient of the log-likelihood of the GWAS 
 % sumstats alphaHat under a gaussian model:
 %                   beta ~ MVN(mu,diag(sigmasq))
 %                   alphaHat|beta ~ MVN(R*beta, R/nn)
 %                   inv(R) = P.
+% 
+% The output arguments are (1) grad, which computes the gradient w.r.t.
+% some parameters A s.t. delSigmaDelA is the matrix of partials for each
+% entry of sigmasq w.r.t. each element of A; and (2) nodeGrad, which
+% computes the gradient w.r.t. sigmasq.
 % 
 % This function requires the sparseinv() function from suitesparse:
 % https://people.engr.tamu.edu/davis/suitesparse.html
@@ -83,6 +88,10 @@ else
     delLogDetM = nn * sum(delSigmaDelA .* MinvDiag(whichSNPs));
     
     grad = - 1/2 * (delLogDetM + delwtw);
+
+    if nargout > 1
+        nodeGrad = -1/2 * nn * (MinvDiag(whichSNPs) - b.^2);
+    end
     
     % gradient of minus log-likelihood wrt 1/nn
     if ~fixedIntercept
