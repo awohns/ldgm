@@ -1,5 +1,5 @@
 function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD,... 
-    true_alpha_perSD, true_perSNP_h2] = ...
+    true_alpha_perSD, true_perNode_h2, true_perSNP_h2] = ...
     simulateSumstats(sampleSize, varargin)
 % Simulates summary statistics from specified prior distribution for
 % one or more populations.
@@ -414,10 +414,16 @@ for block = 1:noBlocks
     
     % Convert from SNPs to indices
     [whichIndicesAnnot{block}, representatives, duplicates] = unique(whichIndicesAnnot{block});
-    if numel(whichIndicesAnnot{block}) < numel(duplicates)
-        beta = accumarray(duplicates, beta);
-        true_perSNP_h2{block} = accumarray(duplicates, true_perSNP_h2{block});
-        meanAF = meanAF(representatives);
+    true_perNode_h2 = cell(size(true_perSNP_h2));
+    beta = accumarray(duplicates, beta);
+    true_perNode_h2{block} = accumarray(duplicates, true_perSNP_h2{block});
+
+    % Compute per-SNP-h2 on SD scale
+    if ~isempty(alleleFrequency)
+        true_perSNP_h2{block} = true_perSNP_h2{block} .* ...
+            (meanAF.*(1-meanAF));
+        true_perNode_h2{block} = true_perNode_h2{block} .* ...
+            (meanAF(representatives).*(1-meanAF(representatives)));
     end
 
     assert(isreal(beta) & all(beta == beta, 'all'), 'Imaginary or NaN beta; check link function')
@@ -440,10 +446,7 @@ for block = 1:noBlocks
         end
     end
 
-    % Compute per-SNP-h2 on SD scale
-    if ~isempty(alleleFrequency)
-        true_perSNP_h2{block} = true_perSNP_h2{block} .* (meanAF.*(1-meanAF));
-    end
+    
 end
 
 % Normalize effect sizes so they add up to h2
