@@ -107,7 +107,8 @@ function [sumstats, whichIndices, true_beta_perallele, true_beta_perSD,...
 % true_alpha_perSD: true marginal effect sizes (i.e., correlations)
 % 
 % true_perSNP_h2: the per-sd effect-size variance of each SNP in the
-% annotations matrix
+% annotations matrix, before assignment to components (default) or
+% afterward (if returnSigmasq is set to true)
 
 
 p=inputParser;
@@ -204,6 +205,10 @@ addParameter(p, 'missingness', 0, @isscalar);
 
 % whether to compute sample allele frequencies with added noise
 addParameter(p, 'noisySampleAF', false, @isscalar);
+
+% whether true_perSNP_h2 parameter is computed before (default) or after
+% (if this is set to true) assigning SNPs to components
+addParameter(p, 'returnSigmasq', false, @isscalar);
 
 
 % turns p.Results.x into just x
@@ -366,7 +371,13 @@ for block = 1:noBlocks
     whichSNPsCausal = rand(noSNPsAnnot(block),1) < probabilityCausal{block};
     whichCpt = zeros(noSNPsAnnot(block),1);
     whichCpt(whichSNPsCausal) = randsample(1:noCpts,sum(whichSNPsCausal),true,componentWeight);
-
+    
+    % effect-size variance of each SNP, for population 1
+    if returnSigmasq
+        true_perSNP_h2{block} = zeros(length(whichCpt), 1);
+        true_perSNP_h2{block}(whichSNPsCausal) = componentVariance(1,1,whichCpt(whichSNPsCausal));
+    end
+    
     % sample beta from respective mixture components
     if componentRandomSeed
         % Set random seed so that it will be repeatable
@@ -379,7 +390,7 @@ for block = 1:noBlocks
     
     % mean allele frequency across populations
     if ~isempty(alleleFrequency)
-        meanAF = max(1e-9, min(1-1e-9, mean([alleleFrequency{block,:}],2)));
+        meanAF = max(1e-15, min(1-1e-15, mean([alleleFrequency{block,:}],2)));
         meanAF = meanAF(whichIndicesAnnot{block});
     end
 
@@ -405,6 +416,8 @@ for block = 1:noBlocks
     [whichIndicesAnnot{block}, representatives, duplicates] = unique(whichIndicesAnnot{block});
     if numel(whichIndicesAnnot{block}) < numel(duplicates)
         beta = accumarray(duplicates, beta);
+        true_perSNP_h2{block} = accumarray(duplicates, true_perSNP_h2{block});
+        meanAF = meanAF(representatives);
     end
 
     assert(isreal(beta) & all(beta == beta, 'all'), 'Imaginary or NaN beta; check link function')
