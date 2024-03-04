@@ -9,7 +9,9 @@ function [matrices, snplists, AF] = loadLDGMs(filepath,varargin)
 %  popnNames: names of populations to be included, or arbitrary strings that must be
 %  included in the filenames
 %  whichBlocks: indices of which LD blocks to include, out of all of those that are found
-%  snsplistpath: where to look for SNP lists, if different from filepath
+%  snplistPath: where to look for SNP lists, if different from filepath
+%  snpsOnly: option to import snplist data for SNPs only; this results in
+%  much smaller memory usage for the snplists
 %  normalizePrecision: whether to normalize precision matrices such that
 %  the diagonal of their inverse is exactly 1
 
@@ -27,6 +29,14 @@ addParameter(p, 'whichBlocks', 0, @isnumeric);
 
 % directory containing SNP lists
 addParameter(p, 'snplistpath', filepath, @isstr);
+
+% import snplist data for SNPs only; this results in
+% much smaller memory usage for the snplists
+addParameter(p, 'snpsOnly', false, @isscalar);
+
+% option to minimize memory usage for the snplists by eliminating unneeded
+% columns
+addParameter(p, 'minimizeMemory', false, @isscalar);
 
 % whether to normalize LDGM precision matrices such that the diagonal of
 % their inverse is exactly 1
@@ -65,12 +75,25 @@ matrices = cell(noFiles,length(popnNames));
 
 % Read snplists
 for jj = 1:noFiles
-    snplists{jj} = readtable([snplist_files(jj).folder,'/',snplist_files(jj).name],'FileType','text');
+    T = readtable([snplist_files(jj).folder,'/',snplist_files(jj).name],...
+        'FileType','text');
     if addChromosomeColumn
         before = extractBefore(snplist_files(jj).name, 'chr');
         chr = sscanf(snplist_files(jj).name, [before, 'chr%d']);
-        snplists{jj}.chr(:) = chr;
+        T.chr(:) = chr;
     end
+    if snpsOnly
+        snps = cellfun(@length,T.anc_alleles) == 1 & ...
+            cellfun(@length,T.deriv_alleles) == 1;
+        T = T(snps,:);
+        T.anc_alleles = cell2mat(T.anc_alleles);
+        T.deriv_alleles = cell2mat(T.deriv_alleles);
+    end
+    if minimizeMemory
+        T = removevars(T,{'site_ids','swap'});
+    end
+
+    snplists{jj} = T;
 end
 
 % Read edgelists
@@ -113,6 +136,10 @@ if nargout >= 3
         AF(ii,:) = mat2cell(table2array(snplists{ii}(representatives,popnNames)),...
             length(representatives),ones(1,noPopns));
     end
+end
+
+if minimizeMemory
+    snplists = cellfun(@(T)removevars(T,{'EUR','EAS','AMR','SAS','AFR'}),snplists,'UniformOutput',false);
 end
 end
 
