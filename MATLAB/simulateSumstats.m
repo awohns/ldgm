@@ -558,8 +558,8 @@ if ~isempty(savePath)
     end
     true_beta_perSD_nonmissing = cellfun(@(x,j)x(j),true_beta_perSD,whichIndices,'UniformOutput',false);
 
-    if ischar(fileFormat)
-        fileFormat = {fileFormat};
+    if ischar(savePath)
+        savePath = {savePath};
     end
 
     for pop = 1:noPops
