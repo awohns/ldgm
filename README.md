@@ -9,3 +9,9 @@ Please refer to the [documentation](https://ldgm.readthedocs.io/en/latest/) for 
 
 Please cite this paper if you use LDGMs in published work.
 > Pouria Salehi Nowbandegani, Anthony Wilder Wohns, Jenna L. Ballard, Eric S. Lander, Alex Bloemendal, Benjamin M. Neale, and Luke J. O’Connor (2023) _Extremely sparse models of linkage disequilibrium in ancestrally diverse association studies_. Nat Genet. DOI: 10.1038/s41588-023-01487-8
+
+### See also
+
+- Python API and CLI for applications including polygenic scores and heritability partitioning: https://github.com/oclb/graphld
+- LDGM-VCF specification and bcftools plugin for computing polygenic scores with LDGMs: https://github.com/freeseek/score
+- For linear algebra with sparse matrices, SuiteSparse: https://github.com/DrTimothyAldenDavis/SuiteSparse
