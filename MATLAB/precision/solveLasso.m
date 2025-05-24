@@ -24,7 +24,7 @@ end
 % Cholesky factor of P_inv(neighbors,neighbors)
 A = precisionReorderCholesky(P, neighbors);
 
-obj = @(u,x,y)0.5*sum(u.*x)+y'*u + lambda*sum(abs(u));
+obj = @(u,x,y)0.5*sum(u.*x)-y'*u + lambda*sum(abs(u));
 obj_val_new = inf;
 gamma = 1;
 counter = 0;
